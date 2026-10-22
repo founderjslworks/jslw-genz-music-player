@@ -2,7 +2,11 @@ name: Build GEN-Z APK
 
 on:
   push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -20,10 +24,29 @@ jobs:
       - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: GEN-Z-Music-apk
           path: app/build/outputs/apk/debug/*.apk
+
+      # Publishes the build log (and APK) to the "ci-output" branch so they can be fetched with plain git.
+      - name: Publish log and APK to ci-output branch
+        if: always()
+        run: |
+          mkdir -p /tmp/out
+          cp build.log /tmp/out/ 2>/dev/null || echo "no log" > /tmp/out/build.log
+          cp app/build/outputs/apk/debug/*.apk /tmp/out/ 2>/dev/null || true
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan ci-output
+          git rm -rfq .
+          git clean -fdxq
+          cp /tmp/out/* .
+          git add -A
+          git commit -qm "CI output for ${GITHUB_SHA}"
+          git push -f origin ci-output
