@@ -272,9 +272,9 @@ namespace GenZ
             var art = new Border { Width = size, Height = size, CornerRadius = new CornerRadius(round ? size / 2.0 : (size < 140 ? 12 : 16)), Background = (Brush)FindResource("SurfaceBrush") };
             art.Child = new Path { Data = (Geometry)FindResource(round ? "IcPerson" : "IcAlbum"), Fill = (Brush)FindResource("AccentBrush"), Width = size * 0.27, Height = size * 0.27, Stretch = Stretch.Uniform, Opacity = 0.7 };
             SetCoverAsync(art, coverOf, size * 2);
-            var t1 = new TextBlock { Text = title, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = t1fs, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 10, 2, 0), HorizontalAlignment = round ? HorizontalAlignment.Center : HorizontalAlignment.Left };
+            var t1 = new TextBlock { Text = title, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = size < 140 ? 13 : 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 10, 2, 0), HorizontalAlignment = round ? HorizontalAlignment.Center : HorizontalAlignment.Left };
             var t2 = new TextBlock { Text = sub, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = size < 140 ? 11.5 : 12, Margin = new Thickness(2, 2, 2, 0), Foreground = (Brush)FindResource("Text2Brush"), HorizontalAlignment = round ? HorizontalAlignment.Center : HorizontalAlignment.Left };
-            var t1fs = size < 140 ? 13 : 14;
+
             var sp = new StackPanel { Width = size, Margin = new Thickness(size < 140 ? 9 : 12, 8, size < 140 ? 9 : 12, 14), Cursor = Cursors.Hand, Background = Brushes.Transparent };
             sp.Children.Add(art); sp.Children.Add(t1); sp.Children.Add(t2);
             var st = new ScaleTransform(1, 1); art.RenderTransformOrigin = new Point(0.5, 0.5); art.RenderTransform = st;
