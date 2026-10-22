@@ -74,5 +74,11 @@ abstract class BaseActivity : AppCompatActivity() {
         }
     }
 
+    /** Every screen closes with the chosen transition (screens with their own exit override this afterwards). */
+    override fun finish() {
+        super.finish()
+        if (this !is MainActivity) com.jslw.genz.util.Transitions.close(this)
+    }
+
     fun reskin() = SkinPainter.apply(findViewById<ViewGroup>(android.R.id.content))
 }

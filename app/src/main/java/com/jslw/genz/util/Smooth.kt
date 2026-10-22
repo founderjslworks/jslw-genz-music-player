@@ -48,6 +48,7 @@ object Smooth {
         rv.setHasFixedSize(true)
         rv.setItemViewCacheSize(12)
         (rv.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
+        ListAnim.attach(rv)
     }
 }
 

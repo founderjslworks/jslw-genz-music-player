@@ -30,6 +30,10 @@
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
                     app:shapeAppearanceOverlay="@style/ShapeRoundedLarge" />
+                <com.jslw.genz.ui.views.CoverEffectView
+                    android:id="@+id/npCoverFx"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
             </com.jslw.genz.ui.views.SquareFrameLayout>
 
             <include layout="@layout/view_np_lyrics" />
@@ -52,4 +56,10 @@
             <include layout="@layout/view_np_controls" />
         </LinearLayout>
     </LinearLayout>
+
+    <!-- full-screen "love it" celebration; never takes touches -->
+    <com.jslw.genz.ui.views.CelebrationView
+        android:id="@+id/npCelebrate"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </com.jslw.genz.ui.views.DragDismissLayout>

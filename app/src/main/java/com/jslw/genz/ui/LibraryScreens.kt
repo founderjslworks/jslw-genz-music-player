@@ -112,7 +112,7 @@ class HomeFragment : BaseListFragment() {
 
     private fun startScreen(c: Class<*>) {
         startActivity(Intent(requireContext(), c))
-        requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+        com.jslw.genz.util.Transitions.open(requireActivity())
     }
 
     override fun playingChanged() { if (view != null && adapter.rows.none { it.title == "Now Playing" } && Player.current != null) build() }

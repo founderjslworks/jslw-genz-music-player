@@ -2,7 +2,7 @@
   "format": 1,
   "id": "winamp_classic",
   "name": "Winamp Classic",
-  "author": "JSLW",
+  "author": "JSL WORKS",
   "version": 1,
   "dark": true,
   "cornerRadius": 2,
@@ -14,6 +14,8 @@
   "rowDividers": true,
   "lcdFont": "vt323",
   "colorfulIcons": false,
+  "progressStyle": "bars",
+  "coverEffect": "vector",
   "colors": {
     "background": "#1E1E2A",
     "surface": "#2B2B3B",

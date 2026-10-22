@@ -31,6 +31,22 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
     private lateinit var play: ImageView
     private lateinit var progress: LinearProgressIndicator
     private lateinit var content: View
+    private lateinit var coverFx: com.jslw.genz.ui.views.CoverEffectView
+    private var fxTracking = false
+    private lateinit var charging: com.jslw.genz.ui.views.ChargingDoodleView
+    private val batteryReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context?, i: android.content.Intent?) {
+            i ?: return
+            val status = i.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1)
+            val plugged = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING || status == android.os.BatteryManager.BATTERY_STATUS_FULL
+            val lvl = i.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+            val scale = i.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100)
+            if (lvl >= 0 && scale > 0) charging.level = lvl / scale.toFloat()
+            charging.visibility = if (plugged) View.VISIBLE else View.GONE
+        }
+    }
+    private val artLoc = IntArray(2)
+    private val rootLoc = IntArray(2)
     private var shown: Long? = null
     private val frames = FrameTicker { tick() }
 
@@ -52,6 +68,12 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
         play = findViewById(R.id.lockPlay)
         progress = findViewById(R.id.lockProgress)
         content = findViewById(R.id.lockContent)
+        coverFx = findViewById(R.id.lockCoverFx)
+        charging = findViewById(R.id.lockCharging)
+        charging.accent = SkinManager.current.accent
+        charging.typeface = SkinManager.current.boldTypeface
+        coverFx.setThemeColors(SkinManager.current.accent, SkinManager.current.headerEnd)
+        coverFx.setEffect(SkinManager.current.activeCoverEffect)
         com.jslw.genz.util.SystemBars.setup(this, findViewById(R.id.lockRoot), 0xFF000000.toInt(), 0xFF000000.toInt())
         val tf = SkinManager.current.typeface
         listOf<TextView>(titleTv, artist, findViewById(R.id.lockClock), findViewById(R.id.lockDate)).forEach { it.typeface = tf }
@@ -76,7 +98,18 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
                 return false
             }
         })
-        findViewById<View>(R.id.lockRoot).setOnTouchListener { _, e ->
+        findViewById<View>(R.id.lockRoot).setOnTouchListener { root, e ->
+            // the cover plays its touch effect when the finger starts on it
+            if (e.actionMasked == MotionEvent.ACTION_DOWN) {
+                coverFx.getLocationOnScreen(artLoc)
+                fxTracking = e.rawX >= artLoc[0] && e.rawX <= artLoc[0] + coverFx.width &&
+                    e.rawY >= artLoc[1] && e.rawY <= artLoc[1] + coverFx.height
+            }
+            if (fxTracking) {
+                root.getLocationOnScreen(rootLoc)
+                coverFx.getLocationOnScreen(artLoc) // the cover moves while swiping up
+                coverFx.feed(e, (artLoc[0] - rootLoc[0]).toFloat(), (artLoc[1] - rootLoc[1]).toFloat())
+            }
             gd.onTouchEvent(e)
             if (e.actionMasked == MotionEvent.ACTION_UP) {
                 if (content.translationY < -dpi(160)) close()
@@ -97,10 +130,12 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
         super.onStart()
         Player.add(this)
         onPlayerChanged()
+        registerReceiver(batteryReceiver, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
     }
 
     override fun onStop() {
         Player.remove(this)
+        try { unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
         frames.stop()
         super.onStop()
     }
@@ -112,7 +147,7 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
             shown = s.id
             titleTv.text = s.title; titleTv.isSelected = true
             artist.text = listOf(s.artist, s.album).filter { it.isNotBlank() }.joinToString(" — ")
-            ArtLoader.load(art, s, dpi(320), large = true) { bmp -> setBackdrop(bmp) }
+            ArtLoader.load(art, s, dpi(320), large = true) { bmp -> setBackdrop(bmp); coverFx.setArt(bmp) }
         }
         Icons.set(play, if (svc.isPlaying) R.drawable.ic_pause_large else R.drawable.ic_play_large)
         if (svc.isPlaying) frames.start() else { frames.stop(); tick() }

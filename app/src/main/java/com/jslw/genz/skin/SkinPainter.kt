@@ -75,7 +75,7 @@ object SkinPainter {
         val radius = skin.cornerRadiusDp * d
         when (tag) {
             "skin_bg" -> v.background = backgroundFor(skin, v)
-            "skin_bg_inner" -> if (skin.backgroundImage != null) v.setBackgroundColor(Color.TRANSPARENT) else v.setBackgroundColor(skin.background)
+            "skin_bg_inner" -> if (skin.backgroundImage != null || skin.translucent) v.setBackgroundColor(Color.TRANSPARENT) else v.setBackgroundColor(skin.background)
             "skin_surface" -> v.setBackgroundColor(skin.surface)
             "skin_surface_round" -> v.background = GradientDrawable().apply {
                 setColor(skin.surface); cornerRadius = radius
@@ -112,7 +112,10 @@ object SkinPainter {
             "skin_np_slider" -> slider(v, np.accent, withAlpha(np.text, 0x40))
             "skin_progress" -> when (v) {
                 is LinearProgressIndicator -> { v.setIndicatorColor(skin.accent); v.trackColor = skin.divider }
-                is com.jslw.genz.ui.views.SparkleSeekBar -> v.setColors(skin.accent, skin.divider)
+                is com.jslw.genz.ui.views.SparkleSeekBar -> {
+                    v.setStyle(skin.progressStyle, skin.progressColors)
+                    v.setColors(skin.accent, skin.divider)
+                }
             }
             "skin_badge" -> (v as? TextView)?.let {
                 it.background = GradientDrawable().apply { setColor(np.accent); cornerRadius = 6 * d }
@@ -170,6 +173,20 @@ object SkinPainter {
 
     /** Row background: classic gradient highlight bar when pressed, optional hairline divider. */
     fun rowBackground(skin: Skin, d: Float): Drawable {
+        if (skin.cards) {
+            // dashboard tiles: every row is its own rounded (translucent) card
+            val r = skin.cornerRadiusDp * d
+            fun card(c: Drawable) = android.graphics.drawable.InsetDrawable(c, (8 * d).toInt(), (3 * d).toInt(), (8 * d).toInt(), (3 * d).toInt())
+            return StateListDrawable().apply {
+                addState(intArrayOf(android.R.attr.state_pressed), card(GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(skin.rowHighlight, skin.rowHighlightEnd)).apply { cornerRadius = r }))
+                addState(intArrayOf(android.R.attr.state_activated), card(GradientDrawable().apply {
+                    setColor(withAlpha(skin.accent, 0x40)); cornerRadius = r }))
+                addState(intArrayOf(), card(GradientDrawable().apply {
+                    setColor(skin.surface); cornerRadius = r; setStroke((1 * d).toInt(), skin.divider) }))
+                setExitFadeDuration(220)
+            }
+        }
         val pressed = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(skin.rowHighlight, skin.rowHighlightEnd))
         val normal = RowDivider(if (skin.rowDividers) skin.divider else Color.TRANSPARENT, d)
         return StateListDrawable().apply {
@@ -183,7 +200,15 @@ object SkinPainter {
     private var bgCache: Pair<String, Bitmap?>? = null
 
     /** Solid colour, or the pack's background picture (centre-cropped, dimmed with the background colour). */
-    private fun backgroundFor(skin: Skin, v: View): Drawable {
+    fun backgroundFor(skin: Skin, v: View): Drawable {
+        if (skin.translucent) {
+            val art = Backdrop.art
+            return if (art != null) CropDrawable(art, skin.background)
+            else GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(
+                androidx.core.graphics.ColorUtils.blendARGB(skin.accent, Color.BLACK, 0.55f),
+                skin.background or 0xFF000000.toInt(),
+            ))
+        }
         val rel = skin.backgroundImage ?: return android.graphics.drawable.ColorDrawable(skin.background)
         val key = skin.id + rel
         val bmp = if (bgCache?.first == key) bgCache?.second else {

@@ -2,7 +2,7 @@
   "format": 1,
   "id": "vinyl_hifi",
   "name": "Vinyl Hi-Fi",
-  "author": "JSLW",
+  "author": "JSL WORKS",
   "version": 1,
   "dark": true,
   "cornerRadius": 8,
@@ -14,6 +14,8 @@
   "rowDividers": true,
   "lcdFont": "orbitron",
   "colorfulIcons": false,
+  "progressStyle": "notes",
+  "coverEffect": "circle_mosaic",
   "colors": {
     "background": "#2A1E17",
     "surface": "#36271E",

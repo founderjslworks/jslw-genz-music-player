@@ -5,21 +5,37 @@ plugins {
 
 android {
     namespace = "com.jslw.genz"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.jslw.genz"
         // KitKat 4.4 (API 19) and up
         minSdk = 19
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Google Play: new apps must target Android 16 (API 36)
+        targetSdk = 36
+        versionCode = 2
+        versionName = "1.2"
         multiDexEnabled = true
         // Leave vector PNG generation ON for API < 21 (notifications/widgets on KitKat need PNGs).
     }
 
+    // Release signing: the upload keystore is supplied by the build machine / CI secrets, never stored in the repo.
+    //   GENZ_KEYSTORE=/path/upload.jks  GENZ_KEYSTORE_PASSWORD=…  GENZ_KEY_ALIAS=…  GENZ_KEY_PASSWORD=…
+    val ks = System.getenv("GENZ_KEYSTORE")
+    signingConfigs {
+        if (ks != null && file(ks).exists()) {
+            create("upload") {
+                storeFile = file(ks)
+                storePassword = System.getenv("GENZ_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("GENZ_KEY_ALIAS")
+                keyPassword = System.getenv("GENZ_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfigs.findByName("upload")?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

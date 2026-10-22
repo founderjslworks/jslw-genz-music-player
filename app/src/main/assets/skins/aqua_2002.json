@@ -2,7 +2,7 @@
   "format": 1,
   "id": "aqua_2002",
   "name": "Aqua 2002",
-  "author": "JSLW",
+  "author": "JSL WORKS",
   "version": 1,
   "dark": false,
   "cornerRadius": 10,
@@ -14,6 +14,8 @@
   "rowDividers": true,
   "lcdFont": "vt323",
   "colorfulIcons": true,
+  "progressStyle": "classic",
+  "coverEffect": "dewdrop",
   "colors": {
     "background": "#F4F6FA",
     "surface": "#E8ECF2",

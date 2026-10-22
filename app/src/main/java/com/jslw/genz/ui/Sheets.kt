@@ -275,4 +275,20 @@ object Sheets {
     }
 
     fun skinColor() = SkinManager.current.accent
+
+    /** Picker for the cover touch effect ("Theme default" follows the active theme). */
+    fun coverEffect(a: Activity, changed: () -> Unit) {
+        val fx = com.jslw.genz.ui.views.CoverEffectView.EFFECTS
+        val themeDefault = com.jslw.genz.ui.views.CoverEffectView.label(SkinManager.current.coverEffect)
+        val ids = listOf("theme") + fx.map { it.first }
+        val labels = (listOf("Theme default ($themeDefault)") + fx.map { it.second }).toTypedArray()
+        val cur = ids.indexOf(com.jslw.genz.data.Prefs.coverEffect).coerceAtLeast(0)
+        MaterialAlertDialogBuilder(a).setTitle("Touch the cover to play")
+            .setSingleChoiceItems(labels, cur) { dlg, w ->
+                com.jslw.genz.data.Prefs.coverEffect = ids[w]
+                changed()
+                dlg.dismiss()
+                a.toast("Touch or swipe on the cover art to see it")
+            }.show()
+    }
 }

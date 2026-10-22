@@ -48,6 +48,13 @@
             android:textColor="#CCFFFFFF"
             android:textSize="@dimen/text_16" />
 
+        <com.jslw.genz.ui.views.ChargingDoodleView
+            android:id="@+id/lockCharging"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:visibility="gone" />
+
         <com.jslw.genz.ui.views.SquareFrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -62,6 +69,11 @@
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
                 app:shapeAppearanceOverlay="@style/ShapeRoundedLarge" />
+
+            <com.jslw.genz.ui.views.CoverEffectView
+                android:id="@+id/lockCoverFx"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
         </com.jslw.genz.ui.views.SquareFrameLayout>
 
         <TextView

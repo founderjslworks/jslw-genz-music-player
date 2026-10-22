@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adapted from XuiMod (Apache License 2.0, (c) 2013 XuiMod) -->
+<set xmlns:android="http://schemas.android.com/apk/res/android" android:interpolator="@android:anim/decelerate_interpolator">
+    <translate android:duration="420" android:fromYDelta="0" android:toYDelta="100%" />
+    <scale android:duration="320" android:startOffset="140" android:pivotX="50%" android:pivotY="50%" android:fromXScale="1.0" android:toXScale="0.4" android:fromYScale="1.0" android:toYScale="1.0" />
+</set>

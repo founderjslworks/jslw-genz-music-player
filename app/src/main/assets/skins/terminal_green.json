@@ -2,7 +2,7 @@
   "format": 1,
   "id": "terminal_green",
   "name": "Terminal",
-  "author": "JSLW",
+  "author": "JSL WORKS",
   "version": 1,
   "dark": true,
   "cornerRadius": 0,
@@ -14,6 +14,8 @@
   "rowDividers": false,
   "lcdFont": "vt323",
   "colorfulIcons": false,
+  "progressStyle": "pixel",
+  "coverEffect": "pixelate",
   "colors": {
     "background": "#000000",
     "surface": "#050F05",

@@ -3,4 +3,5 @@
     <item name="tag_art" type="id" />
     <item name="tag_bold" type="id" />
     <item name="tag_icon" type="id" />
+    <item name="tag_list_anim" type="id" />
 </resources>

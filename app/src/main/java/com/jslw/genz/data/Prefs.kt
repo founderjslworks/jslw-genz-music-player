@@ -119,6 +119,29 @@ object Prefs {
         get() = b("lock_player", true)
         set(v) = put { putBoolean("lock_player", v) }
 
+    /** Cover touch effect id, or "theme" to use the active theme's own effect. */
+    var coverEffect: String
+        get() = s("cover_fx", "theme")
+        set(v) = put { putString("cover_fx", v) }
+
+    /** List scroll animation (0 = off) – see ListAnim. */
+    var listAnim: Int
+        get() = i("list_anim", 13)
+        set(v) = put { putInt("list_anim", v) }
+
+    var listInterp: Int
+        get() = i("list_interp", 1)
+        set(v) = put { putInt("list_interp", v) }
+
+    var listDuration: Int
+        get() = i("list_dur", 380)
+        set(v) = put { putInt("list_dur", v) }
+
+    /** Screen transition style – see Transitions. */
+    var transition: String
+        get() = s("transition", "genz")
+        set(v) = put { putString("transition", v) }
+
     var keepScreenOn: Boolean
         get() = b("keep_screen_on", false)
         set(v) = put { putBoolean("keep_screen_on", v) }

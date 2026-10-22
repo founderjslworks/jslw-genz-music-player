@@ -1,10 +1,8 @@
-Bundled fonts (Google Fonts), all licensed under the SIL Open Font License, Version 1.1
-https://openfontlicense.org
+Bundled fonts (Google Fonts) are licensed under the SIL Open Font License, Version 1.1.
+Full licence text: OFL-1.1.txt (below) and https://openfontlicense.org
 
-Inter            – Copyright 2020 The Inter Project Authors
-Lora             – Copyright 2011 The Lora Project Authors
-VT323            – Copyright 2011 The VT323 Project Authors
-Barlow Condensed – Copyright 2017 The Barlow Project Authors
-Orbitron         – Copyright 2018 The Orbitron Project Authors
+Inter, Lora, VT323, Barlow Condensed, Orbitron, Poppins, Montserrat, Playfair Display, Space Grotesk,
+Rubik, Caveat, Cinzel, Teko, Josefin Sans, Quicksand, Bebas Neue, Righteous, Press Start 2P, Monoton,
+Audiowide, Doto, Jersey 10 – © their respective authors.
 
 The fonts may be used, bundled and redistributed with software. They may not be sold by themselves.

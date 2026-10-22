@@ -2,7 +2,7 @@
   "format": 1,
   "id": "modern_light",
   "name": "Modern Light",
-  "author": "JSLW",
+  "author": "JSL WORKS",
   "version": 1,
   "dark": false,
   "cornerRadius": 12,
@@ -14,6 +14,8 @@
   "rowDividers": false,
   "lcdFont": "orbitron",
   "colorfulIcons": true,
+  "progressStyle": "wave",
+  "coverEffect": "watercolor",
   "colors": {
     "background": "#FBFAFF",
     "surface": "#FFFFFF",

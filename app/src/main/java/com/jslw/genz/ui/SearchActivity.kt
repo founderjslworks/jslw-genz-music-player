@@ -79,6 +79,6 @@ class SearchActivity : BaseActivity() {
 
     override fun finish() {
         super.finish()
-        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        com.jslw.genz.util.Transitions.close(this)
     }
 }

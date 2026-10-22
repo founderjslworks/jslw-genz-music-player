@@ -80,6 +80,26 @@ class SettingsActivity : BaseActivity() {
             { Prefs.highRefresh }, { Prefs.highRefresh = it; recreate() })
         items += Item.Toggle("Keep screen on in Now Playing", "Handy for lyrics or in a dock", { Prefs.keepScreenOn }, { Prefs.keepScreenOn = it })
 
+        items += Item.Section("Animations & effects")
+        items += Item.Action("Cover touch effect", {
+            val p = Prefs.coverEffect
+            if (p == "theme") "Theme default · " + com.jslw.genz.ui.views.CoverEffectView.label(SkinManager.current.coverEffect)
+            else com.jslw.genz.ui.views.CoverEffectView.label(p)
+        }) { Sheets.coverEffect(this) { adapter.notifyDataSetChanged() } }
+        items += Item.Action("List scroll animation", { com.jslw.genz.util.ListAnim.NAMES[Prefs.listAnim.coerceIn(0, 13)] }) {
+            choose("List scroll animation", (0..13).toList(), { com.jslw.genz.util.ListAnim.NAMES[it] }, Prefs.listAnim) { Prefs.listAnim = it }
+        }
+        items += Item.Action("List animation curve", { com.jslw.genz.util.ListAnim.INTERPOLATORS[Prefs.listInterp.coerceIn(0, 8)] }) {
+            choose("Animation curve", (0..8).toList(), { com.jslw.genz.util.ListAnim.INTERPOLATORS[it] }, Prefs.listInterp) { Prefs.listInterp = it }
+        }
+        items += Item.Action("List animation speed", { "${Prefs.listDuration} ms" }) {
+            choose("Animation length", listOf(200, 280, 380, 500, 700, 1000), { "$it ms" + if (it == 380) " (default)" else "" }, Prefs.listDuration) { Prefs.listDuration = it }
+        }
+        items += Item.Action("Screen transition", { com.jslw.genz.util.Transitions.STYLES.firstOrNull { it.first == Prefs.transition }?.second ?: "GEN-Z slide" }) {
+            val st = com.jslw.genz.util.Transitions.STYLES
+            choose("Screen transition", st.map { it.first }, { k -> st.first { it.first == k }.second }, Prefs.transition) { Prefs.transition = it }
+        }
+
         items += Item.Section("Playback")
         items += Item.Toggle("Gapless playback", "No silence between tracks (live albums, DJ mixes)", { Prefs.gapless }, { Prefs.gapless = it })
         items += Item.Action("Crossfade", { if (Prefs.crossfadeSec == 0) "Off" else "${Prefs.crossfadeSec} seconds" }) {
@@ -184,11 +204,22 @@ class SettingsActivity : BaseActivity() {
         items += Item.Action("GEN-Z Music ${BuildConfig.VERSION_NAME}", { "100% offline · no internet permission · Android 4.4+" }) { about() }
         items += Item.Action("Designed & developed by", { getString(R.string.developer) + " · " + getString(R.string.company) }) { about() }
         items += Item.Action("Copyright", { getString(R.string.copyright) }) { about() }
-        items += Item.Action("Open-source licences", { "Google Fonts (SIL OFL 1.1) · AndroidX & Material Components (Apache 2.0)" }) {
-            val fonts = try { assets.open("licenses/FONTS.txt").bufferedReader().use { it.readText() } } catch (e: Exception) { "" }
-            MaterialAlertDialogBuilder(this).setTitle("Open-source licences").setMessage(
-                fonts + "\nAndroidX, Material Components for Android – Apache License 2.0\n" +
-                    "https://www.apache.org/licenses/LICENSE-2.0"
+        items += Item.Action("Open-source licences", { "AndroidX, Material Components, XuiMod animations (Apache 2.0) · Google Fonts (OFL 1.1)" }) {
+            fun asset(n: String) = try { assets.open("licenses/$n").bufferedReader().use { it.readText() } } catch (e: Exception) { "" }
+            val text = asset("NOTICES.txt") + "\n\n" + asset("FONTS.txt") + "\n\n" + asset("OFL-1.1.txt") + "\n\n" + asset("APACHE-2.0.txt")
+            val tv = android.widget.TextView(this).apply {
+                setText(text); textSize = 11f; setTextIsSelectable(true)
+                val p = (20 * resources.displayMetrics.density).toInt(); setPadding(p, p / 2, p, p / 2)
+            }
+            MaterialAlertDialogBuilder(this).setTitle("Open-source licences")
+                .setView(android.widget.ScrollView(this).apply { addView(tv) })
+                .setPositiveButton("OK", null).show()
+        }
+        items += Item.Action("Privacy", { "No data is collected or shared. GEN-Z works fully offline." }) {
+            MaterialAlertDialogBuilder(this).setTitle("Privacy").setMessage(
+                "GEN-Z Music reads the audio files on this device only to play them. It has no internet permission, " +
+                    "collects no personal data or identifiers, uses no analytics or ads, and sends nothing off the device. " +
+                    "Playlists, favourites and settings are stored only on this device."
             ).setPositiveButton("OK", null).show()
         }
     }

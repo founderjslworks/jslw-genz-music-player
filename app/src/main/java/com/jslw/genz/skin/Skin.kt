@@ -54,7 +54,13 @@ data class Skin(
     val progressStyle: String,
     /** Optional 2–3 colours for the progress bar gradient (else derived from the accent). */
     val progressColors: IntArray?,
+    /** Default cover touch effect of this theme. */
+    val coverEffect: String,
     val colorfulIcons: Boolean,
+    /** Glass look: screens show a soft, blurred copy of the playing album art behind translucent panels. */
+    val translucent: Boolean,
+    /** List rows drawn as separate rounded cards (dashboard / tile look). */
+    val cards: Boolean,
     val lcd: Boolean,
     val npDynamicColors: Boolean,
     val reflection: Boolean,
@@ -69,6 +75,9 @@ data class Skin(
     val packDir: String?,
     val json: String,
 ) {
+    /** The effect actually used: the user's choice, or this theme's default. */
+    val activeCoverEffect: String get() = com.jslw.genz.data.Prefs.coverEffect.let { if (it == "theme") coverEffect else it }
+
     fun packFile(rel: String): File? = packDir?.let { d ->
         val f = File(d, rel)
         if (f.canonicalPath.startsWith(File(d).canonicalPath) && f.exists()) f else null
@@ -132,7 +141,10 @@ data class Skin(
                 progressColors = o.optJSONArray("progressColors")?.let { a ->
                     IntArray(a.length()) { i -> try { Color.parseColor(a.getString(i)) } catch (e: Exception) { 0xFFFFFFFF.toInt() } }
                 }?.takeIf { it.size >= 2 },
+                coverEffect = o.optString("coverEffect", "ripple"),
                 colorfulIcons = o.optBoolean("colorfulIcons", false),
+                translucent = o.optBoolean("translucent", false),
+                cards = o.optBoolean("cards", false),
                 lcd = o.optBoolean("lcd", false),
                 npDynamicColors = o.optBoolean("npDynamicColors", false),
                 reflection = o.optBoolean("reflection", true),
@@ -173,7 +185,11 @@ object SkinManager {
     fun all(): List<Skin> {
         cache?.let { return it }
         val out = ArrayList<Skin>()
-        val order = listOf("vivid_genz", "modern_dark", "modern_light", "pure_black", "ipod_classic", "winamp_classic",
+        val order = listOf("vivid_genz", "dot_matrix", "glass_aurora",
+            "bollywood_nights", "bhakti_diya", "romantic_rose", "bhangra_beat", "lofi_chill", "edm_neon", "synthwave_84",
+            "hiphop_mixtape", "rock_arena", "jazz_lounge", "classical_symphony", "kpop_candy", "ocean_ambient", "indie_acoustic",
+            "arcade_8bit",
+            "modern_dark", "modern_light", "pure_black", "ipod_classic", "winamp_classic",
             "walkman_80s", "vinyl_hifi", "aqua_2002", "terminal_green")
         val assets = app.assets.list("skins")?.toList() ?: emptyList()
         for (f in assets.sortedBy { order.indexOf(it.removeSuffix(".json")).let { i -> if (i < 0) 99 else i } }) {

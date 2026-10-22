@@ -44,6 +44,7 @@ class MainActivity : BaseActivity(), Player.Listener {
     private lateinit var miniProgress: SparkleSeekBar
     private val handler = Handler(Looper.getMainLooper())
     private var shownSongId: Long? = -1
+    private var backdropGen = -1
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (hasAudioPermission()) Library.load(this)
@@ -80,7 +81,7 @@ class MainActivity : BaseActivity(), Player.Listener {
         back.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         findViewById<View>(R.id.btnSearch).setOnClickListener {
             startActivity(Intent(this, SearchActivity::class.java))
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+            com.jslw.genz.util.Transitions.open(this)
         }
         setupMiniPlayer()
 
@@ -143,8 +144,9 @@ class MainActivity : BaseActivity(), Player.Listener {
 
     // ---------------------------------------------------------------- navigation
     fun open(f: Fragment) {
+        val t = com.jslw.genz.util.Transitions.fragment()
         supportFragmentManager.beginTransaction()
-            .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left, R.anim.slide_in_left, R.anim.slide_out_right)
+            .setCustomAnimations(t[0], t[1], t[2], t[3])
             .replace(R.id.content, f)
             .addToBackStack(null)
             .commit()
@@ -226,6 +228,18 @@ class MainActivity : BaseActivity(), Player.Listener {
             miniTitle.text = s.title
             miniArtist.text = s.artist
             ArtLoader.load(miniArt, s, dpi(46) * 2)
+        }
+        if (skin.translucent && backdropGen != com.jslw.genz.skin.Backdrop.generation) {
+            backdropGen = com.jslw.genz.skin.Backdrop.generation
+            val root = findViewById<View>(R.id.root)
+            val old = root.background
+            val new = com.jslw.genz.skin.SkinPainter.backgroundFor(skin, root)
+            if (old != null) {
+                val td = android.graphics.drawable.TransitionDrawable(arrayOf(old, new))
+                td.isCrossFadeEnabled = true
+                root.background = td
+                td.startTransition(600)
+            } else root.background = new
         }
         val playing = Player.isPlaying
         com.jslw.genz.skin.Icons.set(miniPlay, if (playing) R.drawable.ic_pause else R.drawable.ic_play)

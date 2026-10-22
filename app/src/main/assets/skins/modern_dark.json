@@ -2,7 +2,7 @@
   "format": 1,
   "id": "modern_dark",
   "name": "Modern Dark",
-  "author": "JSLW",
+  "author": "JSL WORKS",
   "version": 1,
   "dark": true,
   "cornerRadius": 12,
@@ -14,6 +14,8 @@
   "rowDividers": false,
   "lcdFont": "orbitron",
   "colorfulIcons": true,
+  "progressStyle": "sparkle",
+  "coverEffect": "ripple",
   "colors": {
     "background": "#121218",
     "surface": "#1C1C26",

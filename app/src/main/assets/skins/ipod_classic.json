@@ -2,7 +2,7 @@
   "format": 1,
   "id": "ipod_classic",
   "name": "iPod Classic",
-  "author": "JSLW",
+  "author": "JSL WORKS",
   "version": 1,
   "dark": false,
   "cornerRadius": 4,
@@ -14,6 +14,8 @@
   "rowDividers": true,
   "lcdFont": "inter",
   "colorfulIcons": false,
+  "progressStyle": "classic",
+  "coverEffect": "revolving_glass",
   "colors": {
     "background": "#FFFFFF",
     "surface": "#F2F3F5",

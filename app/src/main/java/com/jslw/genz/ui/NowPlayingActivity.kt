@@ -57,6 +57,8 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
     private lateinit var content: View
     private lateinit var art: ImageView
     private lateinit var artSquare: View
+    private lateinit var coverFx: com.jslw.genz.ui.views.CoverEffectView
+    private lateinit var celebrate: com.jslw.genz.ui.views.CelebrationView
     private lateinit var titleTv: TextView
     private lateinit var artistTv: TextView
     private lateinit var contextTv: TextView
@@ -113,6 +115,11 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         content = findViewById(R.id.npContent)
         art = findViewById(R.id.npArt)
         artSquare = findViewById(R.id.npArtSquare)
+        coverFx = findViewById(R.id.npCoverFx)
+        celebrate = findViewById(R.id.npCelebrate)
+        celebrate.setColors(skin.accent, skin.headerEnd)
+        coverFx.setThemeColors(skin.accent, skin.headerEnd)
+        coverFx.setEffect(skin.activeCoverEffect)
         titleTv = findViewById(R.id.npTitle)
         artistTv = findViewById(R.id.npArtist)
         contextTv = findViewById(R.id.npContext)
@@ -156,14 +163,15 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         favBtn.setOnClickListener {
             val s = Player.current ?: return@setOnClickListener
             val on = LibraryDb.toggleFavorite(s.id)
-            pulse(favBtn)
+            heartPop(favBtn, on)
             updateFav(on)
+            celebrateAt(on)
         }
         findViewById<View>(R.id.npLyricsBtn).setOnClickListener { showLyrics(lyricsPanel.visibility != View.VISIBLE) }
         findViewById<View>(R.id.npTimerBtn).setOnClickListener { Sheets.sleepTimer(this) }
         findViewById<View>(R.id.npEqBtn).setOnClickListener {
             startActivity(Intent(this, EqualizerActivity::class.java))
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+            com.jslw.genz.util.Transitions.open(this)
         }
         findViewById<View>(R.id.npQueueBtn).setOnClickListener { Sheets.queue(this) }
 
@@ -229,6 +237,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             }
         })
         artSquare.setOnTouchListener { _, e ->
+            coverFx.feed(e)
             val handled = gd.onTouchEvent(e)
             if ((e.actionMasked == MotionEvent.ACTION_UP || e.actionMasked == MotionEvent.ACTION_CANCEL) && artSquare.alpha == 1f && artSquare.translationX != 0f) {
                 artSquare.animate().translationX(0f).rotation(0f).setDuration(220).start()
@@ -264,7 +273,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             lcd.text = "  ♪ ${s.title} — ${s.artist}   ·   ${s.album}  "
             lcd.isSelected = true
             updateFav(LibraryDb.isFavorite(s.id))
-            ArtLoader.load(art, s, dpi(360).coerceAtMost(900), large = true) { bmp -> onArt(bmp) }
+            ArtLoader.load(art, s, dpi(360).coerceAtMost(900), large = true) { bmp -> onArt(bmp); coverFx.setArt(bmp) }
             if (svc.lyrics == null) shownLyrics = null
         }
         val playing = svc.isPlaying
@@ -279,6 +288,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
                 .setDuration(380).setInterpolator(android.view.animation.OvershootInterpolator(1.2f)).start()
         }
         if (playing) frames.start()
+        coverFx.ambient = playing
         tintToggle(shuffleBtn, svc.shuffle)
         com.jslw.genz.skin.Icons.set(repeatBtn, if (svc.repeatMode == MusicService.REPEAT_ONE) R.drawable.ic_repeat_one else R.drawable.ic_repeat)
         tintToggle(repeatBtn, svc.repeatMode != MusicService.REPEAT_OFF)
@@ -340,6 +350,31 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
 
     private fun tintToggle(b: ImageButton, on: Boolean) {
         com.jslw.genz.skin.Icons.tintFor(b, android.content.res.ColorStateList.valueOf(if (on) np.accent else SkinPainter.withAlpha(np.text, 0x80)))
+    }
+
+    /** Bursts from the centre of the cover, filling the screen with hearts and confetti. */
+    private fun celebrateAt(on: Boolean) {
+        val a = IntArray(2); val r = IntArray(2)
+        artSquare.getLocationInWindow(a); celebrate.getLocationInWindow(r)
+        val cx = a[0] - r[0] + artSquare.width / 2f
+        val cy = a[1] - r[1] + artSquare.height / 2f
+        val size = minOf(artSquare.width, artSquare.height).toFloat().coerceAtLeast(dpi(160).toFloat())
+        if (on) celebrate.celebrate(cx, cy, size) else celebrate.unlove(cx, cy, size)
+    }
+
+    /** The heart button itself jumps, spins a little and settles. */
+    private fun heartPop(v: View, on: Boolean) {
+        v.animate().cancel()
+        if (on) {
+            v.animate().scaleX(1.6f).scaleY(1.6f).rotation(-12f).setDuration(140).withEndAction {
+                v.animate().scaleX(1f).scaleY(1f).rotation(0f).setDuration(420)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(3f)).start()
+            }.start()
+        } else {
+            v.animate().scaleX(0.7f).scaleY(0.7f).setDuration(120).withEndAction {
+                v.animate().scaleX(1f).scaleY(1f).setDuration(220).start()
+            }.start()
+        }
     }
 
     private fun pulse(v: View) {
@@ -409,6 +444,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             }
         }
         SkinPainter.apply(content, skin, target)
+        if (seek.styleName != skin.progressStyle) seek.setStyle(skin.progressStyle, skin.progressColors)
         seek.setColors(target.accent, SkinPainter.withAlpha(target.text, 0x33))
         lyricsAdapter.colors(target)
         Player.service?.let {
@@ -434,6 +470,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             "Make ringtone" to { startActivity(Intent(this, RingtoneCutterActivity::class.java).putExtra("song", s.id)) },
             "File info" to { Sheets.fileInfo(this, s) },
         )
+        items["Cover touch effect…"] = { Sheets.coverEffect(this) { coverFx.setEffect(skin.activeCoverEffect) } }
         if (svc.canChangeSpeed) items["Speed & pitch…"] = { Sheets.speedPitch(this) }
         if (LibraryDb.lyricLink(s.id) != null) items["Forget chosen lyrics file"] = { LibraryDb.setLyricLink(s.id, null); svc.reloadLyrics() }
         items.keys.forEach { m.menu.add(it) }

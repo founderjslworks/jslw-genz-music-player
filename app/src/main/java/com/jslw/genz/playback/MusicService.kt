@@ -775,6 +775,7 @@ class MusicService : Service() {
             handler.post {
                 if (current !== s) return@post
                 formatInfo = info; lyrics = l; art = bmp
+                com.jslw.genz.skin.Backdrop.set(bmp)
                 trackGain = rg?.let { Math.pow(10.0, it / 20.0).toFloat().coerceAtMost(1f) } ?: 1f
                 applyVolume()
                 if (Prefs.bitPerfect) applyBitPerfect()
@@ -984,7 +985,7 @@ class MusicService : Service() {
         val s = current ?: return
         exec.execute {
             val bmp = ArtLoader.loadSync(this, s, 512)
-            handler.post { if (current === s) { art = bmp; updateMetadata() } }
+            handler.post { if (current === s) { art = bmp; com.jslw.genz.skin.Backdrop.set(bmp); updateMetadata(); Player.dispatch() } }
         }
     }
 

@@ -9,6 +9,7 @@ import com.jslw.genz.R
  * Bundled Google Fonts (SIL Open Font License) – packaged in the APK so the app stays 100% offline.
  *  inter · lora · vt323 · barlow-condensed · orbitron · poppins · montserrat · playfair · space-grotesk · rubik
  *  caveat · cinzel · teko · josefin · quicksand · bebas-neue · righteous · press-start · monoton · audiowide
+ *  doto · jersey (dot-matrix / pixel)
  *  (+ system: sans, serif, monospace)
  */
 object Fonts {
@@ -36,6 +37,8 @@ object Fonts {
         "press-start" to (R.font.press_start_regular to R.font.press_start_regular),
         "monoton" to (R.font.monoton_regular to R.font.monoton_regular),
         "audiowide" to (R.font.audiowide_regular to R.font.audiowide_regular),
+        "doto" to (R.font.doto_semibold to R.font.doto_extrabold),
+        "jersey" to (R.font.jersey_regular to R.font.jersey_regular),
     )
 
     private val packCache = HashMap<String, Typeface>()

@@ -2,7 +2,7 @@
   "format": 1,
   "id": "walkman_80s",
   "name": "Walkman '84",
-  "author": "JSLW",
+  "author": "JSL WORKS",
   "version": 1,
   "dark": true,
   "cornerRadius": 6,
@@ -14,6 +14,8 @@
   "rowDividers": true,
   "lcdFont": "vt323",
   "colorfulIcons": false,
+  "progressStyle": "tape",
+  "coverEffect": "rect_traveller",
   "colors": {
     "background": "#151515",
     "surface": "#222222",

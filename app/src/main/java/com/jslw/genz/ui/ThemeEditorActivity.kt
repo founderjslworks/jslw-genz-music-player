@@ -113,10 +113,16 @@ class ThemeEditorActivity : BaseActivity() {
         items += Item.Section("Theme")
         items += Item.Choice("Name", { rename() }) { o.optString("name") }
         items += Item.Toggle("dark", "Dark theme (dialogs & system bars)", true)
-        items += Item.Choice("Font (Google Fonts)", { pickFont("font") }) { o.optString("font", "inter") }
+        items += Item.Choice("Body font (Google Fonts)", { pickFont("font") }) { o.optString("font", "inter") }
+        items += Item.Choice("Heading font", { pickFont("displayFont") }) { o.optString("displayFont", "").ifBlank { o.optString("font", "inter") } }
+        items += Item.Choice("Progress bar style", { pickProgress() }) {
+            com.jslw.genz.ui.views.SparkleSeekBar.LABELS[o.optString("progressStyle", "sparkle")] ?: "Sparkle stars"
+        }
         items += Item.Choice("LCD / display font", { pickFont("lcdFont") }) { o.optString("lcdFont", "vt323") }
         items += Item.Choice("Corner roundness", { pickRadius() }) { "${o.optDouble("cornerRadius", 10.0).toInt()} dp" }
         items += Item.Section("Style")
+        items += Item.Toggle("translucent", "Translucent glass (blurred cover behind panels)", false)
+        items += Item.Toggle("cards", "Rows as rounded cards (dashboard look)", false)
         items += Item.Toggle("colorfulIcons", "Colourful icon tiles", false)
         items += Item.Toggle("lcd", "Retro LCD strip on Now Playing", false)
         items += Item.Toggle("npDynamicColors", "Now Playing follows album-art colours", false)
@@ -150,6 +156,15 @@ class ThemeEditorActivity : BaseActivity() {
         MaterialAlertDialogBuilder(this).setTitle("Font").setSingleChoiceItems(all.toTypedArray(), all.indexOf(o.optString(key))) { d, w ->
             o.put(key, all[w]); changed(); d.dismiss()
         }.show()
+    }
+
+    private fun pickProgress() {
+        val keys = com.jslw.genz.ui.views.SparkleSeekBar.STYLES
+        val labels = keys.map { com.jslw.genz.ui.views.SparkleSeekBar.LABELS[it] ?: it }.toTypedArray()
+        MaterialAlertDialogBuilder(this).setTitle("Progress bar style")
+            .setSingleChoiceItems(labels, keys.indexOf(o.optString("progressStyle", "sparkle"))) { dlg, w ->
+                o.put("progressStyle", keys[w]); changed(); dlg.dismiss()
+            }.show()
     }
 
     private fun pickRadius() {

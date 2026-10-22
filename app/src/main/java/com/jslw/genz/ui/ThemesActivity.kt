@@ -131,6 +131,7 @@ class ThemesActivity : BaseActivity() {
             v.findViewById<TextView>(R.id.themeName).apply { text = s.name; typeface = s.boldTypeface }
             v.findViewById<TextView>(R.id.themeAuthor).text = listOfNotNull(
                 if (s.builtIn) "Built-in" else if (s.packDir != null) "Skin pack" else "Theme file",
+                com.jslw.genz.ui.views.SparkleSeekBar.LABELS[s.progressStyle],
                 s.author.takeIf { it.isNotBlank() }?.let { "by $it" },
                 "v${s.version}",
             ).joinToString(" · ")

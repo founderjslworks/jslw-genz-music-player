@@ -1,4 +1,4 @@
-name: Build GEN-Z APK
+name: Build GEN-Z
 
 on:
   push:
@@ -21,26 +21,44 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
+      # Optional: add repository secrets KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+      # to get a Play-ready signed .aab. Without them the .aab is built unsigned.
+      - name: Restore upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "GENZ_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build debug APK and release bundle
+        env:
+          GENZ_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          GENZ_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          GENZ_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           chmod +x gradlew
           set -o pipefail
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
+          ./gradlew assembleDebug bundleRelease --stacktrace 2>&1 | tee build.log
 
-      - name: Upload APK
+      - name: Upload artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: GEN-Z-Music-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: GEN-Z-Music
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/bundle/release/*.aab
 
-      # Publishes the build log (and APK) to the "ci-output" branch so they can be fetched with plain git.
-      - name: Publish log and APK to ci-output branch
+      # Publishes the build log, APK and AAB to the "ci-output" branch so they can be fetched with plain git.
+      - name: Publish to ci-output branch
         if: always()
         run: |
           mkdir -p /tmp/out
           cp build.log /tmp/out/ 2>/dev/null || echo "no log" > /tmp/out/build.log
           cp app/build/outputs/apk/debug/*.apk /tmp/out/ 2>/dev/null || true
+          cp app/build/outputs/bundle/release/*.aab /tmp/out/ 2>/dev/null || true
           git config user.name "ci"
           git config user.email "ci@users.noreply.github.com"
           git checkout --orphan ci-output
