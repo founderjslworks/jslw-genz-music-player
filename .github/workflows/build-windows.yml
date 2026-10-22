@@ -28,11 +28,22 @@ jobs:
           Remove-Item "$out/*.pdb" -ErrorAction SilentlyContinue
           Compress-Archive -Path "$out/*" -DestinationPath "GEN-Z-Music-Windows.zip"
 
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y | Out-Null
+          $v = (Select-String -Path windows/GenZ.Desktop/GenZ.Desktop.csproj -Pattern '<Version>(.+)</Version>').Matches[0].Groups[1].Value
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$v" windows/installer/genz.iss 2>&1 | Tee-Object -FilePath installer.log
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-ChildItem dist
+
       - uses: actions/upload-artifact@v4
         if: success()
         with:
           name: GEN-Z-Music-Windows
-          path: GEN-Z-Music-Windows.zip
+          path: |
+            GEN-Z-Music-Windows.zip
+            dist/*.exe
 
       # Build log and zip go to the "ci-windows" branch so they can be fetched with plain git.
       - name: Publish to ci-windows branch
@@ -42,6 +53,8 @@ jobs:
           mkdir -p /tmp/out
           cp build.log /tmp/out/ 2>/dev/null || echo "no log" > /tmp/out/build.log
           cp GEN-Z-Music-Windows.zip /tmp/out/ 2>/dev/null || true
+          cp installer.log /tmp/out/ 2>/dev/null || true
+          cp dist/*.exe /tmp/out/ 2>/dev/null || true
           git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
           git checkout --orphan ci-windows
           git rm -rfq .

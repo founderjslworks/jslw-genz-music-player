@@ -36,7 +36,7 @@ namespace GenZ
             WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = Brushes.Transparent;
             Topmost = true; ShowInTaskbar = false; ResizeMode = ResizeMode.NoResize;
             Title = "GEN-Z Mini Player"; FontFamily = (FontFamily)Application.Current.Resources["BodyFont"];
-            SizeToContent = SizeToContent.Manual;
+            SizeToContent = SizeToContent.Height;
 
             // ---- layout
             card.CornerRadius = new CornerRadius(20);
@@ -44,6 +44,8 @@ namespace GenZ
             card.Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 6, Opacity = 0.45, Color = Colors.Black };
             card.Margin = new Thickness(14);
             var root = new Grid();
+            // clip everything (including the blurred cover backdrop) to the rounded card
+            root.SizeChanged += (s, e) => root.Clip = new RectangleGeometry(new Rect(0, 0, root.ActualWidth, root.ActualHeight), 20, 20);
             coverBg.CornerRadius = new CornerRadius(20);
             coverBg.Effect = new BlurEffect { Radius = 30 };
             coverBg.Margin = new Thickness(-30);
@@ -127,12 +129,13 @@ namespace GenZ
             var work = SystemParameters.WorkArea;
             if (Settings.Current.PipMode == "cover")
             {
-                Width = 300; Height = 340;
+                Width = 300;
+                cover.Width = cover.Height = 214;
                 content.RowDefinitions.Add(new RowDefinition());
                 content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                cover.Margin = new Thickness(28, 26, 28, 8);
+                cover.Margin = new Thickness(0, 22, 0, 8);
                 content.Children.Add(cover);
                 var texts = new StackPanel { Margin = new Thickness(6, 4, 6, 0) };
                 title.HorizontalAlignment = HorizontalAlignment.Center; artist.HorizontalAlignment = HorizontalAlignment.Center;
@@ -143,10 +146,12 @@ namespace GenZ
             }
             else
             {
-                Width = 420; Height = 150;
+                Width = 440;
+                cover.Width = cover.Height = 96;
                 content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
                 content.ColumnDefinitions.Add(new ColumnDefinition());
                 cover.Margin = new Thickness(0);
+                cover.VerticalAlignment = VerticalAlignment.Center;
                 content.Children.Add(cover);
                 var right = new Grid { Margin = new Thickness(14, 0, 0, 0) };
                 right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -157,15 +162,18 @@ namespace GenZ
                 texts.Children.Add(title); texts.Children.Add(artist);
                 right.Children.Add(texts);
                 Grid.SetRow(bar, 1); bar.Margin = new Thickness(0, 4, 0, 0); right.Children.Add(bar);
-                Grid.SetRow(controls, 2); right.Children.Add(controls);
+                Grid.SetRow(controls, 2); controls.Margin = new Thickness(0, 4, 0, 0); right.Children.Add(controls);
                 Grid.SetColumn(right, 1); content.Children.Add(right);
             }
             Grid.SetColumnSpan(cornerButtons, 2); Grid.SetRowSpan(cornerButtons, 4);
             cornerButtons.Margin = new Thickness(0, -6, -6, 0);
             content.Children.Add(cornerButtons);
             if (Settings.Current.PipLeft < 0 || Settings.Current.PipLeft > work.Right - 60 || Settings.Current.PipTop > work.Bottom - 60)
-            { Left = work.Right - Width - 16; Top = work.Bottom - Height - 16; }
-            else { Left = Settings.Current.PipLeft; Top = Settings.Current.PipTop; }
+            {
+                Left = work.Right - Width - 16; Top = work.Bottom - 200;
+                Dispatcher.BeginInvoke(new Action(() => { if (ActualHeight > 0) Top = work.Bottom - ActualHeight - 16; }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+            else { Left = Settings.Current.PipLeft; Top = Math.Min(Settings.Current.PipTop, work.Bottom - 120); }
             ApplyCover();
         }
 

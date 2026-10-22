@@ -1100,6 +1100,23 @@ namespace GenZ
             PrefsPanel.Children.Add(b);
         }
 
+        // ================================================================ files from Explorer ("Open with GEN-Z Music")
+        public void OpenFiles(string[] paths)
+        {
+            var songs = paths.Where(p => System.IO.File.Exists(p) && Array.IndexOf(Library.Extensions, System.IO.Path.GetExtension(p).ToLowerInvariant()) >= 0)
+                             .Select(p => Library.Songs.FirstOrDefault(x => string.Equals(x.Path, p, StringComparison.OrdinalIgnoreCase)) ?? Library.Read(p))
+                             .ToList();
+            if (songs.Count > 0) Player.PlayList(songs, 0);
+        }
+
+        /// <summary>Another launch asked us to come to the front (and maybe play its files).</summary>
+        public void BringBack(string[] files)
+        {
+            if (pip == null && WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            if (pip == null) { Activate(); Topmost = true; Topmost = false; }
+            if (files != null && files.Length > 0) OpenFiles(files);
+        }
+
         // ================================================================ picture in picture
         MiniPlayer pip;
         void OnPip(object sender, RoutedEventArgs e) { if (pip == null) EnterPip(true); else ExitPip(); }
