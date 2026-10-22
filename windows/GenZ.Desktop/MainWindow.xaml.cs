@@ -19,7 +19,7 @@ namespace GenZ
 {
     public partial class MainWindow : Window
     {
-        enum View { Songs, Albums, Artists, Favourites, Queue, Themes, Anim, Eq, About, Search, Detail }
+        enum View { Songs, Albums, Artists, Favourites, Queue, Themes, Anim, Eq, About, Search, Detail, Genres, Folders, Recent, Most, Playlist }
 
         View view = View.Songs;
         List<Song> listed = new List<Song>();
@@ -27,6 +27,8 @@ namespace GenZ
         bool seeking;
         bool? lastPlaying;
         Song shownSong;
+        bool quietNav;
+        Image transOld;
 
         public MainWindow()
         {
@@ -63,20 +65,24 @@ namespace GenZ
             FitWindowToScreen();
             PreviewKeyDown += OnKeys;
             SourceInitialized += (s, e) => RegisterMediaKeys();
-            Closing += (s, e) => { Settings.Current.NowPlayingOpen = NpColumn.Width.Value > 0; Settings.Save(); };
+            Closing += (s, e) => { Settings.Current.NowPlayingOpen = NpColumn.Width.Value > 0; SaveSession(); };
 
             BuildEq();
             SetThumbIcons();
             Library.LoadCache();
+            InitFeatures();
             NavSongs.IsChecked = true;
             ShowView(View.Songs);
             UpdateScanText();
             Library.ScanAsync();
             UpdateScanText();
 
-            // restore the last song (paused) so pressing play continues where you left off
-            var last = Library.Songs.FirstOrDefault(x => x.Path == Settings.Current.LastSong);
-            if (last != null) ShowSong(last);
+            // restore the last session (queue, song and position, paused) so pressing play continues where you left off
+            if (!RestoreSession())
+            {
+                var last = Library.Songs.FirstOrDefault(x => x.Path == Settings.Current.LastSong);
+                if (last != null) { ShowSong(last); LoadLyrics(last); }
+            }
             UpdateToggles();
         }
 
@@ -84,7 +90,8 @@ namespace GenZ
         void OnLibraryChanged()
         {
             UpdateScanText();
-            if (view == View.Songs || view == View.Albums || view == View.Artists || view == View.Favourites) ShowView(view);
+            if (view == View.Songs || view == View.Albums || view == View.Artists || view == View.Favourites || view == View.Genres
+                || view == View.Folders || view == View.Recent || view == View.Most || view == View.Playlist) ShowView(view, true);
         }
 
         void UpdateScanText()
@@ -100,6 +107,10 @@ namespace GenZ
             else if (sender == NavAlbums) ShowView(View.Albums);
             else if (sender == NavArtists) ShowView(View.Artists);
             else if (sender == NavFav) ShowView(View.Favourites);
+            else if (sender == NavGenres) ShowView(View.Genres);
+            else if (sender == NavFolders) ShowView(View.Folders);
+            else if (sender == NavRecent) ShowView(View.Recent);
+            else if (sender == NavMost) ShowView(View.Most);
             else if (sender == NavQueue) ShowView(View.Queue);
             else if (sender == NavThemes) ShowView(View.Themes);
             else if (sender == NavAnim) ShowView(View.Anim);
@@ -107,38 +118,75 @@ namespace GenZ
             else if (sender == NavAbout) ShowView(View.About);
         }
 
+        /// <summary>Shows a page with the chosen Android-style screen transition (the old screen animates out).</summary>
         void ShowPage(FrameworkElement page)
         {
+            var host = (Panel)Pages.Parent;
+            if (!quietNav && transOld == null)
+            {
+                var vis = Pages.Children.OfType<FrameworkElement>().FirstOrDefault(p => p.Visibility == Visibility.Visible);
+                if (vis != null && vis != page) transOld = Controls.Transitions.Capture(Pages, host);
+            }
             foreach (FrameworkElement p in Pages.Children) p.Visibility = p == page ? Visibility.Visible : Visibility.Collapsed;
-            AnimateIn(page, Settings.Current.PageTransition);
+            var old = transOld; transOld = null;
+            if (quietNav) { if (old != null) host.Children.Remove(old); return; }
+            Pages.ClipToBounds = true;
+            Controls.Transitions.Run(Settings.Current.Transition, page, old, host, Pages);
+            if (page is ScrollViewer sv && sv.Content is Panel form) Controls.Stagger.Enter(form);
         }
 
-        void ShowView(View v)
+        void ShowView(View v, bool quiet = false)
         {
             if (Pages == null) return;
+            quietNav = quiet;
+            // capture the screen first: the song list page is reused for songs, favourites, playlists…
+            if (!quiet && transOld == null && Pages.IsVisible) transOld = Controls.Transitions.Capture(Pages, (Panel)Pages.Parent);
             view = v;
-            switch (v)
+            try
             {
-                case View.Songs: ShowList("Songs", $"{Library.Songs.Count} songs", Library.Songs, null); break;
-                case View.Favourites:
-                    var fav = Library.Songs.Where(s => Settings.Current.Favourites.Contains(s.Path)).ToList();
-                    ShowList("Favourites", fav.Count == 0 ? "Tap the heart on Now Playing to add songs here" : $"{fav.Count} songs", fav, null); break;
-                case View.Queue: ShowList("Up next", Player.Queue.Count == 0 ? "Nothing queued yet" : $"{Player.Queue.Count} songs in the queue", Player.Queue, null); break;
-                case View.Albums: ShowAlbums(); break;
-                case View.Artists: ShowArtists(); break;
-                case View.Themes: ShowThemes(); break;
-                case View.Anim: BuildAnimPage(); ShowPage(PageAnim); break;
-                case View.Eq: ShowPage(PageEq); break;
-                case View.About: ShowAbout(); break;
+                switch (v)
+                {
+                    case View.Songs: ShowList("Songs", $"{Library.Songs.Count} songs", Library.Songs, null); break;
+                    case View.Favourites:
+                        var fav = Library.Songs.Where(s => Settings.Current.Favourites.Contains(s.Path)).ToList();
+                        ShowList("Favourites", fav.Count == 0 ? "Click the heart on Now Playing, or right-click a song › Add to Favourites" : $"{fav.Count} songs", fav, null); break;
+                    case View.Queue: ShowList("Up next", Player.Queue.Count == 0 ? "Nothing queued yet – right-click songs › Play next / Add to Up next" : $"{Player.Queue.Count} songs · drag to reorder", Player.Queue, null); break;
+                    case View.Recent:
+                        var rec = RecentSongs();
+                        ShowList("Recently played", rec.Count == 0 ? "Songs you play show up here" : Songs(rec.Count), rec, null); break;
+                    case View.Most:
+                        var most = MostPlayed();
+                        ShowList("Most played", most.Count == 0 ? "Your favourite songs, counted as you listen" : "Your top " + Songs(most.Count), most, null); break;
+                    case View.Playlist: ShowPlaylist(openPlaylist); break;
+                    case View.Albums: ShowAlbums(); break;
+                    case View.Artists: ShowArtists(); break;
+                    case View.Genres: ShowGroups("Genres", Library.Genres, false); break;
+                    case View.Folders: ShowGroups("Folders", Library.Folders, true); break;
+                    case View.Themes: ShowThemes(); break;
+                    case View.Anim: BuildAnimPage(); ShowPage(PageAnim); break;
+                    case View.Eq: ShowPage(PageEq); break;
+                    case View.About: ShowAbout(); break;
+                }
+            }
+            finally
+            {
+                quietNav = false;
+                if (transOld != null) { ((Panel)Pages.Parent).Children.Remove(transOld); transOld = null; }
             }
         }
 
         void ShowList(string title, string sub, List<Song> songs, Song coverOf)
         {
+            var sv = quietNav ? Controls.ListAnim.FindChild<ScrollViewer>(SongList) : null;
+            double keep = sv?.VerticalOffset ?? 0;
             listed = songs;
             ListTitle.Text = title; ListSub.Text = sub;
-            SongList.ItemsSource = null;
-            SongList.ItemsSource = songs;
+            if (quietNav && ReferenceEquals(SongList.ItemsSource, songs)) SongList.Items.Refresh();
+            else { SongList.ItemsSource = null; SongList.ItemsSource = songs; }
+            if (sv != null && keep > 0) Dispatcher.BeginInvoke(new Action(() => sv.ScrollToVerticalOffset(keep)), DispatcherPriority.Loaded);
+            ListEmpty.Text = songs.Count == 0 ? sub : "";
+            ListEmpty.Visibility = songs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            ListMore.Visibility = view == View.Queue || view == View.Playlist ? Visibility.Visible : Visibility.Collapsed;
             if (coverOf != null)
             {
                 ListCover.Visibility = Visibility.Visible;
@@ -147,7 +195,7 @@ namespace GenZ
             }
             else ListCover.Visibility = Visibility.Collapsed;
             ShowPage(PageList);
-            CascadeList();
+            if (!quietNav) CascadeList();
         }
 
         void OnSearch(object sender, TextChangedEventArgs e)
@@ -164,21 +212,21 @@ namespace GenZ
         /// <summary>One click on a song plays it (like a tap on the phone).</summary>
         void OnSongClick(object sender, MouseButtonEventArgs e)
         {
+            ReleasePress();
+            if (dragged || (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0) return;
             var el = e.OriginalSource as DependencyObject;
             while (el != null && !(el is ListBoxItem)) el = el is Visual ? VisualTreeHelper.GetParent(el) : LogicalTreeHelper.GetParent(el);
             if (el is ListBoxItem item && item.DataContext is Song s)
             {
                 SongList.SelectedItem = s;
                 PlayFromList(s);
-                var st = new ScaleTransform(1, 1); item.RenderTransformOrigin = new Point(0.5, 0.5); item.RenderTransform = st;
-                var a = new DoubleAnimation(0.97, 1, Settings.Ms(320)) { EasingFunction = new ElasticEase { Oscillations = 1, Springiness = 5 } };
-                st.BeginAnimation(ScaleTransform.ScaleXProperty, a); st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
             }
         }
 
         void OnSongKey(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter && SongList.SelectedItem is Song s) { PlayFromList(s); e.Handled = true; }
+            else if (e.Key == Key.Delete && (view == View.Queue || view == View.Playlist)) { RemoveSelected(); e.Handled = true; }
         }
 
         void PlayFromList(Song s)
@@ -218,6 +266,7 @@ namespace GenZ
                 var tile = Tile(a.Title, a.Artist, a.First, false);
                 var album = a;
                 tile.MouseLeftButtonUp += (s, e) => { view = View.Detail; ShowList(album.Title, album.Artist + " · " + album.Subtitle, album.Songs, album.First); };
+                TileMenu(tile, () => album.Songs);
                 GridPanel.Children.Add(tile);
             }
             Cascade(GridPanel);
@@ -231,6 +280,7 @@ namespace GenZ
                 var tile = Tile(a.Name, a.Subtitle, a.First, true);
                 var artist = a;
                 tile.MouseLeftButtonUp += (s, e) => { view = View.Detail; ShowList(artist.Name, artist.Subtitle, artist.Songs, artist.First); };
+                TileMenu(tile, () => artist.Songs);
                 GridPanel.Children.Add(tile);
             }
             Cascade(GridPanel);
@@ -248,6 +298,7 @@ namespace GenZ
             var st = new ScaleTransform(1, 1); art.RenderTransformOrigin = new Point(0.5, 0.5); art.RenderTransform = st;
             sp.MouseEnter += (s, e) => { Spring(st, 1.04); };
             sp.MouseLeave += (s, e) => { Spring(st, 1.0); };
+            Controls.Bounce.Press(sp);
             return sp;
         }
 
@@ -264,7 +315,7 @@ namespace GenZ
             var bmp = await Covers.LoadAsync(s, size);
             if (bmp == null) return;
             target.Child = null;
-            target.Background = new ImageBrush(bmp) { Stretch = Stretch.UniformToFill };
+            target.Background = Covers.Brush(bmp);
             target.Opacity = 0;
             target.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(220)));
         }
@@ -317,7 +368,9 @@ namespace GenZ
                 card.MouseEnter += (s, e) => Spring(st, 1.04);
                 card.MouseLeave += (s, e) => Spring(st, 1.0);
                 card.MouseLeftButtonUp += (s, e) => { ThemeManager.Apply(theme); Settings.Save(); RefreshCoverGlow(); };
-                GridPanel.Children.Add(card);
+                var holder = new Border { Child = card };
+                Controls.Bounce.Press(holder);
+                GridPanel.Children.Add(holder);
             }
             Cascade(GridPanel);
         }
@@ -519,12 +572,18 @@ namespace GenZ
             NpFav.Foreground = on ? (Brush)FindResource("AccentBrush") : (Brush)FindResource("NpTextBrush");
         }
 
+        int lastShownIndex = -1;
         void OnTrackChanged()
         {
             var s = Player.Current;
             if (Player.Error != null) ScanText.Text = Player.Error;
+            bool forward = !(lastShownIndex >= 0 && Player.Index == lastShownIndex - 1);
+            bool changed = s != shownSong;
+            lastShownIndex = Player.Index;
             ShowSong(s);
-            if (view == View.Queue) ShowView(View.Queue);
+            if (changed) { AnimateBar(forward); LoadLyrics(s); }
+            if (view == View.Queue) ShowView(View.Queue, true);
+            SaveSession();
         }
 
         void ShowSong(Song s)
@@ -557,8 +616,8 @@ namespace GenZ
             if (big != null)
             {
                 NpCover.Child = null;
-                NpCover.Background = new ImageBrush(big) { Stretch = Stretch.UniformToFill };
-                BarCover.Background = new ImageBrush(big) { Stretch = Stretch.UniformToFill };
+                NpCover.Background = Covers.Brush(big);
+                BarCover.Background = Covers.Brush(big);
                 var avg = Covers.Average(big);
                 NpGlow.Background = avg.HasValue ? new SolidColorBrush(avg.Value) : (Brush)FindResource("AccentBrush");
             }
@@ -684,8 +743,10 @@ namespace GenZ
 
         void Tick()
         {
+            SleepTick();
             var cur = Player.Current;
             if (cur == null) return;
+            LyricsTick();
             var dur = Player.Duration; var pos = Player.Position;
             double f = dur.TotalMilliseconds > 0 ? pos.TotalMilliseconds / dur.TotalMilliseconds : 0;
             if (!seeking)
@@ -714,6 +775,7 @@ namespace GenZ
             bool open = NpColumn.Width.Value > 0;
             NpColumn.Width = new GridLength(open ? 0 : 380);
             Settings.Current.NowPlayingOpen = !open;
+            UpdateVolumeBox();
         }
 
         void OnKeys(object sender, KeyEventArgs e)
@@ -721,6 +783,9 @@ namespace GenZ
             bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
             if (e.Key == Key.F && ctrl) { SearchBox.Focus(); SearchBox.SelectAll(); e.Handled = true; }
             else if (e.Key == Key.P && ctrl) { OnPip(this, null); e.Handled = true; }
+            else if (e.Key == Key.L && ctrl) { OnLyricsToggle(this, null); e.Handled = true; }
+            else if (e.Key == Key.I && ctrl) { EditSong(SongList.IsKeyboardFocusWithin && SongList.SelectedItem is Song sel ? sel : Player.Current ?? shownSong); e.Handled = true; }
+            else if (e.Key == Key.N && ctrl) { OnNewPlaylist(this, null); e.Handled = true; }
             else if (SearchBox.IsKeyboardFocusWithin) { if (e.Key == Key.Escape) { SearchBox.Text = ""; SongList.Focus(); } }
             else if (e.Key == Key.Space) { Player.Toggle(); e.Handled = true; }
             else if (ctrl && e.Key == Key.Right) { OnNext(this, EventArgs.Empty); e.Handled = true; }
@@ -823,9 +888,14 @@ namespace GenZ
         {
             double w = ActualWidth, h = ActualHeight;
             if (w <= 0 || h <= 0) return;
+            double fit = Math.Min(w / 1240.0, h / 790.0);
+            // automatic: shrink to fit small windows; on big screens (e.g. 4K at 100 %) grow, a little gentler, up to 175 %
             double s = Settings.Current.UiScale > 0 ? Settings.Current.UiScale
-                : Math.Max(0.66, Math.Min(1.0, Math.Min(w / 1240.0, h / 790.0)));
+                : fit < 1 ? Math.Max(0.66, fit) : Math.Min(1.75, 1 + (fit - 1) * 0.55);
+            var dpi = VisualTreeHelper.GetDpi(this);
+            Covers.PixelScale = dpi.DpiScaleX * s;
             if (Math.Abs(s - scale) < 0.004 && Root.LayoutTransform is ScaleTransform) return;
+            bool grew = s > scale + 0.05;
             scale = s;
             Root.LayoutTransform = Math.Abs(s - 1) < 0.004 ? Transform.Identity : new ScaleTransform(s, s);
             var chrome = WindowChrome.GetWindowChrome(this);
@@ -834,6 +904,15 @@ namespace GenZ
                 if (chrome.IsFrozen) { chrome = (WindowChrome)chrome.Clone(); chrome.CaptionHeight = 56 * s; WindowChrome.SetWindowChrome(this, chrome); }
                 else chrome.CaptionHeight = 56 * s;
             }
+            // covers decoded for a smaller size are reloaded at the new, sharper size
+            if (grew && shownSong != null) LoadNpCover(shownSong);
+        }
+
+        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+        {
+            base.OnDpiChanged(oldDpi, newDpi);
+            Covers.PixelScale = newDpi.DpiScaleX * scale;
+            if (shownSong != null) LoadNpCover(shownSong);
         }
 
         /// <summary>The Now Playing cover grows and shrinks so the controls always fit.</summary>
@@ -842,7 +921,7 @@ namespace GenZ
             // the cover gets whatever the title, progress and controls leave free – they are always fully visible
             double used = 26 + 18 + NpInfo.ActualHeight + NpInfo.Margin.Top + NpControls.ActualHeight + NpControls.Margin.Top + 8;
             double w = NpPanel.ActualWidth - 56, h = NpPanel.ActualHeight - used;
-            double size = Math.Max(90, Math.Min(420, Math.Min(w, h)));
+            double size = Math.Max(90, Math.Min(460, Math.Min(w, h)));
             if (Math.Abs(NpCoverHost.Width - size) > 0.5) NpCoverHost.Width = NpCoverHost.Height = size;
         }
 
@@ -879,58 +958,33 @@ namespace GenZ
             }
         }
 
-        /// <summary>Tiles drop in one after another.</summary>
+        /// <summary>Tiles bounce in one after another (Android Bounce.enter).</summary>
         void Cascade(Panel panel)
         {
-            if (Settings.Current.ReduceMotion || Settings.Current.ListAnimation == "none") return;
-            int i = 0;
-            foreach (UIElement el in panel.Children)
-            {
-                if (i >= 36) break;
-                var fe = (FrameworkElement)el;
-                fe.Opacity = 0;
-                var delay = Settings.Ms(i * 28);
-                var fade = new DoubleAnimation(0, 1, Settings.Ms(300)) { BeginTime = delay };
-                fe.BeginAnimation(OpacityProperty, fade);
-                if (Settings.Current.ListAnimation == "cascade")
-                {
-                    var tt = new TranslateTransform(0, 26);
-                    var group = new TransformGroup();
-                    var holder = fe.RenderTransform;
-                    group.Children.Add(holder ?? Transform.Identity); group.Children.Add(tt);
-                    fe.RenderTransform = group;
-                    tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(26, 0, Settings.Ms(420)) { BeginTime = delay, EasingFunction = new BackEase { Amplitude = 0.35, EasingMode = EasingMode.EaseOut } });
-                }
-                i++;
-            }
-            for (int k = 36; k < panel.Children.Count; k++) ((FrameworkElement)panel.Children[k]).Opacity = 1;
+            var items = panel.Children.OfType<FrameworkElement>().ToList();
+            if (quietNav) { foreach (var i in items) i.Opacity = 1; return; }
+            Controls.Bounce.Enter(items, 30, 40);
         }
 
-        /// <summary>Song rows slide in one after another (only the rows on screen).</summary>
+        /// <summary>Song rows bounce in one after another (only the rows on screen).</summary>
         void CascadeList()
         {
             if (Settings.Current.ReduceMotion || Settings.Current.ListAnimation == "none") return;
-            Dispatcher.BeginInvoke(new Action(() =>
+            SongList.UpdateLayout();
+            var rows = new List<FrameworkElement>();
+            for (int i = 0; i < 26; i++)
             {
-                for (int i = 0; i < 22; i++)
-                {
-                    if (!(SongList.ItemContainerGenerator.ContainerFromIndex(i) is FrameworkElement row)) break;
-                    var delay = Settings.Ms(i * 22);
-                    row.Opacity = 0;
-                    row.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Settings.Ms(260)) { BeginTime = delay });
-                    if (Settings.Current.ListAnimation == "cascade")
-                    {
-                        var tt = new TranslateTransform(-24, 0); row.RenderTransform = tt;
-                        tt.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-24, 0, Settings.Ms(380)) { BeginTime = delay, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-                    }
-                }
-            }), DispatcherPriority.Loaded);
+                if (!(SongList.ItemContainerGenerator.ContainerFromIndex(i) is FrameworkElement row)) break;
+                rows.Add(row);
+            }
+            Controls.Bounce.Enter(rows, 41, 26);
         }
 
         // cover touch effects on Now Playing
         Canvas coverFx;
         void OnCoverClick(object sender, MouseButtonEventArgs e)
         {
+            if (NpLyrics.Visibility == Visibility.Visible) return;
             if (Settings.Current.ReduceMotion || Settings.Current.CoverEffect == "none") return;
             if (coverFx == null)
             {
@@ -970,13 +1024,32 @@ namespace GenZ
             AnimPanel.Children.Add(new TextBlock { Text = "Animations", FontSize = 30, FontWeight = FontWeights.Bold, FontFamily = (FontFamily)FindResource("DisplayFont") });
             AnimPanel.Children.Add(new TextBlock { Text = "Choose how GEN-Z moves. Changes apply instantly.", Margin = new Thickness(0, 2, 0, 6), FontSize = 13, Foreground = (Brush)FindResource("Text2Brush") });
 
-            Section(AnimPanel, "PAGE TRANSITION", "How a screen appears when you switch pages.");
-            AnimPanel.Children.Add(Choices(new[] { ("slide-up", "Slide up"), ("slide-left", "Slide in"), ("fade", "Fade"), ("zoom", "Zoom"), ("none", "None") },
-                cur.PageTransition, v => { cur.PageTransition = v; AnimateIn(PageAnim, v); }));
+            Section(AnimPanel, "SCREEN TRANSITION", "How one screen changes to the next – the same set as GEN-Z on Android.");
+            AnimPanel.Children.Add(Choices(Controls.Transitions.Styles.Concat(new[] { ("none", "None") }).ToArray(),
+                cur.Transition, v => { cur.Transition = v; PreviewTransition(); }));
 
-            Section(AnimPanel, "LISTS & GRIDS", "Songs, albums and theme cards arriving on screen.");
-            AnimPanel.Children.Add(Choices(new[] { ("cascade", "Cascade"), ("fade", "Fade in"), ("none", "None") },
+            Section(AnimPanel, "LISTS & GRIDS ARRIVING", "Songs, albums and theme cards when a page opens.");
+            AnimPanel.Children.Add(Choices(new[] { ("bounce", "Bounce in"), ("cascade", "Cascade"), ("fade", "Fade in"), ("none", "None") },
                 cur.ListAnimation, v => cur.ListAnimation = v));
+
+            Section(AnimPanel, "LIST SCROLL ANIMATION", "Rows animate in as you scroll – the XuiMod set from GEN-Z on Android.");
+            var names = Controls.ListAnim.Names.Select((n, i) => (i.ToString(), n)).ToArray();
+            AnimPanel.Children.Add(Choices(names, cur.ScrollAnim.ToString(), v => { cur.ScrollAnim = int.Parse(v); DemoScroll(); }));
+            Section(AnimPanel, "SCROLL ANIMATION CURVE", null);
+            var curves = Controls.ListAnim.Interpolators.Select((n, i) => (i.ToString(), n)).ToArray();
+            AnimPanel.Children.Add(Choices(curves, cur.ScrollInterp.ToString(), v => { cur.ScrollInterp = int.Parse(v); DemoScroll(); }));
+            Section(AnimPanel, "SCROLL ANIMATION LENGTH", null);
+            var drow = new Grid { MaxWidth = 520, Width = 520, HorizontalAlignment = HorizontalAlignment.Left };
+            drow.ColumnDefinitions.Add(new ColumnDefinition()); drow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+            var dsl = new Slider { Style = (Style)FindResource("ThinSlider"), Minimum = 150, Maximum = 900, Value = cur.ScrollDuration, Margin = new Thickness(0, 0, 12, 0) };
+            var dlab = new TextBlock { Text = cur.ScrollDuration + " ms", FontSize = 12, Foreground = (Brush)FindResource("Text2Brush"), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(dlab, 1); drow.Children.Add(dsl); drow.Children.Add(dlab);
+            dsl.ValueChanged += (s2, e2) => { cur.ScrollDuration = (int)(Math.Round(e2.NewValue / 10) * 10); dlab.Text = cur.ScrollDuration + " ms"; };
+            dsl.PreviewMouseLeftButtonUp += (s2, e2) => { Settings.Save(); DemoScroll(); };
+            AnimPanel.Children.Add(drow);
+            demoHost = new StackPanel { Margin = new Thickness(0, 14, 0, 0), MaxWidth = 520, HorizontalAlignment = HorizontalAlignment.Left, Width = 520, ClipToBounds = true };
+            AnimPanel.Children.Add(demoHost);
+            DemoScroll();
 
             Section(AnimPanel, "COVER TOUCH EFFECT", "Click the album cover on Now Playing.");
             AnimPanel.Children.Add(Choices(new[] { ("ripple", "Water ripple"), ("burst", "Sparkle burst"), ("none", "None") },
@@ -1001,8 +1074,42 @@ namespace GenZ
             sl.ValueChanged += (s, e) => { cur.AnimSpeed = Math.Round(e.NewValue, 2); };
             AnimPanel.Children.Add(row);
             var preview = new Button { Style = (Style)FindResource("PillButton"), Content = "Preview", Margin = new Thickness(0, 22, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
-            preview.Click += (s, e) => { Settings.Save(); AnimateIn(PageAnim, cur.PageTransition); OnCoverClickPreview(); };
+            preview.Click += (s, e) => { Settings.Save(); PreviewTransition(); DemoScroll(); OnCoverClickPreview(); };
             AnimPanel.Children.Add(preview);
+        }
+
+        StackPanel demoHost;
+
+        /// <summary>Four sample rows play the chosen scroll animation.</summary>
+        void DemoScroll()
+        {
+            if (demoHost == null) return;
+            demoHost.Children.Clear();
+            var cur = Settings.Current;
+            for (int i = 0; i < 4; i++)
+            {
+                var row = new Border { CornerRadius = new CornerRadius(10), Padding = new Thickness(14, 10, 14, 10), Margin = new Thickness(0, 0, 0, 6), Background = (Brush)FindResource("SurfaceBrush") };
+                var sp = new StackPanel { Orientation = Orientation.Horizontal };
+                sp.Children.Add(new Path { Data = (Geometry)FindResource("IcNote"), Fill = (Brush)FindResource("AccentBrush"), Width = 16, Height = 16, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 12, 0) });
+                sp.Children.Add(new TextBlock { Text = "Sample song " + (i + 1) + " · " + Controls.ListAnim.Names[Math.Max(0, Math.Min(cur.ScrollAnim, Controls.ListAnim.Names.Length - 1))], FontSize = 13 });
+                row.Child = sp;
+                demoHost.Children.Add(row);
+                var r = row; int k = i;
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    var t = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1 + k * 90) };
+                    t.Tick += (o, a) => { t.Stop(); Controls.ListAnim.Animate(r, true, cur.ScrollAnim, cur.ScrollDuration, cur.ScrollInterp); };
+                    t.Start();
+                }), DispatcherPriority.Loaded);
+            }
+        }
+
+        void PreviewTransition()
+        {
+            var host = (Panel)Pages.Parent;
+            var old = Controls.Transitions.Capture(Pages, host);
+            Pages.ClipToBounds = true;
+            Controls.Transitions.Run(Settings.Current.Transition, PageAnim, old, host, Pages);
         }
 
         void OnCoverClickPreview()
@@ -1076,7 +1183,7 @@ namespace GenZ
         void BuildPrefs()
         {
             PrefsPanel.Children.Clear();
-            Section(PrefsPanel, "INTERFACE SIZE", "Automatic fits GEN-Z to your window and display scaling.");
+            Section(PrefsPanel, "INTERFACE SIZE", "Automatic fits GEN-Z to your window: small windows shrink it, big and 4K screens enlarge it – always drawn sharp at your display scaling.");
             var cur = Settings.Current;
             var opts = new[] { ("0", "Automatic"), ("0.8", "80%"), ("0.9", "90%"), ("1", "100%"), ("1.1", "110%"), ("1.25", "125%"), ("1.5", "150%") };
             string now = cur.UiScale <= 0 ? "0" : cur.UiScale.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -1085,6 +1192,9 @@ namespace GenZ
                 cur.UiScale = double.Parse(v, System.Globalization.CultureInfo.InvariantCulture);
                 scale = -1; ApplyScale();
             }));
+            Section(PrefsPanel, "PLAYBACK", null);
+            PrefsPanel.Children.Add(Toggle("Soft fade on play and pause", "The music fades in and out instead of stopping abruptly", cur.FadePlayPause, v => cur.FadePlayPause = v));
+            PrefsPanel.Children.Add(Toggle("Continue where you left off", "Remember Up next, the song and its position when GEN-Z closes", cur.RememberQueue, v => cur.RememberQueue = v));
             Section(PrefsPanel, "MINI PLAYER (PICTURE IN PICTURE)", "A small always-on-top player. Open it with the button in the title bar or Ctrl+P.");
             PrefsPanel.Children.Add(Toggle("Open the mini player when minimized", "While music plays, minimizing GEN-Z shows the mini player", cur.AutoPip, v => cur.AutoPip = v));
             var b = new Button { Style = (Style)FindResource("PillButton"), Content = "Open mini player now", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0) };

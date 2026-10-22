@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Threading;
 using CSCore;
 using CSCore.Codecs;
 using CSCore.CoreAudioAPI;
@@ -42,11 +43,18 @@ namespace GenZ.Core
         static List<Song> original = new List<Song>();
         public static int Index { get; private set; } = -1;
         public static Song Current => Index >= 0 && Index < Queue.Count ? Queue[Index] : null;
-        public static bool IsPlaying => output != null && output.PlaybackState == PlaybackState.Playing;
+        public static bool IsPlaying => output != null && !fadingOut && output.PlaybackState == PlaybackState.Playing;
+        public static bool HasOutput => output != null;
         public static string Error { get; private set; }
 
         public static event Action TrackChanged;
         public static event Action StateChanged;
+        /// <summary>The queue was edited (play next, add, remove, reorder).</summary>
+        public static event Action QueueChanged;
+        /// <summary>The sleep timer's "end of this song" stop happened.</summary>
+        public static event Action SleepEnded;
+        /// <summary>When true, playback stops (paused on the next song) when the current song ends.</summary>
+        public static bool StopAfterCurrent { get; set; }
 
         public static TimeSpan Position
         {
@@ -69,7 +77,7 @@ namespace GenZ.Core
             set
             {
                 Settings.Current.Volume = Math.Max(0, Math.Min(1, value));
-                try { if (output != null) output.Volume = (float)Settings.Current.Volume; } catch { }
+                ApplyVolume();
             }
         }
 
@@ -98,10 +106,166 @@ namespace GenZ.Core
         public static void Toggle()
         {
             if (output == null) { if (Current != null) Load(true); else if (Library.Songs.Count > 0) PlayList(Library.Songs, 0); return; }
-            if (output.PlaybackState == PlaybackState.Playing) output.Pause();
-            else if (output.PlaybackState == PlaybackState.Paused) output.Resume();
-            else output.Play();
+            if (IsPlaying) Pause(Settings.Current.FadePlayPause);
+            else Resume(Settings.Current.FadePlayPause);
+        }
+
+        public static void Pause(bool fade)
+        {
+            if (output == null || !IsPlaying) return;
+            if (!fade) { StopFade(); fadeGain = 1; try { output.Pause(); } catch { } ApplyVolume(); StateChanged?.Invoke(); return; }
+            fadingOut = true;
             StateChanged?.Invoke();
+            var o = output;
+            Fade(0, 220, () =>
+            {
+                fadingOut = false;
+                if (o != output) return;
+                try { output.Pause(); } catch { }
+                fadeGain = 1; ApplyVolume();
+                StateChanged?.Invoke();
+            });
+        }
+
+        public static void Resume(bool fade)
+        {
+            if (output == null) return;
+            if (fadingOut) { fadingOut = false; Fade(1, 200, null); StateChanged?.Invoke(); return; }
+            if (fade) { StopFade(); fadeGain = 0; ApplyVolume(); }
+            try
+            {
+                if (output.PlaybackState == PlaybackState.Paused) output.Resume();
+                else if (output.PlaybackState != PlaybackState.Playing) output.Play();
+            }
+            catch { }
+            if (fade) Fade(1, 320, null);
+            StateChanged?.Invoke();
+        }
+
+        // ---------------------------------------------------------------- volume, fades, sleep fade
+        static double fadeGain = 1, sleepGain = 1;
+        static bool fadingOut;
+        static DispatcherTimer fadeTimer;
+        static double fadeFrom, fadeTo, fadeMs;
+        static DateTime fadeStart;
+        static Action fadeDone;
+
+        /// <summary>Extra volume factor used by the sleep timer to fade the music out (1 = normal).</summary>
+        public static double SleepGain { get => sleepGain; set { sleepGain = Math.Max(0, Math.Min(1, value)); ApplyVolume(); } }
+
+        static void ApplyVolume()
+        {
+            try { if (output != null) output.Volume = (float)Math.Max(0, Math.Min(1, Settings.Current.Volume * fadeGain * sleepGain)); } catch { }
+        }
+
+        static void Fade(double to, double ms, Action done)
+        {
+            if (fadeTimer == null)
+            {
+                fadeTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(15) };
+                fadeTimer.Tick += (s, e) =>
+                {
+                    double t = (DateTime.Now - fadeStart).TotalMilliseconds / Math.Max(1, fadeMs);
+                    if (t >= 1)
+                    {
+                        fadeGain = fadeTo; ApplyVolume(); fadeTimer.Stop();
+                        var d = fadeDone; fadeDone = null; d?.Invoke();
+                    }
+                    else
+                    {
+                        double e2 = t * t * (3 - 2 * t); // smoothstep
+                        fadeGain = fadeFrom + (fadeTo - fadeFrom) * e2; ApplyVolume();
+                    }
+                };
+            }
+            fadeFrom = fadeGain; fadeTo = to; fadeMs = ms; fadeStart = DateTime.Now; fadeDone = done;
+            fadeTimer.Start();
+        }
+
+        static void StopFade() { fadeTimer?.Stop(); fadeDone = null; fadingOut = false; }
+
+        // ---------------------------------------------------------------- queue editing
+        /// <summary>Insert songs right after the current one.</summary>
+        public static void PlayNext(IList<Song> songs)
+        {
+            if (songs == null || songs.Count == 0) return;
+            if (Current == null) { PlayList(songs, 0); return; }
+            Queue.InsertRange(Index + 1, songs);
+            var cur = Current; int oi = original.IndexOf(cur);
+            original.InsertRange(oi >= 0 ? oi + 1 : original.Count, songs);
+            QueueChanged?.Invoke();
+        }
+
+        /// <summary>Add songs to the end of the queue.</summary>
+        public static void Enqueue(IList<Song> songs)
+        {
+            if (songs == null || songs.Count == 0) return;
+            if (Current == null) { PlayList(songs, 0); return; }
+            Queue.AddRange(songs); original.AddRange(songs);
+            QueueChanged?.Invoke();
+        }
+
+        public static void RemoveAt(IEnumerable<int> indexes)
+        {
+            bool removedCurrent = false;
+            var cur = Current;
+            foreach (var i in indexes.Where(i => i >= 0 && i < Queue.Count).Distinct().OrderByDescending(i => i))
+            {
+                var s = Queue[i];
+                Queue.RemoveAt(i);
+                original.Remove(s);
+                if (i < Index) Index--;
+                else if (i == Index) removedCurrent = true;
+            }
+            if (Queue.Count == 0) { Index = -1; Release(); if (cur != null) cur.IsPlaying = false; TrackChanged?.Invoke(); StateChanged?.Invoke(); QueueChanged?.Invoke(); return; }
+            if (removedCurrent)
+            {
+                bool was = IsPlaying;
+                if (cur != null) cur.IsPlaying = false;
+                if (Index >= Queue.Count) Index = 0;
+                Load(was);
+            }
+            QueueChanged?.Invoke();
+        }
+
+        public static void Move(int from, int to)
+        {
+            if (from < 0 || from >= Queue.Count) return;
+            var cur = Current;
+            var s = Queue[from]; Queue.RemoveAt(from);
+            to = Math.Max(0, Math.Min(to, Queue.Count));
+            Queue.Insert(to, s);
+            Index = Queue.IndexOf(cur);
+            QueueChanged?.Invoke();
+        }
+
+        public static void ClearQueue()
+        {
+            var cur = Current;
+            if (cur == null) { Queue = new List<Song>(); original = new List<Song>(); Index = -1; QueueChanged?.Invoke(); return; }
+            Queue = new List<Song> { cur }; original = new List<Song> { cur }; Index = 0;
+            QueueChanged?.Invoke();
+        }
+
+        /// <summary>Restore the last session: queue, song and position, paused.</summary>
+        public static void Restore(List<Song> queue, int index, TimeSpan position)
+        {
+            if (queue == null || queue.Count == 0) return;
+            original = queue.ToList(); Queue = queue.ToList();
+            Index = Math.Max(0, Math.Min(index, Queue.Count - 1));
+            Load(false, false);
+            if (position > TimeSpan.Zero && position < Duration - TimeSpan.FromSeconds(2)) Position = position;
+        }
+
+        /// <summary>Runs an action (e.g. saving tags) while this file is not held open by playback.</summary>
+        public static void WithFileReleased(string path, Action action)
+        {
+            bool isCur = output != null && Current != null && string.Equals(Current.Path, path, StringComparison.OrdinalIgnoreCase);
+            if (!isCur) { action(); return; }
+            var pos = Position; bool was = IsPlaying;
+            Release();
+            try { action(); }
+            finally { Load(was, false); Position = pos; }
         }
 
         public static void Next(bool auto = false)
@@ -148,6 +312,7 @@ namespace GenZ.Core
         static void Release()
         {
             stopping = true;
+            StopFade(); fadeGain = 1;
             try { output?.Stop(); } catch { }
             try { output?.Dispose(); } catch { }
             try { source?.Dispose(); } catch { }
@@ -155,7 +320,7 @@ namespace GenZ.Core
             stopping = false;
         }
 
-        static void Load(bool play)
+        static void Load(bool play, bool count = true)
         {
             var song = Current;
             Release();
@@ -164,6 +329,7 @@ namespace GenZ.Core
             foreach (var s in Queue) s.IsPlaying = false;
             song.IsPlaying = true;
             Settings.Current.LastSong = song.Path;
+            if (play && count) Settings.Current.Played(song.Path);
             try
             {
                 source = CodecFactory.Instance.GetCodec(song.Path);
@@ -174,7 +340,7 @@ namespace GenZ.Core
                 var wave = eq.ToWaveSource();
                 output = CreateOutput();
                 output.Initialize(wave);
-                output.Volume = (float)Settings.Current.Volume;
+                ApplyVolume();
                 output.Stopped += OnStopped;
                 if (play) output.Play();
             }
@@ -199,6 +365,15 @@ namespace GenZ.Core
             Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (stopping || sender != output) return;
+                if (StopAfterCurrent)
+                {
+                    // sleep timer "end of this song": move on to the next song but stay paused
+                    StopAfterCurrent = false; sleepGain = 1;
+                    if (Index + 1 < Queue.Count) Index++;
+                    Load(false, false);
+                    SleepEnded?.Invoke();
+                    return;
+                }
                 Next(auto: true);
             }));
         }

@@ -61,7 +61,23 @@ namespace GenZ.Core
             return bmp;
         }
 
-        public static Task<BitmapSource> LoadAsync(Song s, int size) => Task.Run(() => Load(s, size));
+        /// <summary>A cover brush with high-quality (Fant) scaling, so big covers shrink without jagged edges.</summary>
+        public static ImageBrush Brush(ImageSource img)
+        {
+            var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
+            System.Windows.Media.RenderOptions.SetBitmapScalingMode(b, BitmapScalingMode.HighQuality);
+            return b;
+        }
+
+        /// <summary>Device pixels per layout pixel (monitor DPI × interface size), so covers are decoded sharp on 4K screens.</summary>
+        public static double PixelScale { get; set; } = 1;
+
+        /// <summary>Loads a cover <paramref name="size"/> layout pixels wide, decoded at the screen's real pixel size.</summary>
+        public static Task<BitmapSource> LoadAsync(Song s, int size)
+        {
+            int px = (int)Math.Min(2048, Math.Ceiling(size * Math.Max(1, PixelScale) / 64.0) * 64);
+            return Task.Run(() => Load(s, px));
+        }
 
         /// <summary>Average colour of a cover (for glows and the progress bar).</summary>
         public static Color? Average(BitmapSource b)

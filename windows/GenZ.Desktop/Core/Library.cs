@@ -68,6 +68,16 @@ namespace GenZ.Core
         public Song First => Songs.FirstOrDefault();
     }
 
+    /// <summary>A genre or a folder: a named group of songs.</summary>
+    public class GroupInfo
+    {
+        public string Name { get; set; }
+        public string Detail { get; set; }
+        public List<Song> Songs { get; set; } = new List<Song>();
+        public string Subtitle => Songs.Count + (Songs.Count == 1 ? " song" : " songs");
+        public Song First => Songs.FirstOrDefault();
+    }
+
     /// <summary>Scans the music folders, reads tags with TagLib and keeps a cache so the next start is instant.</summary>
     public static class Library
     {
@@ -75,6 +85,9 @@ namespace GenZ.Core
         public static List<Song> Songs { get; private set; } = new List<Song>();
         public static List<AlbumInfo> Albums { get; private set; } = new List<AlbumInfo>();
         public static List<ArtistInfo> Artists { get; private set; } = new List<ArtistInfo>();
+        public static List<GroupInfo> Genres { get; private set; } = new List<GroupInfo>();
+        public static List<GroupInfo> Folders { get; private set; } = new List<GroupInfo>();
+        public static Dictionary<string, Song> ByPath { get; private set; } = new Dictionary<string, Song>(StringComparer.OrdinalIgnoreCase);
         public static event Action Changed;
         public static bool Scanning { get; private set; }
 
@@ -114,7 +127,41 @@ namespace GenZ.Core
                 Name = g.First().Artist ?? "Unknown artist",
                 Songs = g.OrderBy(x => x.Album).ThenBy(x => x.Track).ToList()
             }).OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+            Genres = Songs.GroupBy(s => string.IsNullOrWhiteSpace(s.Genre) ? "Unknown genre" : s.Genre.Trim(), StringComparer.CurrentCultureIgnoreCase)
+                .Select(g => new GroupInfo { Name = g.Key, Songs = g.OrderBy(x => x.Artist).ThenBy(x => x.Album).ThenBy(x => x.Track).ToList() })
+                .OrderBy(g => g.Name == "Unknown genre").ThenBy(g => g.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+            Folders = Songs.GroupBy(s => System.IO.Path.GetDirectoryName(s.Path) ?? "", StringComparer.OrdinalIgnoreCase)
+                .Select(g => new GroupInfo { Name = System.IO.Path.GetFileName(g.Key.TrimEnd('\\')) is string n && n.Length > 0 ? n : g.Key, Detail = g.Key,
+                    Songs = g.OrderBy(x => x.Track).ThenBy(x => System.IO.Path.GetFileName(x.Path), StringComparer.CurrentCultureIgnoreCase).ToList() })
+                .OrderBy(g => g.Detail, StringComparer.CurrentCultureIgnoreCase).ToList();
+            var map = new Dictionary<string, Song>(StringComparer.OrdinalIgnoreCase);
+            foreach (var x in Songs) map[x.Path] = x;
+            ByPath = map;
         }
+
+        /// <summary>Regroup albums/artists/genres after tags were edited, and save the cache.</summary>
+        public static void Refresh()
+        {
+            Set(Songs.ToList());
+            try { File.WriteAllText(CachePath, Json.Write(Songs)); } catch { }
+            Changed?.Invoke();
+        }
+
+        /// <summary>Audio files among the given files and folders (folders are searched recursively).</summary>
+        public static List<string> AudioFiles(IEnumerable<string> paths)
+        {
+            var list = new List<string>();
+            foreach (var p in paths)
+            {
+                if (Directory.Exists(p)) list.AddRange(SafeFiles(p).OrderBy(f => f, StringComparer.CurrentCultureIgnoreCase).Where(IsAudio));
+                else if (File.Exists(p) && IsAudio(p)) list.Add(p);
+            }
+            return list;
+        }
+        public static bool IsAudio(string f) => Array.IndexOf(Extensions, System.IO.Path.GetExtension(f).ToLowerInvariant()) >= 0;
+
+        /// <summary>A library song for this path, or its tags read on the fly.</summary>
+        public static Song Get(string path) => ByPath.TryGetValue(path, out var s) ? s : Library.Read(path);
 
         /// <summary>Re-scans in the background; unchanged files reuse their cached tags.</summary>
         public static Task ScanAsync()

@@ -210,8 +210,8 @@ namespace GenZ
                 return;
             }
             cover.Child = null;
-            cover.Background = new ImageBrush(art) { Stretch = Stretch.UniformToFill };
-            coverBg.Background = new ImageBrush(art) { Stretch = Stretch.UniformToFill };
+            cover.Background = Covers.Brush(art);
+            coverBg.Background = Covers.Brush(art);
         }
     }
 }

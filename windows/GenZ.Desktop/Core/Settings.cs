@@ -24,7 +24,12 @@ namespace GenZ.Core
 
         // animations
         public string PageTransition { get; set; } = "slide-up";   // slide-up, slide-left, fade, zoom, none
-        public string ListAnimation { get; set; } = "cascade";     // cascade, fade, none
+        public string ListAnimation { get; set; } = "bounce";      // bounce, cascade, fade, none (how a list arrives)
+        public int ScrollAnim { get; set; } = 13;                  // list scroll animation, see Controls.ListAnim (0 = off)
+        public int ScrollInterp { get; set; } = 1;                 // decelerate
+        public int ScrollDuration { get; set; } = 380;
+        public string Transition { get; set; } = "genz";           // screen transition, see Controls.Transitions
+        public int AnimVersion { get; set; } = 0;
         public string CoverEffect { get; set; } = "ripple";        // ripple, burst, none
         public bool Sparkles { get; set; } = true;
         public bool PlayMorph { get; set; } = true;
@@ -35,6 +40,27 @@ namespace GenZ.Core
         // picture-in-picture mini player
         public bool AutoPip { get; set; } = false;
         public bool TermsAccepted { get; set; } = false;
+
+        // playback
+        public bool FadePlayPause { get; set; } = true;
+        public bool RememberQueue { get; set; } = true;
+        public bool LyricsOpen { get; set; } = false;
+        public List<string> LastQueue { get; set; } = new List<string>();
+        public int LastIndex { get; set; } = -1;
+        public long LastPositionMs { get; set; }
+
+        // listening history
+        public Dictionary<string, int> PlayCounts { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        public List<string> Recent { get; set; } = new List<string>();
+
+        public void Played(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            PlayCounts.TryGetValue(path, out var n); PlayCounts[path] = n + 1;
+            Recent.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            Recent.Insert(0, path);
+            if (Recent.Count > 200) Recent.RemoveRange(200, Recent.Count - 200);
+        }
         public string PipMode { get; set; } = "compact";           // compact, cover
         public double PipLeft { get; set; } = -1;
         public double PipTop { get; set; } = -1;
@@ -68,7 +94,17 @@ namespace GenZ.Core
                 var music = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
                 if (!string.IsNullOrEmpty(music)) Current.Folders.Add(music);
             }
+            if (Current.AnimVersion < 2)
+            {
+                // 1.3: the Android motion set arrives – start everyone on the Android defaults
+                Current.AnimVersion = 2; Current.ListAnimation = "bounce"; Current.Transition = "genz";
+                Current.ScrollAnim = 13; Current.ScrollInterp = 1; Current.ScrollDuration = 380;
+            }
             while (Current.EqGains.Count < 10) Current.EqGains.Add(0);
+            if (Current.PlayCounts == null) Current.PlayCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            else Current.PlayCounts = new Dictionary<string, int>(Current.PlayCounts, StringComparer.OrdinalIgnoreCase);
+            if (Current.Recent == null) Current.Recent = new List<string>();
+            if (Current.LastQueue == null) Current.LastQueue = new List<string>();
         }
 
         public static void Save()

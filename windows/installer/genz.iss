@@ -3,7 +3,7 @@
 ; and an uninstaller in "Apps & features". Windows 7 SP1 – Windows 11.
 
 #ifndef AppVersion
-  #define AppVersion "1.2.0"
+  #define AppVersion "1.3.0"
 #endif
 #define AppName "GEN-Z Music"
 #define AppExe "GEN-Z Music.exe"

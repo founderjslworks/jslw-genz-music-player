@@ -5,7 +5,7 @@
         Title="GEN-Z Music" Width="1300" Height="800" MinWidth="760" MinHeight="520"
         WindowStartupLocation="CenterScreen" Background="{DynamicResource BgBrush}"
         FontFamily="{DynamicResource BodyFont}" Icon="Assets/genz.png"
-        WindowStyle="None" ResizeMode="CanResize" UseLayoutRounding="True">
+        WindowStyle="None" ResizeMode="CanResize" UseLayoutRounding="True" AllowDrop="True" Drop="OnWindowDrop" DragOver="OnWindowDragOver">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="56" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
@@ -50,6 +50,10 @@
                                Foreground="{DynamicResource HeaderTextBrush}" Opacity="0.7" IsHitTestVisible="False" FontSize="13" />
                 </Grid>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Border x:Name="SleepChip" CornerRadius="12" Padding="10,3" Margin="0,0,4,0" VerticalAlignment="Center" Background="#33FFFFFF" Visibility="Collapsed">
+                        <TextBlock x:Name="SleepText" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource HeaderTextBrush}" />
+                    </Border>
+                    <Button x:Name="SleepBtn" Style="{StaticResource IconButton}" Tag="{StaticResource IcMoon}" Foreground="{DynamicResource HeaderTextBrush}" Click="OnSleep" ToolTip="Sleep timer" />
                     <Button Style="{StaticResource IconButton}" Tag="{StaticResource IcPip}" Foreground="{DynamicResource HeaderTextBrush}" Click="OnPip" ToolTip="Mini player – picture in picture (Ctrl+P)" />
                     <Button Style="{StaticResource IconButton}" Tag="{StaticResource IcPanel}" Foreground="{DynamicResource HeaderTextBrush}" Click="OnTogglePanel" ToolTip="Show / hide Now Playing" />
                     <Button Style="{StaticResource IconButton}" Tag="{StaticResource IcMin}" Foreground="{DynamicResource HeaderTextBrush}" Click="OnMin" Width="46" />
@@ -74,19 +78,35 @@
                         <Button Style="{StaticResource GhostPill}" Content="+  Add music folder" Click="OnAddFolder" HorizontalAlignment="Stretch" />
                         <TextBlock x:Name="ScanText" Margin="4,10,0,0" FontSize="11" Foreground="{DynamicResource Text2Brush}" TextWrapping="Wrap" />
                     </StackPanel>
-                    <StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="NavPanel">
                         <TextBlock Text="LIBRARY" Margin="26,6,0,6" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Text2Brush}" />
                         <RadioButton x:Name="NavSongs" Style="{StaticResource NavItem}" Content="Songs" Tag="{StaticResource IcNote}" Checked="OnNav" />
                         <RadioButton x:Name="NavAlbums" Style="{StaticResource NavItem}" Content="Albums" Tag="{StaticResource IcAlbum}" Checked="OnNav" />
                         <RadioButton x:Name="NavArtists" Style="{StaticResource NavItem}" Content="Artists" Tag="{StaticResource IcPerson}" Checked="OnNav" />
+                        <RadioButton x:Name="NavGenres" Style="{StaticResource NavItem}" Content="Genres" Tag="{StaticResource IcGenre}" Checked="OnNav" />
+                        <RadioButton x:Name="NavFolders" Style="{StaticResource NavItem}" Content="Folders" Tag="{StaticResource IcFolder}" Checked="OnNav" />
+                        <TextBlock Text="YOUR MUSIC" Margin="26,16,0,6" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Text2Brush}" />
                         <RadioButton x:Name="NavFav" Style="{StaticResource NavItem}" Content="Favourites" Tag="{StaticResource IcHeart}" Checked="OnNav" />
+                        <RadioButton x:Name="NavRecent" Style="{StaticResource NavItem}" Content="Recently played" Tag="{StaticResource IcHistory}" Checked="OnNav" />
+                        <RadioButton x:Name="NavMost" Style="{StaticResource NavItem}" Content="Most played" Tag="{StaticResource IcFire}" Checked="OnNav" />
                         <RadioButton x:Name="NavQueue" Style="{StaticResource NavItem}" Content="Up next" Tag="{StaticResource IcQueue}" Checked="OnNav" />
+                        <Grid Margin="26,16,14,6">
+                            <TextBlock Text="PLAYLISTS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Style="{StaticResource IconButton}" Tag="{StaticResource IcImport}" Width="28" Height="28" Click="OnImportPlaylist" ToolTip="Import a playlist (M3U / M3U8)" />
+                                <Button Style="{StaticResource IconButton}" Tag="{StaticResource IcAdd}" Width="28" Height="28" Click="OnNewPlaylist" ToolTip="New playlist" />
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel x:Name="NavPlaylists" />
+                        <TextBlock x:Name="NoPlaylists" Text="Right-click songs › Add to playlist, or press +" Margin="26,0,14,4" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Text2Brush}" Opacity="0.8" />
                         <TextBlock Text="EXTRAS" Margin="26,16,0,6" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Text2Brush}" />
                         <RadioButton x:Name="NavThemes" Style="{StaticResource NavItem}" Content="Themes" Tag="{StaticResource IcPalette}" Checked="OnNav" />
                         <RadioButton x:Name="NavAnim" Style="{StaticResource NavItem}" Content="Animations" Tag="{StaticResource IcSpark}" Checked="OnNav" />
                         <RadioButton x:Name="NavEq" Style="{StaticResource NavItem}" Content="Equalizer" Tag="{StaticResource IcEq}" Checked="OnNav" />
                         <RadioButton x:Name="NavAbout" Style="{StaticResource NavItem}" Content="Settings &amp; About" Tag="{StaticResource IcSettings}" Checked="OnNav" />
                     </StackPanel>
+                    </ScrollViewer>
                 </DockPanel>
             </Border>
 
@@ -112,11 +132,14 @@
                             <Button Style="{StaticResource GhostPill}" Click="OnShuffleAll">
                                 <StackPanel Orientation="Horizontal"><Path Data="{StaticResource IcShuffle}" Fill="{DynamicResource AccentBrush}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,8,0" /><TextBlock Text="Shuffle" Foreground="{DynamicResource AccentBrush}" /></StackPanel>
                             </Button>
+                            <Button x:Name="ListMore" Style="{StaticResource IconButton}" Tag="{StaticResource IcMore}" Margin="6,0,0,0" Click="OnListMore" ToolTip="More" Visibility="Collapsed" />
                         </StackPanel>
                     </Grid>
                     <ListBox x:Name="SongList" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource RowItem}"
                              VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" MouseDoubleClick="OnSongDoubleClick" PreviewMouseLeftButtonUp="OnSongClick" KeyDown="OnSongKey" Margin="16,0,8,0">
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" MouseDoubleClick="OnSongDoubleClick" PreviewMouseLeftButtonUp="OnSongClick" KeyDown="OnSongKey" Margin="16,0,8,0"
+                             SelectionMode="Extended" ContextMenuOpening="OnSongMenu" PreviewMouseLeftButtonDown="OnRowDown" PreviewMouseMove="OnRowMove"
+                             AllowDrop="True" DragOver="OnListDragOver" Drop="OnListDrop" DragLeave="OnListDragLeave">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid>
@@ -145,6 +168,9 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                 </DockPanel>
+
+                <TextBlock x:Name="ListEmpty" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40,120,40,0" TextAlignment="Center"
+                           FontSize="14" Foreground="{DynamicResource Text2Brush}" TextWrapping="Wrap" MaxWidth="420" IsHitTestVisible="False" />
 
                 <!-- album / artist / theme grids -->
                 <DockPanel x:Name="PageGrid" Visibility="Collapsed">
@@ -242,7 +268,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Grid x:Name="NpCoverHost" Height="300" Width="300" HorizontalAlignment="Center" Cursor="Hand" MouseLeftButtonDown="OnCoverClick" ToolTip="Touch the cover">
+                    <Grid x:Name="NpCoverHost" Height="300" Width="300" HorizontalAlignment="Center" Cursor="Hand" MouseLeftButtonDown="OnCoverClick" MouseRightButtonUp="OnCoverMenu">
                         <Border x:Name="NpGlow" CornerRadius="26" Margin="10,18,10,-6" Background="{DynamicResource AccentBrush}" Opacity="0.55">
                             <Border.Effect><BlurEffect Radius="38" /></Border.Effect>
                         </Border>
@@ -252,15 +278,26 @@
                             </Border.RenderTransform>
                             <Path x:Name="NpCoverNote" Data="{StaticResource IcNote}" Fill="{DynamicResource AccentBrush}" Width="80" Height="80" Stretch="Uniform" />
                         </Border>
+                        <Border x:Name="NpLyrics" CornerRadius="22" Visibility="Collapsed" Background="{Binding Background, ElementName=NpCover}" Cursor="Arrow">
+                            <Border CornerRadius="22" Background="#D20A0814">
+                                <Grid x:Name="LyricsClip" ClipToBounds="True" Margin="20,16" Background="Transparent" MouseWheel="OnLyricsWheel">
+                                    <StackPanel x:Name="LyricsPanel" VerticalAlignment="Top">
+                                        <StackPanel.RenderTransform><TranslateTransform /></StackPanel.RenderTransform>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Border>
                     </Grid>
                     <StackPanel x:Name="NpInfo" Grid.Row="1" Margin="0,20,0,0">
                         <Grid>
-                            <StackPanel Margin="0,0,44,0">
+                            <StackPanel Margin="0,0,92,0">
                                 <TextBlock x:Name="NpTitle" Text="Nothing playing" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource NpTextBrush}" FontFamily="{DynamicResource DisplayFont}" />
                                 <TextBlock x:Name="NpArtist" Text="Pick a song to start" FontSize="14" Foreground="{DynamicResource NpText2Brush}" Margin="0,3,0,0" />
                             </StackPanel>
-                            <Button x:Name="NpFav" Style="{StaticResource IconButton}" Tag="{StaticResource IcHeartOutline}" Foreground="{DynamicResource NpTextBrush}"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center" Click="OnFav" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Button x:Name="NpLyricsBtn" Style="{StaticResource IconButton}" Tag="{StaticResource IcLyrics}" Foreground="{DynamicResource NpTextBrush}" Click="OnLyricsToggle" ToolTip="Lyrics (Ctrl+L)" />
+                                <Button x:Name="NpFav" Style="{StaticResource IconButton}" Tag="{StaticResource IcHeartOutline}" Foreground="{DynamicResource NpTextBrush}" Click="OnFav" ToolTip="Favourite" />
+                            </StackPanel>
                         </Grid>
                         <Border x:Name="NpBadge" HorizontalAlignment="Left" Margin="0,10,0,0" CornerRadius="6" Padding="8,3" Background="#00F5D4" Visibility="Collapsed">
                             <TextBlock x:Name="NpBadgeText" FontSize="11" FontWeight="Bold" Foreground="#101020" />
@@ -340,7 +377,7 @@
                         <TextBlock x:Name="BarTotal" Grid.Column="2" Text="0:00" FontSize="11" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center" HorizontalAlignment="Right" />
                     </Grid>
                 </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <StackPanel x:Name="BarVolumeBox" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Path Data="{StaticResource IcVolume}" Fill="{DynamicResource Text2Brush}" Width="18" Height="18" Stretch="Uniform" />
                     <Slider x:Name="BarVolume" Style="{StaticResource ThinSlider}" Width="140" Minimum="0" Maximum="1" Margin="12,0,0,0" ValueChanged="OnVolume" />
                 </StackPanel>
@@ -379,6 +416,12 @@
                 </TextBlock>
                 <TextBlock Text="  ·  © 2026 JSL WORKS PVT LTD · www.jslworks.in" FontSize="11" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center" />
             </StackPanel>
+        </Border>
+        <!-- toast -->
+        <Border x:Name="Toast" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18" CornerRadius="16" Padding="18,9"
+                Background="{DynamicResource RowHlBrush}" Visibility="Collapsed" IsHitTestVisible="False">
+            <Border.Effect><DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.4" /></Border.Effect>
+            <TextBlock x:Name="ToastText" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource RowHlTextBrush}" />
         </Border>
     </Grid>
 </Window>
