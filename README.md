@@ -1,87 +1,87 @@
-# JSLW "GEN-Z" Music Player
+# GEN-Z Music
 
-Offline music player for Android **4.4 KitKat → Android 15/16**, phones and tablets.
-No internet permission. Package: `com.jslw.genz` · App name: **GEN-Z Music**.
+**Project JSLW "GEN-Z" Music Player** · by Partho Ghosh · © 2026 JSL WORKS PVT LTD
 
-## Build
+A fully offline music player for Android, built for music lovers who want a player that looks and
+feels like their music. It runs on **Android 4.4 KitKat through Android 16**, on phones and tablets,
+with no internet permission at all.
 
-1. Install **Android Studio** (Ladybug or newer) with Android SDK 35.
-2. *File → Open* this folder. Let Gradle sync (needs internet once, for Gradle and the libraries).
-3. Plug in a phone (USB debugging on) and press **Run**, or *Build → Build APK(s)*.
-   Release: *Build → Generate Signed App Bundle/APK*.
+> Package `com.jslw.genz` · Version 1.4
 
-> **Don't accept "upgrade dependency" suggestions.** `app/build.gradle.kts` pins the last
-> AndroidX / Material versions that still support KitKat (minSdk 19). Newer ones need Android 5+
-> and the build will fail with a *minSdk* manifest-merger error.
->
-> If Android Studio asks to upgrade the Android Gradle Plugin, that is fine (AGP 8.7+).
+---
 
-## Features
+## Highlights
 
-**Playback & sound**
-- Gapless playback, crossfade (2–12 s), fade-in on play / fade-out on pause
-- Speed & pitch (Android 6+), sleep timer (with "finish current song"), shake to skip
-- Equalizer: 10-band graphic EQ on Android 9+ (DynamicsProcessing), device EQ bands on older phones;
-  built-in, device and your own presets; bass boost, 3D surround, loudness, reverb
-- Clean sound: automatic pre-amp headroom so EQ boosts never clip, -0.3 dBFS limiter (Android 9+),
-  ReplayGain normalisation (track / album), TPDF dither for 16-bit output on old phones
-- Hi-Res: native-rate 32-bit float output for GEN-Z's own decoder (Android 5+), "FLAC · 24-bit · 96 kHz · HI-RES"
-  badge, bit-perfect USB DAC mode on Android 14+
-- Formats: MP3, AAC/M4A, FLAC, WAV (8–32-bit, float), OGG, Opus, MIDI, ALAC (most devices) via Android;
-  **AIFF/AIFC and DSD (DSF/DFF, DSD64–256)** via GEN-Z's own decoder (DSD is converted to PCM)
-- Audio focus, pause on headphone unplug, optional resume on plug-in
+**Sound**
+- Gapless playback, crossfade, fade in and out, speed and pitch control
+- 10-band graphic equalizer (Android 9+) with presets, bass boost, 3D surround, loudness and reverb
+- Clean output: automatic headroom so EQ boosts never clip, a safety limiter, ReplayGain, TPDF dither
+- Hi-res: native-rate 32-bit float output, format badge (e.g. *FLAC · 24-bit · 96 kHz · HI-RES*),
+  bit-perfect USB DAC mode on Android 14+
+- Plays MP3, AAC/M4A, FLAC, WAV, OGG, Opus, MIDI and ALAC, plus **AIFF and DSD (DSF/DFF)** through
+  GEN-Z's own decoder
 
-**Library**
-- Classic drill-down: Music ▸ Artists ▸ Albums ▸ Songs, plus Genres, Folders, Playlists
-- **Album Flow**: 3D tilted covers, reflections, fling, tap to flip and see tracks
-- Playlists (create, rename, reorder by drag, swipe to remove), Favorites, Recently played,
-  Most played, Recently added; queue with drag-reorder and swipe-to-remove; instant search
-- Tag & cover editor (saved in-app for any file; written into MP3 files on request)
-- "Add music folder" for files Android doesn't index (DSD, AIFF)
+**Look and feel**
+- **34 built-in themes**: devotional, Bollywood, lo-fi, EDM neon, synthwave, hip-hop, rock, jazz,
+  classical, K-pop, glass, dot-matrix, soft UI, neo-brutalist and more
+- Every theme has its own Google Fonts, its own animated progress bar (sparkle, neon, wave, spectrum,
+  8-bit, fire, bubbles, petals, hearts, notes, snow, tape, classic, dot matrix) and its own cover effect
+- **Skin packs**: import, update and export `.zip` packs with your own colours, fonts, icons and
+  background, or design one on the phone in the Theme Editor (see [THEMES.md](THEMES.md))
+- **Cover touch effects**: 33 effects play when you touch the album art, from water ripple and lens
+  flare to blinds, dewdrop, pixelate and the four seasons
+- Album Flow: a 3D album carousel with reflections and a slide-to-unlock style scrubber
+- Progress bars take their colours from each song's cover
+- Bouncy menus, list scroll animations and screen transitions; smooth on 60–144 Hz screens
+- A joyful heart-and-confetti celebration when you favourite a song
 
-**Utilities**
-- Lyrics: synced `.lrc` (next to the song or picked manually), embedded lyrics (MP3, FLAC, M4A);
-  tap a line to jump; floating "desktop" lyrics over other apps
-- Ringtone maker: MP3 / M4A / WAV cut without re-encoding, set as ringtone, notification or alarm
-- Lock screen: media controls on every Android version + optional full-screen lock-screen player
-- Widgets: wide 4×1, cover 2×2, large 4×2 — coloured by the active theme; "Add widget" button (Android 8+)
-- "Open with GEN-Z" from file managers
+**Library and tools**
+- Browse by artist, album, genre, folder and playlist; queue with drag to reorder; instant search
+- Synced and embedded lyrics, plus floating lyrics over other apps
+- Tag and cover editor, ringtone maker, sleep timer, shake to skip
+- Lock-screen controls, an optional full-screen lock-screen player with a charging doodle
+- Home-screen widgets in three sizes, coloured by the active theme
 
-**Look & feel**
-- Skin packs: colours, Google Fonts or your own fonts, icon packs, background image — import,
-  update, export, or build one in the on-phone Theme Editor. See **THEMES.md**
-- 10 built-in themes incl. Retro Clickwheel, Retro Amp, Cassette '84, Vinyl, Glossy 2002, Terminal, Pure Black
-- Gestures: swipe up mini player → Now Playing; swipe down to close it; swipe the cover to skip;
-  double-tap cover to play/pause; swipe songs right = play next, left = add to queue; predictive back
-- Smooth: highest refresh rate (90/120/144 Hz), vsync-driven progress & lyrics, allocation-free
-  album carousel, wide-colour-gamut on capable screens
-- Tablets: text and controls scale up on 7" and 10"+ screens; landscape Now Playing layout
+**Privacy**
+- No internet permission, no ads, no analytics, no accounts. Nothing leaves the phone.
+  See [docs/privacy-policy.html](docs/privacy-policy.html).
 
-**Battery**
-- No background work when stopped; wake lock only while audio plays; sensors and frame updates stop
-  when paused; player and notification released after a configurable idle time.
+---
 
-## Platform limits (honest notes)
+## Download
 
-- **WMA / APE** can't be decoded by Android's built-in decoders; those files are skipped with a message.
-  Adding them would mean bundling FFmpeg (+15–25 MB, LGPL obligations).
-- **DSD** is converted to high-rate PCM. Native DSD / DoP output isn't possible through Android's audio stack.
-- **Bit-perfect** output needs Android 14+ and a USB DAC; Android bypasses effects in that mode.
-- Below Android 14 the system mixer may resample hi-res audio to the device's output rate.
-- The **full-screen lock-screen player** on Android 10+ needs "Display over other apps" (Android blocks
-  apps from opening screens in the background otherwise). Standard lock-screen controls always work.
-- Writing tags into files: MP3 only (other formats keep edits inside GEN-Z). Android 11+ asks permission per file.
+Every push to `main` is built automatically. The latest debug APK and the release bundle are on the
+[`ci-output`](../../tree/ci-output) branch.
+
+## Build it yourself
+
+1. Install **Android Studio** (Ladybug or newer) with Android SDK 36.
+2. Open this folder and let Gradle sync.
+3. Press **Run**, or use *Build → Build APK(s)*.
+
+Release bundle for Google Play: `./gradlew bundleRelease`, signed with your upload key through the
+`GENZ_KEYSTORE`, `GENZ_KEYSTORE_PASSWORD`, `GENZ_KEY_ALIAS` and `GENZ_KEY_PASSWORD` environment
+variables (or the matching GitHub secrets).
+
+> Don't accept Android Studio's offers to upgrade the AndroidX / Material libraries in
+> `app/build.gradle.kts`. They are pinned to the last versions that still support Android 4.4.
 
 ## Project layout
 
 ```
 app/src/main/java/com/jslw/genz/
-  audio/     engines (MediaPlayer + own PCM/DSD decoder), effects, formats, tags, bit-perfect
-  data/      MediaStore scanner, library, SQLite (playlists, favorites, stats), settings
-  playback/  MusicService (queue, gapless, crossfade, session, notification), lyrics, shake, floating lyrics
-  skin/      skin packs, fonts, icon packs, painter
-  ui/        screens (main, Album Flow, Now Playing, EQ, settings, themes, editor, search, tags, ringtone, lock screen)
+  audio/     playback engines (system decoder + own PCM/DSD decoder), effects, formats, tags
+  data/      music scanner, library, playlists and statistics, settings
+  playback/  background playback service, lyrics, shake to skip, floating lyrics
+  skin/      themes and skin packs, fonts, icon packs
+  ui/        all screens; ui/views holds the custom views (progress bars, cover effects, sliders …)
   widget/    home-screen widgets
-app/src/main/assets/skins/   built-in theme files
-app/src/main/res/font/       bundled Google Fonts (OFL)
+app/src/main/assets/skins/   built-in themes (JSON)
+app/src/main/res/font/       bundled Google Fonts
 ```
+
+## Licence
+
+**All rights reserved.** This code is public so it can be viewed. It is not open source. See
+[LICENSE](LICENSE). Third-party components keep their own licences (Apache 2.0, SIL OFL 1.1); see
+`app/src/main/assets/licenses/`.
