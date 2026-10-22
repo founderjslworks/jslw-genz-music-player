@@ -12,8 +12,8 @@
     <AssemblyName>GEN-Z Music</AssemblyName>
     <ApplicationIcon>Assets\genz.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.3.0</Version>
-    <FileVersion>1.3.0.0</FileVersion>
+    <Version>1.4.0</Version>
+    <FileVersion>1.4.0.0</FileVersion>
     <Product>GEN-Z Music</Product>
     <Company>JSL WORKS PVT LTD</Company>
     <Authors>Partho Ghosh</Authors>

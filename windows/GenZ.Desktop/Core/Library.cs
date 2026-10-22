@@ -30,6 +30,10 @@ namespace GenZ.Core
         public string Ext => System.IO.Path.GetExtension(Path ?? "").TrimStart('.').ToUpperInvariant();
         public string DurationText => Library.Format(DurationMs);
         public string AlbumKey => ((AlbumArtist ?? Artist ?? "") + "\u0001" + (Album ?? "")).ToLowerInvariant();
+        public string YearText => Year > 0 ? Year.ToString() : "";
+        public int Plays => Settings.Current.PlayCounts.TryGetValue(Path ?? "", out var n) ? n : 0;
+        public string PlaysText => Plays > 0 ? Plays.ToString() : "";
+        public string ShortFormat => (Ext == "M4A" ? "AAC" : Ext) + (Lossless && Bits > 0 ? " · " + Bits + "-bit" : Bitrate > 0 ? " · " + Bitrate : "");
         public string ArtistLine => string.IsNullOrEmpty(Album) ? Artist : Artist + " · " + Album;
 
         public bool Lossless => Ext == "FLAC" || Ext == "WAV" || Ext == "AIFF" || Ext == "AIF" || Ext == "ALAC" || Ext == "DSF" || Ext == "DFF";

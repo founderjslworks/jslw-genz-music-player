@@ -62,7 +62,7 @@ namespace GenZ
         static string Songs(int n) => n + (n == 1 ? " song" : " songs");
 
         // ================================================================ volume: one slider at a time
-        void UpdateVolumeBox() => BarVolumeBox.Visibility = NpColumn.Width.Value > 0 ? Visibility.Collapsed : Visibility.Visible;
+        void UpdateVolumeBox(bool? open = null) => BarVolumeBox.Visibility = (open ?? NpColumn.Width.Value > 0) ? Visibility.Collapsed : Visibility.Visible;
 
         // ================================================================ session
         void SaveSession()
@@ -92,22 +92,6 @@ namespace GenZ
         }
 
         // ================================================================ extra library views
-        void ShowGroups(string title, List<GroupInfo> groups, bool folders)
-        {
-            ShowGrid(title, groups.Count + (folders ? (groups.Count == 1 ? " folder" : " folders") : (groups.Count == 1 ? " genre" : " genres")));
-            foreach (var g in groups)
-            {
-                var grp = g;
-                var sub = folders ? Songs(g.Songs.Count) + " · " + ShortDir(g.Detail) : g.Subtitle;
-                var tile = Tile(g.Name, sub, g.First, false);
-                tile.ToolTip = folders ? g.Detail : null;
-                tile.MouseLeftButtonUp += (s, e) => { view = View.Detail; ShowList(grp.Name, folders ? grp.Detail : grp.Subtitle, grp.Songs, grp.First); };
-                TileMenu(tile, () => grp.Songs);
-                GridPanel.Children.Add(tile);
-            }
-            Cascade(GridPanel);
-        }
-
         static string ShortDir(string dir)
         {
             var parent = System.IO.Path.GetDirectoryName(dir ?? "");
@@ -303,11 +287,11 @@ namespace GenZ
                 var s = list[0];
                 m.Items.Add(new Separator());
                 var album = Library.Albums.FirstOrDefault(a => a.Key == s.AlbumKey);
-                var goAlbum = Item("Go to album", "IcAlbum", () => { view = View.Detail; ShowList(album.Title, album.Artist + " · " + album.Subtitle, album.Songs, album.First); });
+                var goAlbum = Item("Go to album", "IcAlbum", () => OpenDetail(album.Title, album.Artist + " · " + album.Subtitle, album.Songs, album.First));
                 goAlbum.IsEnabled = album != null;
                 m.Items.Add(goAlbum);
                 var artist = Library.Artists.FirstOrDefault(a => string.Equals(a.Name, s.Artist, StringComparison.CurrentCultureIgnoreCase));
-                var goArtist = Item("Go to artist", "IcPerson", () => { view = View.Detail; ShowList(artist.Name, artist.Subtitle, artist.Songs, artist.First); });
+                var goArtist = Item("Go to artist", "IcPerson", () => OpenDetail(artist.Name, artist.Subtitle, artist.Songs, artist.First));
                 goArtist.IsEnabled = artist != null;
                 m.Items.Add(goArtist);
                 m.Items.Add(Item("Show in folder", "IcFolder", () => ShowInFolder(s.Path)));

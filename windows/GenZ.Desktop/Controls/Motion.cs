@@ -213,29 +213,64 @@ namespace GenZ.Controls
         }
     }
 
-    /// <summary>Staggered, springy entrance for the sections of a form-like screen (Equalizer, Settings, Animations).</summary>
+    /// <summary>
+    /// Staggered, springy entrance for form-like screens (Equalizer, Settings, Animations, Themes): every section, row and
+    /// pill arrives one after another. Vertical stacks are opened up so their rows animate individually.
+    /// </summary>
     public static class Stagger
     {
-        public static void Enter(Panel container, double startDelay = 60, double step = 45)
+        public static void Enter(Panel container, double startDelay = 60, double step = 38)
         {
             if (Settings.Current.ReduceMotion) return;
             int i = 0;
-            foreach (UIElement el in container.Children)
+            Walk(container, startDelay, step, ref i);
+        }
+
+        static void Walk(Panel panel, double startDelay, double step, ref int i)
+        {
+            foreach (UIElement el in panel.Children)
             {
                 if (!(el is FrameworkElement v) || v.Visibility != Visibility.Visible) continue;
-                var delay = Settings.Ms(startDelay + i * step);
-                var dur = Settings.Ms(520);
-                v.Opacity = 0;
-                v.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, Settings.Ms(320)) { BeginTime = delay });
-                var st = new ScaleTransform(0.96, 0.96); var tt = new TranslateTransform(0, 36);
-                var g = new TransformGroup(); g.Children.Add(st); g.Children.Add(tt);
-                v.RenderTransformOrigin = new Point(0.5, 0.5); v.RenderTransform = g;
-                var ease = new BackEase { Amplitude = 0.45, EasingMode = EasingMode.EaseOut };
-                tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(36, 0, dur) { BeginTime = delay, EasingFunction = ease });
-                var sc = new DoubleAnimation(0.96, 1, dur) { BeginTime = delay, EasingFunction = ease };
-                st.BeginAnimation(ScaleTransform.ScaleXProperty, sc); st.BeginAnimation(ScaleTransform.ScaleYProperty, sc);
-                if (++i > 30) break;
+                if (i > 70) { v.Opacity = 1; continue; }
+                if (v is StackPanel sp && sp.Orientation == Orientation.Vertical && sp.Children.Count > 1) { Walk(sp, startDelay, step, ref i); continue; }
+                if (v is WrapPanel wp && wp.Children.Count > 0)
+                {
+                    // pills pop in quickly one after another
+                    double baseDelay = startDelay + i * step;
+                    int k = 0;
+                    foreach (UIElement c in wp.Children) if (c is FrameworkElement f) Pop(f, baseDelay + k++ * 18);
+                    i++;
+                    continue;
+                }
+                Rise(v, startDelay + i * step);
+                i++;
             }
+        }
+
+        public static void Rise(FrameworkElement v, double delayMs, double distance = 36)
+        {
+            var delay = Settings.Ms(delayMs);
+            var dur = Settings.Ms(520);
+            v.Opacity = 0;
+            v.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, Settings.Ms(320)) { BeginTime = delay });
+            var st = new ScaleTransform(0.96, 0.96); var tt = new TranslateTransform(0, distance);
+            var g = new TransformGroup(); g.Children.Add(st); g.Children.Add(tt);
+            v.RenderTransformOrigin = new Point(0.5, 0.5); v.RenderTransform = g;
+            var ease = new BackEase { Amplitude = 0.45, EasingMode = EasingMode.EaseOut };
+            tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(distance, 0, dur) { BeginTime = delay, EasingFunction = ease });
+            var sc = new DoubleAnimation(0.96, 1, dur) { BeginTime = delay, EasingFunction = ease };
+            st.BeginAnimation(ScaleTransform.ScaleXProperty, sc); st.BeginAnimation(ScaleTransform.ScaleYProperty, sc);
+        }
+
+        public static void Pop(FrameworkElement v, double delayMs)
+        {
+            var delay = Settings.Ms(delayMs);
+            v.Opacity = 0;
+            v.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, Settings.Ms(220)) { BeginTime = delay });
+            var st = new ScaleTransform(0.6, 0.6);
+            v.RenderTransformOrigin = new Point(0.5, 0.5); v.RenderTransform = st;
+            var a = new DoubleAnimation(0.6, 1, Settings.Ms(420)) { BeginTime = delay, EasingFunction = new BackEase { Amplitude = 0.6, EasingMode = EasingMode.EaseOut } };
+            st.BeginAnimation(ScaleTransform.ScaleXProperty, a); st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
         }
     }
 
@@ -263,7 +298,12 @@ namespace GenZ.Controls
                 var dpi = VisualTreeHelper.GetDpi(area);
                 var bmp = new RenderTargetBitmap((int)Math.Ceiling(area.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(area.ActualHeight * dpi.DpiScaleY),
                     96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
-                bmp.Render(area);
+                // draw through a VisualBrush: rendering the element directly would include its offset in the window and shift the picture
+                var dv = new DrawingVisual();
+                using (var ctx = dv.RenderOpen())
+                    ctx.DrawRectangle(new VisualBrush(area) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top },
+                        null, new Rect(0, 0, area.ActualWidth, area.ActualHeight));
+                bmp.Render(dv);
                 bmp.Freeze();
                 var img = new Image { Source = bmp, Stretch = Stretch.Fill, IsHitTestVisible = false, Width = area.ActualWidth, Height = area.ActualHeight,
                     HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };

@@ -106,6 +106,13 @@ namespace GenZ.Core
             var g = new LinearGradientBrush(a, b, vertical ? 90 : 0);
             g.Freeze(); return g;
         }
+        static Color Mix(Color a, Color b) => Color.FromRgb((byte)((a.R + b.R) / 2), (byte)((a.G + b.G) / 2), (byte)((a.B + b.B) / 2));
+        static double Lum(Color c)
+        {
+            double f(byte v) { double x = v / 255.0; return x <= 0.03928 ? x / 12.92 : Math.Pow((x + 0.055) / 1.055, 2.4); }
+            return 0.2126 * f(c.R) + 0.7152 * f(c.G) + 0.0722 * f(c.B);
+        }
+        static double Contrast(Color a, Color b) { double x = Lum(a), y = Lum(b); return (Math.Max(x, y) + 0.05) / (Math.Min(x, y) + 0.05); }
         public static Color WithAlpha(Color c, byte a) => Color.FromArgb(a, c.R, c.G, c.B);
 
         public static void Apply(Theme t)
@@ -119,7 +126,13 @@ namespace GenZ.Core
             r["SurfaceBrush"] = B(t.C("surface", t.Bg));
             r["SurfaceSoftBrush"] = B(WithAlpha(t.C("surface", t.Bg), 200));
             r["HeaderBrush"] = G(t.Header, t.HeaderEnd);
-            r["HeaderTextBrush"] = B(t.C("headerText", Colors.White));
+            var htext = t.C("headerText", Colors.White);
+            r["HeaderTextBrush"] = B(htext);
+            // title-bar icons follow the theme: its accent when that reads well on the header, else the header text colour
+            var mid = Mix(t.Header, t.HeaderEnd);
+            r["HeaderIconBrush"] = B(Contrast(t.Accent, mid) >= 3 ? t.Accent : htext);
+            r["HeaderHoverBrush"] = B(WithAlpha(htext, 34));
+            r["HeaderPressBrush"] = B(WithAlpha(htext, 60));
             r["TextBrush"] = B(text);
             r["Text2Brush"] = B(text2);
             r["AccentBrush"] = B(t.Accent);

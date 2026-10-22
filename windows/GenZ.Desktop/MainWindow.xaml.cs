@@ -47,13 +47,15 @@ namespace GenZ
             Player.TrackChanged += OnTrackChanged;
             Player.StateChanged += OnPlayerState;
             Library.Changed += OnLibraryChanged;
-            ThemeManager.Changed += () => { if (view == View.Themes) ShowThemes(); UpdateToggles(); };
+            ThemeManager.Changed += () => { if (view == View.Themes) ShowView(View.Themes, true); UpdateToggles(); };
             timer.Tick += (s, e) => Tick();
             timer.Start();
 
             StateChanged += (s, e) =>
             {
                 Root.Margin = new Thickness(0);
+                MaxBtn.Tag = FindResource(WindowState == WindowState.Maximized ? "IcRestore" : "IcMax");
+                MaxBtn.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximize";
                 if (WindowState == WindowState.Minimized && Settings.Current.AutoPip && Player.IsPlaying && pip == null) EnterPip(false);
                 else if (WindowState != WindowState.Minimized && pip != null) { pip.Close(); pip = null; }
             };
@@ -64,6 +66,7 @@ namespace GenZ
             Loaded += (s, e) => { ApplyScale(); FitCover(); };
             FitWindowToScreen();
             PreviewKeyDown += OnKeys;
+            PreviewMouseDown += (s, e) => { if (e.ChangedButton == MouseButton.XButton1 && view == View.Detail) { OnBack(this, null); e.Handled = true; } };
             SourceInitialized += (s, e) => RegisterMediaKeys();
             Closing += (s, e) => { Settings.Current.NowPlayingOpen = NpColumn.Width.Value > 0; SaveSession(); };
 
@@ -122,14 +125,14 @@ namespace GenZ
         void ShowPage(FrameworkElement page)
         {
             var host = (Panel)Pages.Parent;
-            if (!quietNav && transOld == null)
+            if (!quietNav && !noTransition && transOld == null)
             {
                 var vis = Pages.Children.OfType<FrameworkElement>().FirstOrDefault(p => p.Visibility == Visibility.Visible);
                 if (vis != null && vis != page) transOld = Controls.Transitions.Capture(Pages, host);
             }
             foreach (FrameworkElement p in Pages.Children) p.Visibility = p == page ? Visibility.Visible : Visibility.Collapsed;
             var old = transOld; transOld = null;
-            if (quietNav) { if (old != null) host.Children.Remove(old); return; }
+            if (quietNav || noTransition) { if (old != null) host.Children.Remove(old); return; }
             Pages.ClipToBounds = true;
             Controls.Transitions.Run(Settings.Current.Transition, page, old, host, Pages);
             if (page is ScrollViewer sv && sv.Content is Panel form) Controls.Stagger.Enter(form);
@@ -140,16 +143,20 @@ namespace GenZ
             if (Pages == null) return;
             quietNav = quiet;
             // capture the screen first: the song list page is reused for songs, favourites, playlists…
-            if (!quiet && transOld == null && Pages.IsVisible) transOld = Controls.Transitions.Capture(Pages, (Panel)Pages.Parent);
+            if (!quiet && !noTransition && transOld == null && Pages.IsVisible) transOld = Controls.Transitions.Capture(Pages, (Panel)Pages.Parent);
             view = v;
             try
             {
                 switch (v)
                 {
-                    case View.Songs: ShowList("Songs", $"{Library.Songs.Count} songs", Library.Songs, null); break;
+                    case View.Songs: ShowList("Songs", $"{Library.Songs.Count} songs", SortSongs(Library.Songs, "songs", "title"), null); break;
+                    case View.Search:
+                        var found = Library.Search(SearchBox.Text).ToList();
+                        ShowList("Search", $"{found.Count} results for “{SearchBox.Text.Trim()}”", SortSongs(found, "search", "title"), null); break;
+                    case View.Detail: if (reshowDetail != null) reshowDetail(); else ShowView(View.Songs, quiet); break;
                     case View.Favourites:
                         var fav = Library.Songs.Where(s => Settings.Current.Favourites.Contains(s.Path)).ToList();
-                        ShowList("Favourites", fav.Count == 0 ? "Click the heart on Now Playing, or right-click a song › Add to Favourites" : $"{fav.Count} songs", fav, null); break;
+                        ShowList("Favourites", fav.Count == 0 ? "Click the heart on Now Playing, or right-click a song › Add to Favourites" : $"{fav.Count} songs", SortSongs(fav, "favs", "title"), null); break;
                     case View.Queue: ShowList("Up next", Player.Queue.Count == 0 ? "Nothing queued yet – right-click songs › Play next / Add to Up next" : $"{Player.Queue.Count} songs · drag to reorder", Player.Queue, null); break;
                     case View.Recent:
                         var rec = RecentSongs();
@@ -164,7 +171,7 @@ namespace GenZ
                     case View.Folders: ShowGroups("Folders", Library.Folders, true); break;
                     case View.Themes: ShowThemes(); break;
                     case View.Anim: BuildAnimPage(); ShowPage(PageAnim); break;
-                    case View.Eq: ShowPage(PageEq); break;
+                    case View.Eq: ShowPage(PageEq); if (!quiet && !noTransition) EqIntro(); break;
                     case View.About: ShowAbout(); break;
                 }
             }
@@ -187,6 +194,7 @@ namespace GenZ
             ListEmpty.Text = songs.Count == 0 ? sub : "";
             ListEmpty.Visibility = songs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             ListMore.Visibility = view == View.Queue || view == View.Playlist ? Visibility.Visible : Visibility.Collapsed;
+            ApplySongMode();
             if (coverOf != null)
             {
                 ListCover.Visibility = Visibility.Visible;
@@ -201,10 +209,9 @@ namespace GenZ
         void OnSearch(object sender, TextChangedEventArgs e)
         {
             SearchHint.Visibility = string.IsNullOrEmpty(SearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
-            if (string.IsNullOrWhiteSpace(SearchBox.Text)) { if (view == View.Search) ShowView(View.Songs); return; }
-            view = View.Search;
-            var r = Library.Search(SearchBox.Text).ToList();
-            ShowList("Search", $"{r.Count} results for “{SearchBox.Text.Trim()}”", r, null);
+            if (string.IsNullOrWhiteSpace(SearchBox.Text)) { if (view == View.Search) ShowView(View.Songs, true); return; }
+            bool first = view != View.Search;
+            ShowView(View.Search, !first);
         }
 
         void OnSongDoubleClick(object sender, MouseButtonEventArgs e) { }
@@ -254,46 +261,21 @@ namespace GenZ
         void ShowGrid(string title, string sub)
         {
             GridTitle.Text = title; GridSub.Text = sub;
-            GridPanel.Children.Clear();
+            GridPanel.Children.Clear(); GridRows.Children.Clear();
+            GridHeader.Children.Clear(); GridHeader.ColumnDefinitions.Clear(); GridHeader.Visibility = Visibility.Collapsed;
+            GridTools.Children.Clear();
             ShowPage(PageGrid);
         }
 
-        void ShowAlbums()
+        FrameworkElement Tile(string title, string sub, Song coverOf, bool round, int size = 168)
         {
-            ShowGrid("Albums", $"{Library.Albums.Count} albums");
-            foreach (var a in Library.Albums)
-            {
-                var tile = Tile(a.Title, a.Artist, a.First, false);
-                var album = a;
-                tile.MouseLeftButtonUp += (s, e) => { view = View.Detail; ShowList(album.Title, album.Artist + " · " + album.Subtitle, album.Songs, album.First); };
-                TileMenu(tile, () => album.Songs);
-                GridPanel.Children.Add(tile);
-            }
-            Cascade(GridPanel);
-        }
-
-        void ShowArtists()
-        {
-            ShowGrid("Artists", $"{Library.Artists.Count} artists");
-            foreach (var a in Library.Artists)
-            {
-                var tile = Tile(a.Name, a.Subtitle, a.First, true);
-                var artist = a;
-                tile.MouseLeftButtonUp += (s, e) => { view = View.Detail; ShowList(artist.Name, artist.Subtitle, artist.Songs, artist.First); };
-                TileMenu(tile, () => artist.Songs);
-                GridPanel.Children.Add(tile);
-            }
-            Cascade(GridPanel);
-        }
-
-        FrameworkElement Tile(string title, string sub, Song coverOf, bool round)
-        {
-            var art = new Border { Width = 168, Height = 168, CornerRadius = new CornerRadius(round ? 84 : 16), Background = (Brush)FindResource("SurfaceBrush") };
-            art.Child = new Path { Data = (Geometry)FindResource(round ? "IcPerson" : "IcAlbum"), Fill = (Brush)FindResource("AccentBrush"), Width = 46, Height = 46, Stretch = Stretch.Uniform, Opacity = 0.7 };
-            SetCoverAsync(art, coverOf, 336);
-            var t1 = new TextBlock { Text = title, FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 10, 2, 0), HorizontalAlignment = round ? HorizontalAlignment.Center : HorizontalAlignment.Left };
-            var t2 = new TextBlock { Text = sub, FontSize = 12, Margin = new Thickness(2, 2, 2, 0), Foreground = (Brush)FindResource("Text2Brush"), HorizontalAlignment = round ? HorizontalAlignment.Center : HorizontalAlignment.Left };
-            var sp = new StackPanel { Width = 168, Margin = new Thickness(12, 8, 12, 14), Cursor = Cursors.Hand, Background = Brushes.Transparent };
+            var art = new Border { Width = size, Height = size, CornerRadius = new CornerRadius(round ? size / 2.0 : (size < 140 ? 12 : 16)), Background = (Brush)FindResource("SurfaceBrush") };
+            art.Child = new Path { Data = (Geometry)FindResource(round ? "IcPerson" : "IcAlbum"), Fill = (Brush)FindResource("AccentBrush"), Width = size * 0.27, Height = size * 0.27, Stretch = Stretch.Uniform, Opacity = 0.7 };
+            SetCoverAsync(art, coverOf, size * 2);
+            var t1 = new TextBlock { Text = title, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = t1fs, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 10, 2, 0), HorizontalAlignment = round ? HorizontalAlignment.Center : HorizontalAlignment.Left };
+            var t2 = new TextBlock { Text = sub, TextTrimming = TextTrimming.CharacterEllipsis, FontSize = size < 140 ? 11.5 : 12, Margin = new Thickness(2, 2, 2, 0), Foreground = (Brush)FindResource("Text2Brush"), HorizontalAlignment = round ? HorizontalAlignment.Center : HorizontalAlignment.Left };
+            var t1fs = size < 140 ? 13 : 14;
+            var sp = new StackPanel { Width = size, Margin = new Thickness(size < 140 ? 9 : 12, 8, size < 140 ? 9 : 12, 14), Cursor = Cursors.Hand, Background = Brushes.Transparent };
             sp.Children.Add(art); sp.Children.Add(t1); sp.Children.Add(t2);
             var st = new ScaleTransform(1, 1); art.RenderTransformOrigin = new Point(0.5, 0.5); art.RenderTransform = st;
             sp.MouseEnter += (s, e) => { Spring(st, 1.04); };
@@ -318,61 +300,6 @@ namespace GenZ
             target.Background = Covers.Brush(bmp);
             target.Opacity = 0;
             target.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(220)));
-        }
-
-        // ---------------------------------------------------------------- themes
-        void ShowThemes()
-        {
-            ShowGrid("Themes", $"{ThemeManager.All.Count} themes · the same looks as GEN-Z on Android");
-            foreach (var t in ThemeManager.All)
-            {
-                var theme = t;
-                var card = new Border
-                {
-                    Width = 220, Height = 156, CornerRadius = new CornerRadius(16), Margin = new Thickness(10), Cursor = Cursors.Hand,
-                    Background = new SolidColorBrush(t.Bg), ClipToBounds = true,
-                    BorderBrush = theme == ThemeManager.Current ? (Brush)FindResource("AccentBrush") : new SolidColorBrush(Color.FromArgb(40, 128, 128, 128)),
-                    BorderThickness = new Thickness(theme == ThemeManager.Current ? 3 : 1)
-                };
-                var g = new Grid();
-                g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(62) });
-                g.RowDefinitions.Add(new RowDefinition());
-                var head = new Border { Background = new LinearGradientBrush(t.Header, t.HeaderEnd, 0), CornerRadius = new CornerRadius(14, 14, 0, 0) };
-                head.Child = new TextBlock
-                {
-                    Text = t.Name, FontFamily = ThemeManager.Font(t.DisplayFont), FontSize = 19, FontWeight = FontWeights.Bold,
-                    Foreground = new SolidColorBrush(t.C("headerText", Colors.White)), Margin = new Thickness(14, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center
-                };
-                g.Children.Add(head);
-                var body = new StackPanel { Margin = new Thickness(14, 10, 14, 10) };
-                Grid.SetRow(body, 1);
-                var sw = new StackPanel { Orientation = Orientation.Horizontal };
-                foreach (var key in new[] { "accent", "header", "headerEnd", "surface", "text" })
-                    sw.Children.Add(new Ellipse { Width = 20, Height = 20, Margin = new Thickness(0, 0, 6, 0), Fill = new SolidColorBrush(t.C(key, Colors.Gray)), Stroke = new SolidColorBrush(Color.FromArgb(60, 128, 128, 128)) });
-                body.Children.Add(sw);
-                var bar = new Border { Height = 5, CornerRadius = new CornerRadius(2.5), Margin = new Thickness(0, 14, 40, 0), HorizontalAlignment = HorizontalAlignment.Stretch };
-                var pcs = t.ProgressColors.Count > 0 ? t.ProgressColors : new List<Color> { t.Header, t.Accent, t.HeaderEnd };
-                var pg = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0) };
-                for (int i = 0; i < pcs.Count; i++) pg.GradientStops.Add(new GradientStop(pcs[i], pcs.Count == 1 ? 0 : (double)i / (pcs.Count - 1)));
-                bar.Background = pg;
-                body.Children.Add(bar);
-                body.Children.Add(new TextBlock
-                {
-                    Text = (t.Dark ? "Dark" : "Light") + " · " + Cap(t.ProgressStyle) + " bar",
-                    FontFamily = ThemeManager.Font(t.Font), FontSize = 11, Margin = new Thickness(0, 10, 0, 0),
-                    Foreground = new SolidColorBrush(t.C("textSecondary", Colors.Gray))
-                });
-                g.Children.Add(body);
-                card.Child = g;
-                var st = new ScaleTransform(1, 1); card.RenderTransformOrigin = new Point(0.5, 0.5); card.RenderTransform = st;
-                card.MouseEnter += (s, e) => Spring(st, 1.04);
-                card.MouseLeave += (s, e) => Spring(st, 1.0);
-                card.MouseLeftButtonUp += (s, e) => { ThemeManager.Apply(theme); Settings.Save(); RefreshCoverGlow(); };
-                var holder = new Border { Child = card };
-                Controls.Bounce.Press(holder);
-                GridPanel.Children.Add(holder);
-            }
-            Cascade(GridPanel);
         }
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? "" : char.ToUpper(s[0]) + s.Substring(1);
@@ -770,19 +697,13 @@ namespace GenZ
         void OnMax(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
         void OnClose(object sender, RoutedEventArgs e) => Close();
 
-        void OnTogglePanel(object sender, RoutedEventArgs e)
-        {
-            bool open = NpColumn.Width.Value > 0;
-            NpColumn.Width = new GridLength(open ? 0 : 380);
-            Settings.Current.NowPlayingOpen = !open;
-            UpdateVolumeBox();
-        }
 
         void OnKeys(object sender, KeyEventArgs e)
         {
             bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
             if (e.Key == Key.F && ctrl) { SearchBox.Focus(); SearchBox.SelectAll(); e.Handled = true; }
             else if (e.Key == Key.P && ctrl) { OnPip(this, null); e.Handled = true; }
+            else if ((e.Key == Key.Left && (Keyboard.Modifiers & ModifierKeys.Alt) != 0) || (e.SystemKey == Key.Left && (Keyboard.Modifiers & ModifierKeys.Alt) != 0)) { OnBack(this, null); e.Handled = true; }
             else if (e.Key == Key.L && ctrl) { OnLyricsToggle(this, null); e.Handled = true; }
             else if (e.Key == Key.I && ctrl) { EditSong(SongList.IsKeyboardFocusWithin && SongList.SelectedItem is Song sel ? sel : Player.Current ?? shownSong); e.Handled = true; }
             else if (e.Key == Key.N && ctrl) { OnNewPlaylist(this, null); e.Handled = true; }

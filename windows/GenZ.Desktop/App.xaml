@@ -12,6 +12,9 @@
             <GradientStop Color="#F107A3" Offset="1" />
         </LinearGradientBrush>
         <SolidColorBrush x:Key="HeaderTextBrush" Color="White" />
+        <SolidColorBrush x:Key="HeaderIconBrush" Color="White" />
+        <SolidColorBrush x:Key="HeaderHoverBrush" Color="#22FFFFFF" />
+        <SolidColorBrush x:Key="HeaderPressBrush" Color="#3CFFFFFF" />
         <SolidColorBrush x:Key="TextBrush" Color="#F7F5FF" />
         <SolidColorBrush x:Key="Text2Brush" Color="#B2ACD6" />
         <SolidColorBrush x:Key="AccentBrush" Color="#FF3D9A" />
@@ -54,14 +57,23 @@
         <Geometry x:Key="IcVolume">M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z</Geometry>
         <Geometry x:Key="IcQueue">M3,13H5V11H3V13M3,17H5V15H3V17M3,9H5V7H3V9M7,13H21V11H7V13M7,17H21V15H7V17M7,7V9H21V7H7Z</Geometry>
         <Geometry x:Key="IcInfo">M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z</Geometry>
-        <Geometry x:Key="IcMin">M5,11H19V13H5V11Z</Geometry>
-        <Geometry x:Key="IcMax">M5,5H19V19H5V5M7,9V17H17V9H7Z</Geometry>
+        <Geometry x:Key="IcMin">M4,11.2H20V12.8H4Z</Geometry>
+        <Geometry x:Key="IcMax">M4,4H20V20H4V4M5.6,5.6V18.4H18.4V5.6H5.6Z</Geometry>
+        <Geometry x:Key="IcRestore">M4,8H16V20H4V8M5.6,9.6V18.4H14.4V9.6H5.6M8,4H20V16H17.6V14.4H18.4V5.6H9.6V6.4H8V4Z</Geometry>
         <Geometry x:Key="IcClose">M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z</Geometry>
         <Geometry x:Key="IcPip">M19,11H11V17H19V11M23,19V5C23,3.88 22.1,3 21,3H3A2,2 0 0,0 1,5V19A2,2 0 0,0 3,21H21A2,2 0 0,0 23,19M21,19H3V4.97H21V19Z</Geometry>
         <Geometry x:Key="IcExpand">M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3H14M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z</Geometry>
         <Geometry x:Key="IcSpark">M12,1L9.5,9.5L1,12L9.5,14.5L12,23L14.5,14.5L23,12L14.5,9.5L12,1M19,2L18,5L15,6L18,7L19,10L20,7L23,6L20,5L19,2Z</Geometry>
         <Geometry x:Key="IcPanel">M3,4H21V20H3V4M5,6V18H14V6H5M16,6V18H19V6H16Z</Geometry>
 
+        <Geometry x:Key="IcViewList">M9,5V9H21V5M9,19H21V15H9M9,14H21V10H9M4,9H8V5H4M4,19H8V15H4M4,14H8V10H4V14Z</Geometry>
+        <Geometry x:Key="IcViewCompact">M4,5V7H21V5M4,11H21V9H4M4,19H21V17H4M4,15H21V13H4V15Z</Geometry>
+        <Geometry x:Key="IcViewGrid">M3,11H11V3H3M3,21H11V13H3M13,21H21V13H13M13,3V11H21V3</Geometry>
+        <Geometry x:Key="IcViewSmall">M3,9H7V5H3V9M3,14H7V10H3V14M8,14H12V10H8V14M13,14H17V10H13V14M8,9H12V5H8V9M13,5V9H17V5H13M18,14H22V10H18V14M3,19H7V15H3V19M8,19H12V15H8V19M13,19H17V15H13V19M18,19H22V15H18V19M18,5V9H22V5H18Z</Geometry>
+        <Geometry x:Key="IcViewDetails">M5,4H19A2,2 0 0,1 21,6V18A2,2 0 0,1 19,20H5A2,2 0 0,1 3,18V6A2,2 0 0,1 5,4M5,8V12H11V8H5M13,8V12H19V8H13M5,14V18H11V14H5M13,14V18H19V14H13Z</Geometry>
+        <Geometry x:Key="IcViewCovers">M3,4H9V10H3V4M11,5V7H21V5H11M3,14H9V20H3V14M11,15V17H21V15H11M11,8V9H18V8H11M11,18V19H18V18H11Z</Geometry>
+        <Geometry x:Key="IcSort">M18,21L14,17H17V7H14L18,3L22,7H19V17H22M2,19V17H12V19M2,13V11H9V13M2,7V5H6V7H2Z</Geometry>
+        <Geometry x:Key="IcBack">M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z</Geometry>
         <Geometry x:Key="IcLyrics">M14,17H7V15H14M17,13H7V11H17M17,9H7V7H17M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3Z</Geometry>
         <Geometry x:Key="IcPlaylist">M15,6H3V8H15V6M15,10H3V12H15V10M3,16H11V14H3V16M17,6V14.18C16.69,14.07 16.35,14 16,14A3,3 0 0,0 13,17A3,3 0 0,0 16,20A3,3 0 0,0 19,17V8H22V6H17Z</Geometry>
         <Geometry x:Key="IcPlaylistAdd">M3,16H10V14H3M18,14V10H16V14H12V16H16V20H18V16H22V14M14,6H3V8H14M14,10H3V12H14V10Z</Geometry>
@@ -343,6 +355,53 @@
             </Setter>
         </Style>
     
+
+        <!-- Title-bar buttons in the theme's colours (rounded hover like Windows 11; close turns red) -->
+        <Style x:Key="TitleButton" TargetType="Button">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="Foreground" Value="{DynamicResource HeaderIconBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" CornerRadius="10" Background="Transparent">
+                            <Path x:Name="icon" Data="{TemplateBinding Tag}" Fill="{TemplateBinding Foreground}" Stretch="Uniform"
+                                  Width="18" Height="18" RenderTransformOrigin="0.5,0.5">
+                                <Path.RenderTransform><ScaleTransform /></Path.RenderTransform>
+                            </Path>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bg" Property="Background" Value="{DynamicResource HeaderHoverBrush}" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{DynamicResource HeaderPressBrush}" />
+                                <Setter TargetName="icon" Property="RenderTransform"><Setter.Value><ScaleTransform ScaleX="0.86" ScaleY="0.86" /></Setter.Value></Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TitleCloseButton" TargetType="Button" BasedOn="{StaticResource TitleButton}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" CornerRadius="10" Background="Transparent">
+                            <Path x:Name="icon" Data="{TemplateBinding Tag}" Fill="{TemplateBinding Foreground}" Stretch="Uniform" Width="16" Height="16" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#E81123" />
+                                <Setter TargetName="icon" Property="Fill" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="bg" Property="Background" Value="#B10D1A" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <!-- Right-click menus in the current theme -->
         <Style TargetType="ContextMenu">
             <Setter Property="OverridesDefaultStyle" Value="True" />

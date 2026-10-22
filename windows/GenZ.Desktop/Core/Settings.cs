@@ -49,6 +49,12 @@ namespace GenZ.Core
         public int LastIndex { get; set; } = -1;
         public long LastPositionMs { get; set; }
 
+        // how each page is shown (grid / small / list / details …) and sorted
+        public Dictionary<string, string> ViewModes { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> SortModes { get; set; } = new Dictionary<string, string>();
+        public string Mode(string page, string def) => ViewModes != null && ViewModes.TryGetValue(page, out var v) ? v : def;
+        public string Sort(string page, string def) => SortModes != null && SortModes.TryGetValue(page, out var v) ? v : def;
+
         // listening history
         public Dictionary<string, int> PlayCounts { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         public List<string> Recent { get; set; } = new List<string>();
@@ -103,6 +109,8 @@ namespace GenZ.Core
             while (Current.EqGains.Count < 10) Current.EqGains.Add(0);
             if (Current.PlayCounts == null) Current.PlayCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             else Current.PlayCounts = new Dictionary<string, int>(Current.PlayCounts, StringComparer.OrdinalIgnoreCase);
+            if (Current.ViewModes == null) Current.ViewModes = new Dictionary<string, string>();
+            if (Current.SortModes == null) Current.SortModes = new Dictionary<string, string>();
             if (Current.Recent == null) Current.Recent = new List<string>();
             if (Current.LastQueue == null) Current.LastQueue = new List<string>();
         }
