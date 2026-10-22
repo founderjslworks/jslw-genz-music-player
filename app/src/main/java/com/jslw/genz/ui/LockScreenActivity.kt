@@ -81,6 +81,12 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
         progress.setIndicatorColor(SkinManager.current.accent)
 
         findViewById<View>(R.id.lockPlayWrap).setOnClickListener { Player.service?.toggle() }
+        findViewById<com.jslw.genz.ui.views.SlideToUnlockBar>(R.id.lockSlide).apply {
+            text = "slide to unlock"
+            typeface = SkinManager.current.typeface
+            tint = SkinManager.current.accent
+            onUnlock = { close() }
+        }
         findViewById<View>(R.id.lockNext).setOnClickListener { Player.service?.next() }
         findViewById<View>(R.id.lockPrev).setOnClickListener { Player.service?.prev() }
 

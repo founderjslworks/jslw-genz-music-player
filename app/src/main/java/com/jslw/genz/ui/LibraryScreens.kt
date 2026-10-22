@@ -77,9 +77,10 @@ class HomeFragment : BaseListFragment() {
     private val adapter = RowAdapter()
 
     private val footer = Brand.FooterAdapter()
+    private var bouncedView: View? = null
 
     override fun build() {
-        if (list.adapter == null) list.adapter = ConcatAdapter(adapter, footer)
+        if (list.adapter == null) { adapter.bouncy = true; list.adapter = ConcatAdapter(adapter, footer) }
         val skin = SkinManager.current
         val rows = ArrayList<Row>()
         val loaded = Library.loaded
@@ -106,6 +107,8 @@ class HomeFragment : BaseListFragment() {
         rows += Row("Sleep Timer", icon = R.drawable.ic_timer, iconColor = 0xFF5E5CE6.toInt(), onClick = { Player.with(requireContext()) { Sheets.sleepTimer(requireActivity()) } })
         rows += Row("Settings", icon = R.drawable.ic_settings, iconColor = 0xFF8E8E93.toInt(), chevron = true, onClick = { startScreen(SettingsActivity::class.java) })
         adapter.rows = rows
+        // bounce in every time the menu appears (first launch and when coming back to it)
+        if (bouncedView !== view) { bouncedView = view; com.jslw.genz.util.Bounce.enter(list) }
         if (loaded && Library.songs.isEmpty()) showEmpty("No music found.\nCopy songs to your phone's Music folder, or add a folder in Settings.")
         else showEmpty(null)
     }

@@ -81,8 +81,10 @@ class SettingsActivity : BaseActivity() {
         build()
         val list = findViewById<RecyclerView>(R.id.list)
         list.layoutManager = LinearLayoutManager(this)
+        com.jslw.genz.util.Smooth.tuneList(list)
         adapter = Adapter()
         list.adapter = adapter
+        com.jslw.genz.util.Bounce.enter(list)
     }
 
     override fun onResume() {
@@ -95,6 +97,8 @@ class SettingsActivity : BaseActivity() {
         items += Item.Action("Theme", { SkinManager.current.name }) { startActivity(Intent(this, ThemesActivity::class.java)) }
         items += Item.Toggle("Album-art colours on Now Playing", "Background follows the cover (for themes that allow it)",
             { Prefs.npDynamicColors }, { Prefs.npDynamicColors = it })
+        items += Item.Toggle("Progress bar follows the song", "Colours of the bar change with each song's cover",
+            { Prefs.progressFollowsSong }, { Prefs.progressFollowsSong = it })
         items += Item.Toggle("High refresh rate", "Use the screen's fastest mode (90 / 120 / 144 Hz) for fluid animation",
             { Prefs.highRefresh }, { Prefs.highRefresh = it; recreate() })
         items += Item.Toggle("Keep screen on in Now Playing", "Handy for lyrics or in a dock", { Prefs.keepScreenOn }, { Prefs.keepScreenOn = it })
@@ -288,6 +292,7 @@ class SettingsActivity : BaseActivity() {
             val inf = LayoutInflater.from(parent.context)
             val v = inf.inflate(if (viewType == 1) R.layout.item_section else R.layout.item_setting, parent, false)
             SkinPainter.apply(v)
+            if (viewType == 0) com.jslw.genz.util.Bounce.press(v)
             return object : RecyclerView.ViewHolder(v) {}
         }
 

@@ -142,6 +142,11 @@ object Prefs {
         get() = s("transition", "genz")
         set(v) = put { putString("transition", v) }
 
+    /** Progress bars take their colours from each song's cover. */
+    var progressFollowsSong: Boolean
+        get() = b("progress_song", true)
+        set(v) = put { putBoolean("progress_song", v) }
+
     var keepScreenOn: Boolean
         get() = b("keep_screen_on", false)
         set(v) = put { putBoolean("keep_screen_on", v) }

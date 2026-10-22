@@ -152,13 +152,10 @@
                 android:src="@drawable/ic_next" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/lockHint"
-            android:layout_width="wrap_content"
+        <com.jslw.genz.ui.views.SlideToUnlockBar
+            android:id="@+id/lockSlide"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="⌃  Swipe up to close"
-            android:textColor="#99FFFFFF"
-            android:textSize="@dimen/text_13" />
+            android:layout_marginTop="18dp" />
     </LinearLayout>
 </FrameLayout>

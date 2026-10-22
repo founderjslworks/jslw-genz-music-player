@@ -72,6 +72,8 @@ class RowAdapter(rows: List<Row> = emptyList()) : RecyclerView.Adapter<RecyclerV
     }
 
     var itemTouchHelper: ItemTouchHelper? = null
+    /** Springy press feedback on rows (main menu, settings). */
+    var bouncy = false
     private var playingId: Long? = Player.current?.id
 
     /** Refreshes the "now playing" indicators only when the track actually changed. */
@@ -145,6 +147,7 @@ class RowAdapter(rows: List<Row> = emptyList()) : RecyclerView.Adapter<RecyclerV
         h.more.setOnClickListener { v -> r.onMore?.invoke(v) }
         h.playing.visibility = if (r.song != null && r.song.id == playingId) View.VISIBLE else View.GONE
         h.root.isActivated = r.activated
+        if (bouncy) com.jslw.genz.util.Bounce.press(h.root)
         h.root.setOnClickListener { v -> r.onClick?.invoke(v) }
         h.root.isClickable = r.onClick != null
         if (r.onLong != null) h.root.setOnLongClickListener { v -> r.onLong.invoke(v); true }

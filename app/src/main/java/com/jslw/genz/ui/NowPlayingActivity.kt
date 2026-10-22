@@ -148,7 +148,9 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         root.onDismiss = { finish(); overridePendingTransition(0, 0) }
         root.onDrag = { f -> art.alpha = 1f - f * 0.4f }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() = root.dismiss()
+            override fun handleOnBackPressed() {
+                if (lyricsPanel.visibility == View.VISIBLE) showLyrics(false) else root.dismiss()
+            }
         })
 
         findViewById<View>(R.id.npClose).setOnClickListener { root.dismiss() }
@@ -184,6 +186,18 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
 
         setupArtGestures()
         lyricsList.layoutManager = LinearLayoutManager(this)
+        // tapping empty space (or the "no lyrics" message) goes back to the cover
+        lyricsEmpty.setOnClickListener { showLyrics(false) }
+        lyricsPanel.setOnClickListener { showLyrics(false) }
+        val lyricTap = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onSingleTapUp(e: MotionEvent) = true
+        })
+        lyricsList.addOnItemTouchListener(object : RecyclerView.SimpleOnItemTouchListener() {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                if (lyricTap.onTouchEvent(e) && rv.findChildViewUnder(e.x, e.y) == null) showLyrics(false)
+                return false
+            }
+        })
         lyricsList.adapter = lyricsAdapter
         lyricsList.post { val pad = lyricsList.height / 2; lyricsList.setPadding(0, pad, 0, pad) }
 
@@ -201,11 +215,10 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         }
     }
 
-    /** Tap: lyrics · double-tap: play/pause · swipe sideways: next/prev · long-press: song menu. */
+    /** Touch: cover effect · double-tap: play/pause · swipe sideways: next/prev · long-press: song menu. */
     private fun setupArtGestures() {
         val gd = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent) = true
-            override fun onSingleTapConfirmed(e: MotionEvent): Boolean { showLyrics(true); return true }
             override fun onDoubleTap(e: MotionEvent): Boolean {
                 pulse(artSquare); Player.service?.toggle(); return true
             }
@@ -392,6 +405,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
     private fun showLyrics(show: Boolean) {
         if (show == (lyricsPanel.visibility == View.VISIBLE)) return
         if (show) {
+            lyricsEmpty.visibility = if (shownLyrics == null) View.VISIBLE else View.GONE
             lyricsPanel.alpha = 0f
             lyricsPanel.visibility = View.VISIBLE
             lyricsPanel.animate().alpha(1f).setDuration(220).start()
@@ -406,6 +420,10 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
 
     // ---------------------------------------------------------------- colours from album art
     private fun onArt(bmp: Bitmap?) {
+        // progress bar: this song's own colours (or the theme's when the setting is off / no cover)
+        val songCols = com.jslw.genz.util.SongColors.from(bmp)
+        seek.setStyle(skin.progressStyle, songCols ?: skin.progressColors)
+        songCols?.let { celebrate.setColors(it[2], it[1]) }
         val base = NpColors.of(skin)
         if (bmp == null || !(skin.npDynamicColors && Prefs.npDynamicColors)) { applyColors(base, true); return }
         Palette.from(bmp).maximumColorCount(16).generate { p ->
@@ -445,6 +463,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         }
         SkinPainter.apply(content, skin, target)
         if (seek.styleName != skin.progressStyle) seek.setStyle(skin.progressStyle, skin.progressColors)
+        // keep the play-head/halo in step with the song accent even when the gradient comes from the cover
         seek.setColors(target.accent, SkinPainter.withAlpha(target.text, 0x33))
         lyricsAdapter.colors(target)
         Player.service?.let {

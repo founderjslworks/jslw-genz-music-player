@@ -135,3 +135,37 @@ object Transitions {
     /** enter, exit, popEnter, popExit for fragment navigation. */
     fun fragment(): IntArray = set()
 }
+
+/** Playful, springy motion for menus: rows bounce in, and squish + spring back when pressed. */
+object Bounce {
+    fun layoutAnimation(): android.view.animation.LayoutAnimationController {
+        val set = AnimationSet(false)
+        set.addAnimation(TranslateAnimation(Animation.RELATIVE_TO_SELF, 0f, Animation.RELATIVE_TO_SELF, 0f,
+            Animation.RELATIVE_TO_SELF, 0.9f, Animation.RELATIVE_TO_SELF, 0f).apply { interpolator = OvershootInterpolator(2.2f) })
+        set.addAnimation(ScaleAnimation(0.85f, 1f, 0.85f, 1f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
+            .apply { interpolator = OvershootInterpolator(3f) })
+        set.addAnimation(AlphaAnimation(0f, 1f).apply { interpolator = DecelerateInterpolator() })
+        set.duration = 520
+        return android.view.animation.LayoutAnimationController(set, 0.08f)
+    }
+
+    /** Plays the bounce-in on a list (call after setting its rows). */
+    fun enter(rv: RecyclerView) {
+        rv.layoutAnimation = layoutAnimation()
+        rv.scheduleLayoutAnimation()
+    }
+
+    /** Squish on touch, spring back on release. Doesn't consume the touch, so clicks still work. */
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
+    fun press(v: View) {
+        v.setOnTouchListener { view, e ->
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN ->
+                    view.animate().scaleX(0.94f).scaleY(0.94f).setDuration(90).setInterpolator(DecelerateInterpolator()).start()
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL ->
+                    view.animate().scaleX(1f).scaleY(1f).setDuration(460).setInterpolator(OvershootInterpolator(4f)).start()
+            }
+            false
+        }
+    }
+}

@@ -227,7 +227,11 @@ class MainActivity : BaseActivity(), Player.Listener {
             shownSongId = s.id
             miniTitle.text = s.title
             miniArtist.text = s.artist
-            ArtLoader.load(miniArt, s, dpi(46) * 2)
+            ArtLoader.load(miniArt, s, dpi(46) * 2) { bmp ->
+                val cols = com.jslw.genz.util.SongColors.from(bmp)
+                miniProgress.setStyle(skin.progressStyle, cols ?: skin.progressColors)
+                miniProgress.setColors(cols?.get(1) ?: skin.accent, skin.divider)
+            }
         }
         if (skin.translucent && backdropGen != com.jslw.genz.skin.Backdrop.generation) {
             backdropGen = com.jslw.genz.skin.Backdrop.generation

@@ -46,27 +46,15 @@
             android:tag="skin_flow_text2"
             android:textSize="@dimen/text_14" />
 
-        <!-- scrubber: drag to fly through the whole collection -->
-        <com.google.android.material.slider.Slider
+        <!-- classic "slide to unlock" style scrubber: drag the knob to fly through the collection -->
+        <com.jslw.genz.ui.views.SlideToUnlockBar
             android:id="@+id/flowScrub"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:paddingStart="@dimen/np_side"
-            android:paddingEnd="@dimen/np_side"
-            android:tag="skin_slider"
-            android:valueFrom="0"
-            android:valueTo="1"
-            app:labelBehavior="gone" />
-
-        <TextView
-            android:id="@+id/flowHint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="14dp"
-            android:tag="skin_flow_text2"
-            android:text="Swipe or drag to browse · tap the centre cover for its songs"
-            android:textSize="@dimen/text_12" />
+            android:layout_marginStart="@dimen/np_side"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="@dimen/np_side"
+            android:layout_marginBottom="16dp" />
     </LinearLayout>
 
     <!-- Back side of the "flipped" cover: the album's track list -->

@@ -59,7 +59,9 @@ class ThemesActivity : BaseActivity() {
         header("Themes & skin packs")
         list = findViewById(R.id.list)
         list.layoutManager = LinearLayoutManager(this)
+        com.jslw.genz.util.Smooth.tuneList(list)
         list.adapter = Adapter()
+        com.jslw.genz.util.Bounce.enter(list)
         findViewById<View>(R.id.footer).visibility = View.VISIBLE
         findViewById<MaterialButton>(R.id.footerBtn1).apply {
             text = "Import pack"
