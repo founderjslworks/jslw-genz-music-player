@@ -35,6 +35,8 @@ class SettingsActivity : BaseActivity() {
     }
 
     private val items = ArrayList<Item>()
+    /** Every setting; [items] is what's shown (filtered by the search box). */
+    private val allItems = ArrayList<Item>()
     private lateinit var adapter: Adapter
 
     private val pickFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
@@ -79,6 +81,8 @@ class SettingsActivity : BaseActivity() {
         setupScreen(findViewById(R.id.root))
         header("Settings")
         build()
+        allItems.addAll(items)
+        setupSearch()
         val list = findViewById<RecyclerView>(R.id.list)
         list.layoutManager = LinearLayoutManager(this)
         com.jslw.genz.util.Smooth.tuneList(list)
@@ -90,6 +94,45 @@ class SettingsActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         if (::adapter.isInitialized) adapter.notifyDataSetChanged()
+    }
+
+    /** Search box at the top: filters titles and descriptions, keeping each match under its section. */
+    private fun setupSearch() {
+        val box = findViewById<android.widget.EditText>(R.id.searchInput)
+        box.visibility = View.VISIBLE
+        box.hint = "Search settings"
+        box.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
+        box.compoundDrawablePadding = (10 * resources.displayMetrics.density).toInt()
+        androidx.core.widget.TextViewCompat.setCompoundDrawableTintList(box, android.content.res.ColorStateList.valueOf(skin.textSecondary))
+        box.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(e: android.text.Editable?) { filter(e?.toString() ?: "") }
+        })
+    }
+
+    private fun filter(raw: String) {
+        val q = raw.trim().lowercase(java.util.Locale.ROOT)
+        items.clear()
+        if (q.isEmpty()) items.addAll(allItems) else {
+            var section: Item.Section? = null
+            var sectionAdded = false
+            for (it in allItems) {
+                if (it is Item.Section) { section = it; sectionAdded = false; continue }
+                val text = when (it) {
+                    is Item.Toggle -> it.title + " " + it.summary
+                    is Item.Action -> it.title + " " + it.summary()
+                    else -> ""
+                }.lowercase(java.util.Locale.ROOT)
+                val sectionMatch = section?.title?.lowercase(java.util.Locale.ROOT)?.contains(q) == true
+                if (q.split(" ").all { w -> text.contains(w) } || sectionMatch) {
+                    if (!sectionAdded && section != null) { items += section; sectionAdded = true }
+                    items += it
+                }
+            }
+            if (items.isEmpty()) items += Item.Section("No settings match \"$raw\"")
+        }
+        adapter.notifyDataSetChanged()
     }
 
     private fun build() {
