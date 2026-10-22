@@ -51,7 +51,7 @@ namespace GenZ
 
             StateChanged += (s, e) =>
             {
-                Root.Margin = WindowState == WindowState.Maximized ? new Thickness(7) : new Thickness(0);
+                Root.Margin = new Thickness(0);
                 if (WindowState == WindowState.Minimized && Settings.Current.AutoPip && Player.IsPlaying && pip == null) EnterPip(false);
                 else if (WindowState != WindowState.Minimized && pip != null) { pip.Close(); pip = null; }
             };
@@ -156,9 +156,21 @@ namespace GenZ
             ShowList("Search", $"{r.Count} results for “{SearchBox.Text.Trim()}”", r, null);
         }
 
-        void OnSongDoubleClick(object sender, MouseButtonEventArgs e)
+        void OnSongDoubleClick(object sender, MouseButtonEventArgs e) { }
+
+        /// <summary>One click on a song plays it (like a tap on the phone).</summary>
+        void OnSongClick(object sender, MouseButtonEventArgs e)
         {
-            if (SongList.SelectedItem is Song s) PlayFromList(s);
+            var el = e.OriginalSource as DependencyObject;
+            while (el != null && !(el is ListBoxItem)) el = el is Visual ? VisualTreeHelper.GetParent(el) : LogicalTreeHelper.GetParent(el);
+            if (el is ListBoxItem item && item.DataContext is Song s)
+            {
+                SongList.SelectedItem = s;
+                PlayFromList(s);
+                var st = new ScaleTransform(1, 1); item.RenderTransformOrigin = new Point(0.5, 0.5); item.RenderTransform = st;
+                var a = new DoubleAnimation(0.97, 1, Settings.Ms(320)) { EasingFunction = new ElasticEase { Oscillations = 1, Springiness = 5 } };
+                st.BeginAnimation(ScaleTransform.ScaleXProperty, a); st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
+            }
         }
 
         void OnSongKey(object sender, KeyEventArgs e)
@@ -706,6 +718,36 @@ namespace GenZ
         [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr hWnd, int id, uint mods, uint vk);
         [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr hWnd, int id);
         const int WM_HOTKEY = 0x0312;
+        const int WM_GETMINMAXINFO = 0x0024;
+
+        [StructLayout(LayoutKind.Sequential)] struct POINT { public int x, y; }
+        [StructLayout(LayoutKind.Sequential)] struct MINMAXINFO { public POINT ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize; }
+        [StructLayout(LayoutKind.Sequential)] struct RECT { public int left, top, right, bottom; }
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        class MONITORINFO { public int cbSize = Marshal.SizeOf(typeof(MONITORINFO)); public RECT rcMonitor; public RECT rcWork; public int dwFlags; }
+        [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr hwnd, int flags);
+        [DllImport("user32.dll", CharSet = CharSet.Auto)] static extern bool GetMonitorInfo(IntPtr hMonitor, [In, Out] MONITORINFO info);
+
+        /// <summary>Maximized = exactly the screen's usable area (never under the taskbar), on any monitor.</summary>
+        static void FitMaximized(IntPtr hwnd, IntPtr lParam)
+        {
+            var mmi = (MINMAXINFO)Marshal.PtrToStructure(lParam, typeof(MINMAXINFO));
+            var mon = MonitorFromWindow(hwnd, 2 /* MONITOR_DEFAULTTONEAREST */);
+            if (mon != IntPtr.Zero)
+            {
+                var info = new MONITORINFO();
+                if (GetMonitorInfo(mon, info))
+                {
+                    RECT work = info.rcWork, area = info.rcMonitor;
+                    mmi.ptMaxPosition.x = Math.Abs(work.left - area.left);
+                    mmi.ptMaxPosition.y = Math.Abs(work.top - area.top);
+                    mmi.ptMaxSize.x = Math.Abs(work.right - work.left);
+                    mmi.ptMaxSize.y = Math.Abs(work.bottom - work.top);
+                    mmi.ptMaxTrackSize = mmi.ptMaxSize;
+                }
+            }
+            Marshal.StructureToPtr(mmi, lParam, true);
+        }
 
         void RegisterMediaKeys()
         {
@@ -720,6 +762,7 @@ namespace GenZ
 
         IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            if (msg == WM_GETMINMAXINFO) { FitMaximized(hwnd, lParam); handled = true; return IntPtr.Zero; }
             if (msg == WM_HOTKEY)
             {
                 switch (wParam.ToInt32())

@@ -100,7 +100,7 @@
         <!-- Pill button -->
         <Style x:Key="PillButton" TargetType="Button">
             <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
-            <Setter Property="Background" Value="{DynamicResource HeaderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
             <Setter Property="FontFamily" Value="{DynamicResource BodyFont}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -167,7 +167,8 @@
 
         <!-- Song rows -->
         <Style x:Key="RowItem" TargetType="ListBoxItem">
-            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Cursor" Value="Hand" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Template">
                 <Setter.Value>

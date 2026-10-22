@@ -116,7 +116,7 @@
                     </Grid>
                     <ListBox x:Name="SongList" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource RowItem}"
                              VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" MouseDoubleClick="OnSongDoubleClick" KeyDown="OnSongKey" Margin="16,0,8,0">
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" MouseDoubleClick="OnSongDoubleClick" PreviewMouseLeftButtonUp="OnSongClick" KeyDown="OnSongKey" Margin="16,0,8,0">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid>
