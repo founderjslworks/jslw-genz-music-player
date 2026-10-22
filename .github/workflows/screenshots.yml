@@ -10,8 +10,8 @@ permissions:
 
 jobs:
   shots:
-    runs-on: ubuntu-latest
-    timeout-minutes: 75
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
 
@@ -49,8 +49,10 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          emulator-options: -no-snapshot -noaudio -no-boot-anim -camera-back none -gpu swiftshader_indirect
-          script: bash scripts/shots.sh
+          force-avd-creation: false
+          emulator-boot-timeout: 1200
+          emulator-options: -no-window -no-snapshot-save -noaudio -no-boot-anim -camera-back none -gpu swiftshader_indirect
+          script: mkdir -p shots && bash scripts/shots.sh 2>&1 | tee shots/log.txt
 
       - name: Publish screenshots branch
         if: always()
@@ -63,6 +65,7 @@ jobs:
           git rm -rfq .
           git clean -fdxq
           cp -r /tmp/out/. .
+          echo "run ${GITHUB_RUN_ID}" > RUN.txt
           git add -A
           git commit -qm "Screenshots for ${GITHUB_SHA}" || echo "nothing captured"
           git push -f origin screenshots
