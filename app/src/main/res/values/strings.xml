@@ -7,6 +7,10 @@
     <string name="widget_wide_desc">Track info and controls in one row</string>
     <string name="widget_square_desc">Album cover with controls</string>
     <string name="widget_large_desc">Big cover, title, artist, album and controls</string>
+    <string name="developer">Partho Ghosh</string>
+    <string name="company">JSL WORKS PVT LTD</string>
+    <string name="copyright">© 2026 JSL WORKS PVT LTD. All rights reserved.</string>
+    <string name="code_name">Project JSLW \"GEN-Z\" Music Player</string>
     <string name="channel_playback">Playback</string>
     <string name="nothing_playing">Nothing playing</string>
     <string name="tap_to_play">Tap a song to start</string>

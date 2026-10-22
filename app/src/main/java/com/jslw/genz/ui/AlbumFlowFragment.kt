@@ -96,14 +96,34 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         val h = rv.height
         val w = rv.width
         val refl = if (SkinManager.current.reflection) 1.37f else 1.05f
-        cover = min(h * 0.94f / refl, w * 0.56f).toInt().coerceAtLeast(80)
+        // big covers: up to 74% of the width in portrait, height-limited in landscape / on tablets
+        val portrait = h > w
+        cover = min(h * 0.92f / refl, w * (if (portrait) 0.74f else 0.42f)).toInt().coerceAtLeast(80)
         val pad = (w - cover) / 2
-        rv.setPadding(pad, 0, pad, 0)
+        // centre the covers (and their reflections) vertically instead of hugging the top
+        val itemH = (cover * (if (SkinManager.current.reflection) 1.36f else 1f)).toInt()
+        val top = ((h - itemH) / 2 + cover * 0.08f).toInt().coerceAtLeast(0)
+        rv.setPadding(pad, top, pad, 0)
         rv.clipToPadding = false
         rv.adapter = CoverAdapter()
         flip.layoutParams = flip.layoutParams.apply {
             width = (cover * 1.25f).toInt().coerceAtMost(w - 24)
             height = (cover * 1.15f).toInt().coerceAtMost(h)
+        }
+        // scrubber
+        val scrub = view?.findViewById<com.google.android.material.slider.Slider>(R.id.flowScrub)
+        if (scrub != null) {
+            if (albums.size > 1) {
+                scrub.visibility = View.VISIBLE
+                scrub.valueFrom = 0f
+                scrub.valueTo = (albums.size - 1).toFloat()
+                scrub.stepSize = 1f
+                scrub.value = 0f
+                scrub.clearOnChangeListeners()
+                scrub.addOnChangeListener { _, v, fromUser ->
+                    if (fromUser) (rv.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(v.toInt(), 0)
+                }
+            } else scrub.visibility = View.INVISIBLE
         }
         val start = Player.current?.let { s -> Library.albumOf(s)?.let { a -> albums.indexOf(a) } }?.takeIf { it >= 0 } ?: lastIndex
         if (albums.isNotEmpty()) {
@@ -152,6 +172,9 @@ class AlbumFlowFragment : Fragment(), Refreshable {
             lastIndex = best
             rv.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             showCaption(albums.getOrNull(best))
+            view?.findViewById<com.google.android.material.slider.Slider>(R.id.flowScrub)?.let { sc ->
+                if (best.toFloat() in sc.valueFrom..sc.valueTo && sc.value != best.toFloat()) sc.value = best.toFloat()
+            }
         }
     }
 

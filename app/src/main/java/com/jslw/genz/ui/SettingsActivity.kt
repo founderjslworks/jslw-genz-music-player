@@ -181,8 +181,19 @@ class SettingsActivity : BaseActivity() {
         }
 
         items += Item.Section("About")
-        items += Item.Action("GEN-Z ${BuildConfig.VERSION_NAME}", { "100% offline · no internet permission · Android 4.4+" }) {}
+        items += Item.Action("GEN-Z Music ${BuildConfig.VERSION_NAME}", { "100% offline · no internet permission · Android 4.4+" }) { about() }
+        items += Item.Action("Designed & developed by", { getString(R.string.developer) + " · " + getString(R.string.company) }) { about() }
+        items += Item.Action("Copyright", { getString(R.string.copyright) }) { about() }
+        items += Item.Action("Open-source licences", { "Google Fonts (SIL OFL 1.1) · AndroidX & Material Components (Apache 2.0)" }) {
+            val fonts = try { assets.open("licenses/FONTS.txt").bufferedReader().use { it.readText() } } catch (e: Exception) { "" }
+            MaterialAlertDialogBuilder(this).setTitle("Open-source licences").setMessage(
+                fonts + "\nAndroidX, Material Components for Android – Apache License 2.0\n" +
+                    "https://www.apache.org/licenses/LICENSE-2.0"
+            ).setPositiveButton("OK", null).show()
+        }
     }
+
+    private fun about() = Brand.about(this)
 
     private fun <T> choose(title: String, values: List<T>, label: (T) -> String, current: T, set: (T) -> Unit) {
         val idx = values.indexOf(current)

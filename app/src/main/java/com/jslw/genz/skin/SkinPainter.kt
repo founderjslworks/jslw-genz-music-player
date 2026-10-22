@@ -110,8 +110,9 @@ object SkinPainter {
             }
             "skin_slider" -> slider(v, skin.accent, skin.divider)
             "skin_np_slider" -> slider(v, np.accent, withAlpha(np.text, 0x40))
-            "skin_progress" -> (v as? LinearProgressIndicator)?.let {
-                it.setIndicatorColor(skin.accent); it.trackColor = skin.divider
+            "skin_progress" -> when (v) {
+                is LinearProgressIndicator -> { v.setIndicatorColor(skin.accent); v.trackColor = skin.divider }
+                is com.jslw.genz.ui.views.SparkleSeekBar -> v.setColors(skin.accent, skin.divider)
             }
             "skin_badge" -> (v as? TextView)?.let {
                 it.background = GradientDrawable().apply { setColor(np.accent); cornerRadius = 6 * d }

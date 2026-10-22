@@ -7,13 +7,11 @@
     android:tag="skin_surface"
     android:visibility="gone">
 
-    <com.google.android.material.progressindicator.LinearProgressIndicator
+    <com.jslw.genz.ui.views.SparkleSeekBar
         android:id="@+id/miniProgress"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:max="1000"
-        android:tag="skin_progress"
-        app:trackThickness="2dp" />
+        android:tag="skin_progress" />
 
     <LinearLayout
         android:id="@+id/miniBody"

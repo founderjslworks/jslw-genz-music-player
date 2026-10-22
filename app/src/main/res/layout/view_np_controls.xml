@@ -77,20 +77,16 @@
         android:textStyle="bold"
         android:visibility="gone" />
 
-    <com.google.android.material.slider.Slider
+    <com.jslw.genz.ui.views.SparkleSeekBar
         android:id="@+id/npSeek"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:tag="skin_np_slider"
-        android:valueFrom="0"
-        android:valueTo="1"
-        app:labelBehavior="gone" />
+        android:layout_marginTop="2dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="-8dp"
+        android:layout_marginTop="-30dp"
         android:orientation="horizontal"
         android:paddingStart="14dp"
         android:paddingEnd="14dp">

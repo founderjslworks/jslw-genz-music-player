@@ -23,4 +23,5 @@
     <dimen name="setting_min">60dp</dimen>
     <dimen name="row_art_w">46dp</dimen>
     <dimen name="row_art_h">46dp</dimen>
+    <dimen name="brand_logo">150dp</dimen>
 </resources>

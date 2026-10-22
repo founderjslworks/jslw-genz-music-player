@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JSL WORKS brand block: logo on a light card + credits. Used in the home menu footer and About. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/brandRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="20dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="24dp">
+
+    <FrameLayout
+        android:id="@+id/brandCard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="10dp">
+
+        <ImageView
+            android:id="@+id/brandLogo"
+            android:layout_width="@dimen/brand_logo"
+            android:layout_height="@dimen/brand_logo"
+            android:adjustViewBounds="true"
+            android:contentDescription="JSL WORKS logo"
+            android:scaleType="fitCenter"
+            android:src="@drawable/jsl_works_logo" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/brandTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:tag="skin_text"
+        android:text="GEN-Z Music"
+        android:textSize="@dimen/text_16"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/brandCredit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:gravity="center"
+        android:tag="skin_text2"
+        android:textSize="@dimen/text_13" />
+
+    <TextView
+        android:id="@+id/brandCopyright"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:tag="skin_text2"
+        android:text="@string/copyright"
+        android:textSize="@dimen/text_12" />
+</LinearLayout>

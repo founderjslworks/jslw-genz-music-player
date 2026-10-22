@@ -18,7 +18,7 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.jslw.genz.ui.views.SparkleSeekBar
 import com.jslw.genz.R
 import com.jslw.genz.data.Library
 import com.jslw.genz.playback.Player
@@ -41,7 +41,7 @@ class MainActivity : BaseActivity(), Player.Listener {
     private lateinit var miniTitle: TextView
     private lateinit var miniArtist: TextView
     private lateinit var miniPlay: ImageButton
-    private lateinit var miniProgress: LinearProgressIndicator
+    private lateinit var miniProgress: SparkleSeekBar
     private val handler = Handler(Looper.getMainLooper())
     private var shownSongId: Long? = -1
 
@@ -73,6 +73,8 @@ class MainActivity : BaseActivity(), Player.Listener {
         miniArtist = findViewById(R.id.miniArtist)
         miniPlay = findViewById(R.id.miniPlay)
         miniProgress = findViewById(R.id.miniProgress)
+        miniProgress.compact = true
+        miniProgress.max = 1000f
         setupScreen(root, findViewById(R.id.header))
 
         back.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
@@ -85,6 +87,7 @@ class MainActivity : BaseActivity(), Player.Listener {
         supportFragmentManager.addOnBackStackChangedListener { updateBack() }
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction().replace(R.id.content, HomeFragment()).commit()
+            if (!splashShown) { splashShown = true; Brand.splash(this) }
         }
         updateBack()
 
@@ -238,8 +241,8 @@ class MainActivity : BaseActivity(), Player.Listener {
     private fun tickProgress() {
         val svc = Player.service ?: return
         val d = svc.duration()
-        val p = if (d > 0) (svc.position() * 1000 / d).toInt() else 0
-        if (p != miniProgress.progress) miniProgress.progress = p
+        miniProgress.progress = if (d > 0) svc.position() * 1000f / d else 0f
+        miniProgress.playing = svc.isPlaying
         if (svc.isPlaying && !isFinishing) progressFrames.start() else progressFrames.stop()
     }
 
@@ -265,6 +268,8 @@ class MainActivity : BaseActivity(), Player.Listener {
         const val EXTRA_ALBUM = "open_album"
         const val EXTRA_ARTIST = "open_artist"
         const val EXTRA_GENRE = "open_genre"
+        /** Splash only once per app launch (not on rotation or when returning). */
+        private var splashShown = false
     }
 }
 

@@ -76,8 +76,10 @@ class HomeFragment : BaseListFragment() {
     override val screenTitle = "Music"
     private val adapter = RowAdapter()
 
+    private val footer = Brand.FooterAdapter()
+
     override fun build() {
-        list.adapter = adapter
+        if (list.adapter == null) list.adapter = ConcatAdapter(adapter, footer)
         val skin = SkinManager.current
         val rows = ArrayList<Row>()
         val loaded = Library.loaded

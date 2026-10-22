@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/flowRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -37,7 +38,6 @@
             android:id="@+id/flowArtist"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="18dp"
             android:ellipsize="end"
             android:gravity="center"
             android:maxLines="1"
@@ -45,6 +45,28 @@
             android:paddingEnd="24dp"
             android:tag="skin_flow_text2"
             android:textSize="@dimen/text_14" />
+
+        <!-- iTunes-style scrubber: drag to fly through the whole collection -->
+        <com.google.android.material.slider.Slider
+            android:id="@+id/flowScrub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:paddingStart="@dimen/np_side"
+            android:paddingEnd="@dimen/np_side"
+            android:tag="skin_slider"
+            android:valueFrom="0"
+            android:valueTo="1"
+            app:labelBehavior="gone" />
+
+        <TextView
+            android:id="@+id/flowHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            android:tag="skin_flow_text2"
+            android:text="Swipe or drag to browse · tap the centre cover for its songs"
+            android:textSize="@dimen/text_12" />
     </LinearLayout>
 
     <!-- Back side of the "flipped" cover: the album's track list -->

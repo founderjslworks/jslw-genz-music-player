@@ -34,7 +34,6 @@ import androidx.palette.graphics.Palette
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.slider.Slider
 import com.jslw.genz.R
 import com.jslw.genz.data.Library
 import com.jslw.genz.data.LibraryDb
@@ -63,7 +62,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
     private lateinit var contextTv: TextView
     private lateinit var format: TextView
     private lateinit var lcd: TextView
-    private lateinit var seek: Slider
+    private lateinit var seek: com.jslw.genz.ui.views.SparkleSeekBar
     private lateinit var elapsed: TextView
     private lateinit var durationTv: TextView
     private lateinit var playWrap: View
@@ -168,14 +167,12 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         }
         findViewById<View>(R.id.npQueueBtn).setOnClickListener { Sheets.queue(this) }
 
-        seek.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
-            override fun onStartTrackingTouch(slider: Slider) { userSeeking = true }
-            override fun onStopTrackingTouch(slider: Slider) {
-                userSeeking = false
-                Player.service?.seekTo(slider.value.toLong())
-            }
-        })
-        seek.addOnChangeListener { _, v, fromUser -> if (fromUser) elapsed.text = formatTime(v.toLong()) }
+        seek.onSeekStart = { userSeeking = true }
+        seek.onSeeking = { v -> elapsed.text = formatTime(v.toLong()) }
+        seek.onSeekEnd = { v ->
+            userSeeking = false
+            Player.service?.seekTo(v.toLong())
+        }
 
         setupArtGestures()
         lyricsList.layoutManager = LinearLayoutManager(this)
@@ -304,9 +301,9 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         val pos = svc.position().coerceIn(0, dur)
         // Runs every display frame (60–144 Hz): only the slider moves per frame; text changes once a second.
         if (!userSeeking) {
-            if (seek.valueTo != dur.toFloat()) { seek.valueFrom = 0f; seek.valueTo = dur.toFloat() }
-            val v = pos.toFloat().coerceIn(seek.valueFrom, seek.valueTo)
-            if (v != seek.value) seek.value = v
+            if (seek.max != dur.toFloat()) seek.max = dur.toFloat()
+            seek.progress = pos.toFloat()
+            seek.playing = svc.isPlaying
             val sec = pos / 1000
             if (sec != lastSecond) { lastSecond = sec; elapsed.text = formatTime(pos) }
         }
@@ -412,6 +409,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             }
         }
         SkinPainter.apply(content, skin, target)
+        seek.setColors(target.accent, SkinPainter.withAlpha(target.text, 0x33))
         lyricsAdapter.colors(target)
         Player.service?.let {
             tintToggle(shuffleBtn, it.shuffle)
