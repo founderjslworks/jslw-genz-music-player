@@ -48,6 +48,12 @@ data class Skin(
     val cornerRadiusDp: Float,
     val font: String,
     val lcdFont: String,
+    /** Font for headings, titles and other bold text; defaults to [font]. */
+    val displayFont: String,
+    /** Progress bar look: sparkle, neon, wave, bars, pixel, fire, bubbles, petals, hearts, notes, snow, tape, classic. */
+    val progressStyle: String,
+    /** Optional 2–3 colours for the progress bar gradient (else derived from the accent). */
+    val progressColors: IntArray?,
     val colorfulIcons: Boolean,
     val lcd: Boolean,
     val npDynamicColors: Boolean,
@@ -69,7 +75,7 @@ data class Skin(
     }
 
     val typeface: Typeface get() = Fonts.forSkin(this, font, false)
-    val boldTypeface: Typeface get() = Fonts.forSkin(this, font, true)
+    val boldTypeface: Typeface get() = Fonts.forSkin(this, displayFont, true)
     val lcdTypeface: Typeface get() = Fonts.forSkin(this, lcdFont, false)
 
     companion object {
@@ -121,6 +127,11 @@ data class Skin(
                 cornerRadiusDp = o.optDouble("cornerRadius", 10.0).toFloat(),
                 font = o.optString("font", "inter"),
                 lcdFont = o.optString("lcdFont", "vt323"),
+                displayFont = o.optString("displayFont", "").ifBlank { o.optString("font", "inter") },
+                progressStyle = o.optString("progressStyle", "sparkle"),
+                progressColors = o.optJSONArray("progressColors")?.let { a ->
+                    IntArray(a.length()) { i -> try { Color.parseColor(a.getString(i)) } catch (e: Exception) { 0xFFFFFFFF.toInt() } }
+                }?.takeIf { it.size >= 2 },
                 colorfulIcons = o.optBoolean("colorfulIcons", false),
                 lcd = o.optBoolean("lcd", false),
                 npDynamicColors = o.optBoolean("npDynamicColors", false),

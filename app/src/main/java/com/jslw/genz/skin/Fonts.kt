@@ -7,7 +7,9 @@ import com.jslw.genz.R
 
 /**
  * Bundled Google Fonts (SIL Open Font License) – packaged in the APK so the app stays 100% offline.
- *  inter · lora · vt323 · barlow-condensed · orbitron  (+ system: sans, serif, monospace)
+ *  inter · lora · vt323 · barlow-condensed · orbitron · poppins · montserrat · playfair · space-grotesk · rubik
+ *  caveat · cinzel · teko · josefin · quicksand · bebas-neue · righteous · press-start · monoton · audiowide
+ *  (+ system: sans, serif, monospace)
  */
 object Fonts {
     private val cache = HashMap<String, Typeface>()
@@ -19,6 +21,21 @@ object Fonts {
         "vt323" to (R.font.vt323_regular to R.font.vt323_regular),
         "barlow-condensed" to (R.font.barlow_condensed_medium to R.font.barlow_condensed_bold),
         "orbitron" to (R.font.orbitron_medium to R.font.orbitron_bold),
+        "poppins" to (R.font.poppins_regular to R.font.poppins_bold),
+        "montserrat" to (R.font.montserrat_regular to R.font.montserrat_bold),
+        "playfair" to (R.font.playfair_regular to R.font.playfair_bold),
+        "space-grotesk" to (R.font.space_grotesk_regular to R.font.space_grotesk_bold),
+        "rubik" to (R.font.rubik_regular to R.font.rubik_bold),
+        "caveat" to (R.font.caveat_medium to R.font.caveat_bold),
+        "cinzel" to (R.font.cinzel_medium to R.font.cinzel_bold),
+        "teko" to (R.font.teko_regular to R.font.teko_semibold),
+        "josefin" to (R.font.josefin_regular to R.font.josefin_bold),
+        "quicksand" to (R.font.quicksand_medium to R.font.quicksand_bold),
+        "bebas-neue" to (R.font.bebas_neue_regular to R.font.bebas_neue_regular),
+        "righteous" to (R.font.righteous_regular to R.font.righteous_regular),
+        "press-start" to (R.font.press_start_regular to R.font.press_start_regular),
+        "monoton" to (R.font.monoton_regular to R.font.monoton_regular),
+        "audiowide" to (R.font.audiowide_regular to R.font.audiowide_regular),
     )
 
     private val packCache = HashMap<String, Typeface>()
