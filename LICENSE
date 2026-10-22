@@ -1,0 +1,18 @@
+GEN-Z Music (Project JSLW "GEN-Z" Music Player)
+Copyright (c) 2026 JSL WORKS PVT LTD. All rights reserved.
+
+This repository is published so the source code can be viewed. It is NOT open source.
+
+No licence is granted to copy, modify, merge, publish, distribute, sublicense, sell, or create
+derivative works of this software, its themes, graphics, icons or other assets, in whole or in part,
+without prior written permission from JSL WORKS PVT LTD.
+
+You may view the code and fork this repository on GitHub only as permitted by GitHub's Terms of Service.
+
+Third-party components are used under their own licences and remain the property of their authors:
+  - AndroidX and Material Components for Android – Apache License 2.0
+  - List and window animations adapted from XuiMod (c) 2013 XuiMod (zst123) – Apache License 2.0
+  - Google Fonts bundled in app/src/main/res/font – SIL Open Font License 1.1
+See app/src/main/assets/licenses/ for the full licence texts and notices.
+
+Contact: JSL WORKS PVT LTD · Partho Ghosh
