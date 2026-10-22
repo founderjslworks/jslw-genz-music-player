@@ -115,6 +115,35 @@ class EqualizerActivity : BaseActivity() {
         }
         setEnabled(Prefs.eqEnabled)
         SkinPainter.apply(findViewById(R.id.root))
+        animateIn()
+    }
+
+    /** Sections spring in one after another; the faders rise from 0 dB to their levels like a VU meter. */
+    private fun animateIn() {
+        val content = (findViewById<View>(R.id.eqGraph).parent as android.view.ViewGroup)
+        com.jslw.genz.util.Stagger.enter(content)
+        val target = levels.copyOf()
+        bands.forEachIndexed { i, b ->
+            b.value = 0
+            android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+                startDelay = 260L + i * 55L
+                duration = 650
+                interpolator = android.view.animation.OvershootInterpolator(2.2f)
+                addUpdateListener { a -> b.value = (target[i] * (a.animatedValue as Float)).toInt() }
+                start()
+            }
+        }
+        curve.set(IntArray(target.size), fx.minLevel, fx.maxLevel, false)
+        curve.postDelayed({ curve.set(target, fx.minLevel, fx.maxLevel, true) }, 300)
+        // chips pop in
+        for (g in listOf(presetGroup, findViewById<ChipGroup>(R.id.eqReverb))) {
+            for (k in 0 until g.childCount) {
+                val c = g.getChildAt(k)
+                c.scaleX = 0.6f; c.scaleY = 0.6f; c.alpha = 0f
+                c.animate().scaleX(1f).scaleY(1f).alpha(1f).setStartDelay(200L + k * 35L).setDuration(380)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(3f)).start()
+            }
+        }
     }
 
     private fun slider(id: Int, value: Int, set: (Int) -> Unit) {

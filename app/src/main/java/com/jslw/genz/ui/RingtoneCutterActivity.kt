@@ -80,6 +80,7 @@ class RingtoneCutterActivity : BaseActivity() {
             findViewById<MaterialButton>(R.id.rtSave).isEnabled = false
         }
         findViewById<MaterialButton>(R.id.rtSave).setOnClickListener { save() }
+        (wave.parent as? android.view.ViewGroup)?.let { com.jslw.genz.util.Stagger.enter(it) }
         previewBtn.setOnClickListener { togglePreview() }
 
         Thread {

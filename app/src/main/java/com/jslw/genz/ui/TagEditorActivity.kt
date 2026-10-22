@@ -83,6 +83,7 @@ class TagEditorActivity : BaseActivity() {
         if (s.year > 0) fYear.setText(s.year.toString())
         if (s.track > 0) fTrack.setText((s.track % 1000).toString())
         ArtLoader.load(art, s, dpi(220), large = true)
+        (fTitle.parent as? android.view.ViewGroup)?.let { com.jslw.genz.util.Stagger.enter(it, step = 30) }
         val mp3 = s.ext == "mp3"
         writeFile.isEnabled = mp3
         if (!mp3) writeFile.text = "Writing into the file is available for MP3 (edits are still saved in GEN-Z)"

@@ -100,6 +100,8 @@ class ThemeEditorActivity : BaseActivity() {
         list.layoutManager = LinearLayoutManager(this)
         adapter = Adapter()
         list.adapter = adapter
+        com.jslw.genz.util.Smooth.tuneList(list)
+        com.jslw.genz.util.Bounce.enter(list)
         findViewById<View>(R.id.footer).visibility = View.VISIBLE
         findViewById<MaterialButton>(R.id.footerBtn1).apply { text = "Save theme"; setOnClickListener { save() } }
         findViewById<MaterialButton>(R.id.footerBtn2).apply { text = "Rename"; setOnClickListener { rename() } }

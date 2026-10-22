@@ -115,6 +115,7 @@ class ThemesActivity : BaseActivity() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val v = LayoutInflater.from(parent.context).inflate(R.layout.item_theme, parent, false)
             SkinPainter.apply(v)
+            com.jslw.genz.util.Bounce.press(v)
             return object : RecyclerView.ViewHolder(v) {}
         }
 

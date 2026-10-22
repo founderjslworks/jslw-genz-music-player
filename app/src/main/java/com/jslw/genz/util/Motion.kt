@@ -169,3 +169,20 @@ object Bounce {
         }
     }
 }
+
+/** Staggered, springy entrance for the sections of a form-like screen (Equalizer, editors). */
+object Stagger {
+    fun enter(container: android.view.ViewGroup, startDelay: Long = 60, step: Long = 45) {
+        val d = container.resources.displayMetrics.density
+        for (i in 0 until container.childCount) {
+            val v = container.getChildAt(i)
+            if (v.visibility != View.VISIBLE) continue
+            v.alpha = 0f
+            v.translationY = 36 * d
+            v.scaleX = 0.96f; v.scaleY = 0.96f
+            v.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
+                .setStartDelay(startDelay + i * step).setDuration(520)
+                .setInterpolator(OvershootInterpolator(1.6f)).start()
+        }
+    }
+}
