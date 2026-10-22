@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:tag="skin_bg">
+
+    <include layout="@layout/view_header" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <TextView
+                android:id="@+id/rtSong"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:tag="skin_text"
+                android:textSize="@dimen/text_17"
+                android:textStyle="bold" />
+
+            <com.jslw.genz.ui.views.WaveformView
+                android:id="@+id/rtWave"
+                android:layout_width="match_parent"
+                android:layout_height="140dp"
+                android:layout_marginTop="16dp"
+                android:tag="skin_surface_round" />
+
+            <com.google.android.material.slider.RangeSlider
+                android:id="@+id/rtRange"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:tag="skin_slider"
+                android:valueFrom="0"
+                android:valueTo="1"
+                app:labelBehavior="gone" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp">
+
+                <TextView
+                    android:id="@+id/rtStart"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:tag="skin_text2" />
+
+                <TextView
+                    android:id="@+id/rtLength"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:tag="skin_accent_text" />
+
+                <TextView
+                    android:id="@+id/rtEnd"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:tag="skin_text2" />
+            </LinearLayout>
+
+            <RadioGroup
+                android:id="@+id/rtType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rtRingtone"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:tag="skin_text"
+                    android:text="Ringtone" />
+
+                <RadioButton
+                    android:id="@+id/rtNotification"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:tag="skin_text"
+                    android:text="Notification" />
+
+                <RadioButton
+                    android:id="@+id/rtAlarm"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:tag="skin_text"
+                    android:text="Alarm" />
+            </RadioGroup>
+
+            <CheckBox
+                android:id="@+id/rtSetDefault"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:tag="skin_text"
+                android:text="Set as default after saving" />
+
+            <CheckBox
+                android:id="@+id/rtFade"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:tag="skin_text"
+                android:text="Fade in / out (WAV only)" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/rtPreview"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:tag="skin_button_tonal"
+                    android:text="Preview"
+                    app:icon="@drawable/ic_play" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/rtSave"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:tag="skin_button"
+                    android:text="Save"
+                    app:icon="@drawable/ic_cut" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/rtNote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:tag="skin_text2"
+                android:text="Cuts MP3, M4A/AAC and WAV without re-encoding, so there is no quality loss."
+                android:textSize="@dimen/text_12" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

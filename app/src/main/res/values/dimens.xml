@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- generated: phone sizes; tablets scale up in values-sw600dp / values-sw840dp -->
+<resources>
+    <dimen name="text_10">10.0sp</dimen>
+    <dimen name="text_11">11.0sp</dimen>
+    <dimen name="text_12">12.0sp</dimen>
+    <dimen name="text_13">13.0sp</dimen>
+    <dimen name="text_14">14.0sp</dimen>
+    <dimen name="text_15">15.0sp</dimen>
+    <dimen name="text_16">16.0sp</dimen>
+    <dimen name="text_17">17.0sp</dimen>
+    <dimen name="text_18">18.0sp</dimen>
+    <dimen name="text_20">20.0sp</dimen>
+    <dimen name="text_22">22.0sp</dimen>
+    <dimen name="header_h">56dp</dimen>
+    <dimen name="play_btn">76dp</dimen>
+    <dimen name="np_btn">56dp</dimen>
+    <dimen name="icon_btn">48dp</dimen>
+    <dimen name="np_side">20dp</dimen>
+    <dimen name="list_side">0dp</dimen>
+    <dimen name="np_art_side">28dp</dimen>
+    <dimen name="row_min">56dp</dimen>
+    <dimen name="setting_min">60dp</dimen>
+    <dimen name="row_art_w">46dp</dimen>
+    <dimen name="row_art_h">46dp</dimen>
+</resources>

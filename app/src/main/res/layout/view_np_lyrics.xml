@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/npLyricsPanel"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="gone">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/npLyrics"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fadingEdgeLength="48dp"
+        android:overScrollMode="never"
+        android:requiresFadingEdge="vertical" />
+
+    <TextView
+        android:id="@+id/npLyricsEmpty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:padding="24dp"
+        android:tag="skin_np_text2"
+        android:text="No lyrics found.\nPut a .lrc file next to the song, embed lyrics in the tags, or pick a lyrics file from the ⋮ menu."
+        android:textSize="@dimen/text_14"
+        android:visibility="gone" />
+</FrameLayout>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:tag="skin_bg">
+
+    <include layout="@layout/view_header" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/tagArt"
+                    android:layout_width="110dp"
+                    android:layout_height="110dp"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeRoundedLarge" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/tagPickArt"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:tag="skin_button_tonal"
+                        android:text="Change cover" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/tagClearArt"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:tag="skin_button_tonal"
+                        android:text="Reset cover" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView style="@style/TagLabel" android:text="Title" />
+            <EditText android:id="@+id/tagTitle" style="@style/TagField" />
+            <TextView style="@style/TagLabel" android:text="Artist" />
+            <EditText android:id="@+id/tagArtist" style="@style/TagField" />
+            <TextView style="@style/TagLabel" android:text="Album" />
+            <EditText android:id="@+id/tagAlbum" style="@style/TagField" />
+            <TextView style="@style/TagLabel" android:text="Album artist" />
+            <EditText android:id="@+id/tagAlbumArtist" style="@style/TagField" />
+            <TextView style="@style/TagLabel" android:text="Genre" />
+            <EditText android:id="@+id/tagGenre" style="@style/TagField" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/TagLabel" android:text="Year" />
+                    <EditText
+                        android:id="@+id/tagYear"
+                        style="@style/TagField"
+                        android:inputType="number" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/TagLabel" android:text="Track #" />
+                    <EditText
+                        android:id="@+id/tagTrack"
+                        style="@style/TagField"
+                        android:inputType="number" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <CheckBox
+                android:id="@+id/tagWriteFile"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:tag="skin_text"
+                android:text="Also write tags into the audio file (MP3 / ID3)" />
+
+            <TextView
+                android:id="@+id/tagNote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:tag="skin_text2"
+                android:text="Edits are always saved in GEN-Z's library. Writing into the file changes it for every app; Android may ask your permission."
+                android:textSize="@dimen/text_12" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

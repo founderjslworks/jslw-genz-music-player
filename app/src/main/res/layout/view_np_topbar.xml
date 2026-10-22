@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/header_h"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <ImageButton
+        android:id="@+id/npClose"
+        style="@style/IconButton"
+        android:contentDescription="Close"
+        android:src="@drawable/ic_expand_more"
+        android:tag="skin_np_icon" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:letterSpacing="0.12"
+            android:tag="skin_np_text2"
+            android:text="PLAYING FROM"
+            android:textSize="@dimen/text_10" />
+
+        <TextView
+            android:id="@+id/npContext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:tag="skin_np_text"
+            android:textSize="@dimen/text_13"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/npMore"
+        style="@style/IconButton"
+        android:contentDescription="More"
+        android:src="@drawable/ic_more"
+        android:tag="skin_np_icon" />
+</LinearLayout>

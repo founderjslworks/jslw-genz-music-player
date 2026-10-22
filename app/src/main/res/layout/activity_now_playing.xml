@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.jslw.genz.ui.views.DragDismissLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/npRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/npContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <include layout="@layout/view_np_topbar" />
+
+        <FrameLayout
+            android:id="@+id/npArtFrame"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingStart="@dimen/np_art_side"
+            android:paddingTop="8dp"
+            android:paddingEnd="@dimen/np_art_side"
+            android:paddingBottom="8dp">
+
+            <com.jslw.genz.ui.views.SquareFrameLayout
+                android:id="@+id/npArtSquare"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/npArt"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeRoundedLarge" />
+            </com.jslw.genz.ui.views.SquareFrameLayout>
+
+            <include layout="@layout/view_np_lyrics" />
+        </FrameLayout>
+
+        <include layout="@layout/view_np_controls" />
+    </LinearLayout>
+</com.jslw.genz.ui.views.DragDismissLayout>

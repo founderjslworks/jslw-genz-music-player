@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:tag="skin_surface"
+    android:visibility="gone">
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/miniProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="1000"
+        android:tag="skin_progress"
+        app:trackThickness="2dp" />
+
+    <LinearLayout
+        android:id="@+id/miniBody"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="?attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="10dp"
+        android:paddingEnd="4dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/miniArt"
+            android:layout_width="@dimen/row_art_w"
+            android:layout_height="@dimen/row_art_h"
+            android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/ShapeRounded" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/miniTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:tag="skin_text"
+                android:textSize="@dimen/text_15"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/miniArtist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:tag="skin_text2"
+                android:textSize="@dimen/text_13" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/miniPlay"
+            style="@style/IconButton"
+            android:contentDescription="Play/Pause"
+            android:src="@drawable/ic_play" />
+
+        <ImageButton
+            android:id="@+id/miniNext"
+            style="@style/IconButton"
+            android:contentDescription="Next"
+            android:src="@drawable/ic_next" />
+    </LinearLayout>
+</LinearLayout>

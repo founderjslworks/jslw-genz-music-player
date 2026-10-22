@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/np_side"
+    android:paddingEnd="@dimen/np_side"
+    android:paddingBottom="12dp">
+
+    <!-- Retro LCD strip (only visible for skins with "lcd": true) -->
+    <TextView
+        android:id="@+id/npLcd"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:padding="8dp"
+        android:singleLine="true"
+        android:tag="skin_lcd"
+        android:textSize="@dimen/text_14"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/npTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="marquee"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:singleLine="true"
+                android:tag="skin_np_text"
+                android:textSize="@dimen/text_22"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/npArtist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:tag="skin_np_text2"
+                android:textSize="@dimen/text_15" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/npFav"
+            style="@style/IconButton"
+            android:contentDescription="Favorite"
+            android:src="@drawable/ic_favorite_border"
+            android:tag="skin_np_icon" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/npFormat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:paddingStart="8dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="2dp"
+        android:tag="skin_badge"
+        android:textSize="@dimen/text_11"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/npSeek"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:tag="skin_np_slider"
+        android:valueFrom="0"
+        android:valueTo="1"
+        app:labelBehavior="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-8dp"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp">
+
+        <TextView
+            android:id="@+id/npElapsed"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:tag="skin_np_text2"
+            android:textSize="@dimen/text_12" />
+
+        <TextView
+            android:id="@+id/npDuration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:tag="skin_np_text2"
+            android:textSize="@dimen/text_12" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/npShuffle"
+            style="@style/IconButton"
+            android:contentDescription="Shuffle"
+            android:src="@drawable/ic_shuffle"
+            android:tag="skin_np_icon" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/npPrev"
+            style="@style/IconButton"
+            android:layout_width="@dimen/np_btn"
+            android:layout_height="@dimen/np_btn"
+            android:contentDescription="Previous"
+            android:src="@drawable/ic_prev"
+            android:tag="skin_np_icon" />
+
+        <FrameLayout
+            android:id="@+id/npPlayWrap"
+            android:layout_width="@dimen/play_btn"
+            android:layout_height="@dimen/play_btn"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:tag="skin_play">
+
+            <ImageView
+                android:id="@+id/npPlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="Play/Pause"
+                android:scaleType="center"
+                android:src="@drawable/ic_play_large"
+                android:tag="skin_on_accent" />
+        </FrameLayout>
+
+        <ImageButton
+            android:id="@+id/npNext"
+            style="@style/IconButton"
+            android:layout_width="@dimen/np_btn"
+            android:layout_height="@dimen/np_btn"
+            android:contentDescription="Next"
+            android:src="@drawable/ic_next"
+            android:tag="skin_np_icon" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/npRepeat"
+            style="@style/IconButton"
+            android:contentDescription="Repeat"
+            android:src="@drawable/ic_repeat"
+            android:tag="skin_np_icon" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/npLyricsBtn"
+            style="@style/IconButton"
+            android:contentDescription="Lyrics"
+            android:src="@drawable/ic_lyrics"
+            android:tag="skin_np_icon" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/npTimerBtn"
+            style="@style/IconButton"
+            android:contentDescription="Sleep timer"
+            android:src="@drawable/ic_timer"
+            android:tag="skin_np_icon" />
+
+        <TextView
+            android:id="@+id/npTimerText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:tag="skin_np_text2"
+            android:textSize="@dimen/text_12"
+            android:visibility="gone" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/npEqBtn"
+            style="@style/IconButton"
+            android:contentDescription="Equalizer"
+            android:src="@drawable/ic_equalizer"
+            android:tag="skin_np_icon" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/npQueueBtn"
+            style="@style/IconButton"
+            android:contentDescription="Queue"
+            android:src="@drawable/ic_queue"
+            android:tag="skin_np_icon" />
+    </LinearLayout>
+</LinearLayout>

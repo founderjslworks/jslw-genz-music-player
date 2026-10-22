@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Wide 4x1 widget -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/wRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/wBg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_shape" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <ImageView
+            android:id="@+id/wArt"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:contentDescription="Album art"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_note" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/wTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/nothing_playing"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/wArtist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/tap_to_play"
+                android:textColor="#B3FFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/wPrev"
+            android:layout_width="40dp"
+            android:layout_height="48dp"
+            android:background="@null"
+            android:contentDescription="Previous"
+            android:src="@drawable/ic_prev" />
+
+        <ImageButton
+            android:id="@+id/wPlay"
+            android:layout_width="44dp"
+            android:layout_height="48dp"
+            android:background="@null"
+            android:contentDescription="Play/Pause"
+            android:src="@drawable/ic_play" />
+
+        <ImageButton
+            android:id="@+id/wNext"
+            android:layout_width="40dp"
+            android:layout_height="48dp"
+            android:background="@null"
+            android:contentDescription="Next"
+            android:src="@drawable/ic_next" />
+    </LinearLayout>
+</FrameLayout>

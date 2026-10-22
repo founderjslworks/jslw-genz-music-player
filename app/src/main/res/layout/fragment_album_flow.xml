@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/flowRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:tag="skin_flow_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/flowList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:overScrollMode="never" />
+
+        <TextView
+            android:id="@+id/flowTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:tag="skin_flow_text"
+            android:textSize="@dimen/text_18"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/flowArtist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="18dp"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:tag="skin_flow_text2"
+            android:textSize="@dimen/text_14" />
+    </LinearLayout>
+
+    <!-- Back side of the "flipped" cover: the album's track list -->
+    <LinearLayout
+        android:id="@+id/flowFlip"
+        android:layout_width="300dp"
+        android:layout_height="360dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="40dp"
+        android:orientation="vertical"
+        android:tag="skin_surface_round"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="6dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/flipTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:tag="skin_text"
+                    android:textSize="@dimen/text_16"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/flipArtist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:tag="skin_text2"
+                    android:textSize="@dimen/text_13" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/flipPlay"
+                style="@style/IconButton"
+                android:contentDescription="Play album"
+                android:src="@drawable/ic_play"
+                android:tag="skin_accent_icon" />
+
+            <ImageButton
+                android:id="@+id/flipClose"
+                style="@style/IconButton"
+                android:contentDescription="Close"
+                android:src="@drawable/ic_close" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:tag="skin_divider" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/flipTracks"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/flowEmpty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:tag="skin_flow_text2"
+        android:text="No albums yet"
+        android:visibility="gone" />
+</FrameLayout>

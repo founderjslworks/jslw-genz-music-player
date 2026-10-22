@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:tag="skin_bg_inner">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:layoutAnimation="@anim/list_layout"
+        android:paddingStart="@dimen/list_side"
+        android:paddingEnd="@dimen/list_side"
+        android:paddingBottom="8dp"
+        android:scrollbars="vertical" />
+
+    <TextView
+        android:id="@+id/empty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:padding="32dp"
+        android:tag="skin_text2"
+        android:textSize="@dimen/text_15"
+        android:visibility="gone" />
+</FrameLayout>

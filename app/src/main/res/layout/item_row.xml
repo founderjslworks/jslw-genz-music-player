@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One row layout for every list (menus, artists, albums, songs, queue) – parts are shown/hidden in code. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rowRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:minHeight="@dimen/row_min"
+    android:orientation="horizontal"
+    android:paddingStart="14dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="6dp"
+    android:paddingBottom="6dp"
+    android:tag="skin_row">
+
+    <ImageView
+        android:id="@+id/rowDrag"
+        android:layout_width="32dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="4dp"
+        android:contentDescription="Reorder"
+        android:scaleType="center"
+        android:src="@drawable/ic_drag"
+        android:tag="skin_icon"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/rowIcon"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_marginEnd="16dp"
+        android:contentDescription="@null"
+        android:tag="skin_accent_icon"
+        android:visibility="gone" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/rowArt"
+        android:layout_width="@dimen/row_art_w"
+        android:layout_height="@dimen/row_art_h"
+        android:layout_marginEnd="12dp"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        app:shapeAppearanceOverlay="@style/ShapeRounded" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/rowTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:tag="skin_text"
+            android:textSize="@dimen/text_16" />
+
+        <TextView
+            android:id="@+id/rowSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:tag="skin_text2"
+            android:textSize="@dimen/text_13"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/rowPlaying"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="6dp"
+        android:contentDescription="Now playing"
+        android:src="@drawable/ic_equalizer"
+        android:tag="skin_accent_icon"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/rowExtra"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:tag="skin_text2"
+        android:textSize="@dimen/text_13"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/rowChevron"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="6dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_chevron"
+        android:tag="skin_icon"
+        android:visibility="gone" />
+
+    <ImageButton
+        android:id="@+id/rowMore"
+        style="@style/IconButton"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:contentDescription="More"
+        android:src="@drawable/ic_more"
+        android:visibility="gone" />
+</LinearLayout>

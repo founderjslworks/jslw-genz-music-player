@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shared classic header for secondary screens -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/hdr"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/header_h"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:tag="skin_header">
+
+    <ImageButton
+        android:id="@+id/hdrBack"
+        style="@style/HeaderButton"
+        android:contentDescription="Back"
+        android:src="@drawable/ic_back" />
+
+    <TextView
+        android:id="@+id/hdrTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:tag="skin_header_text"
+        android:textSize="@dimen/text_18"
+        android:textStyle="bold" />
+
+    <ImageButton
+        android:id="@+id/hdrAction"
+        style="@style/HeaderButton"
+        android:contentDescription="Action"
+        android:src="@drawable/ic_check"
+        android:visibility="invisible" />
+</LinearLayout>
