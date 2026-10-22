@@ -317,6 +317,8 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         if (playing) frames.start()
         wheel?.playing = playing; wheel?.shuffleOn = svc.shuffle
         keypad?.playing = playing
+        hardware?.playing = playing
+        vinyl?.setPlaying(playing)
         coverFx.ambient = playing
         tintToggle(shuffleBtn, svc.shuffle)
         com.jslw.genz.skin.Icons.set(repeatBtn, if (svc.repeatMode == MusicService.REPEAT_ONE) R.drawable.ic_repeat_one else R.drawable.ic_repeat)
@@ -343,6 +345,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             if (seek.max != dur.toFloat()) seek.max = dur.toFloat()
             seek.progress = pos.toFloat()
             seek.playing = svc.isPlaying
+            hardware?.setPosition(pos, dur)
             val sec = pos / 1000
             if (sec != lastSecond) { lastSecond = sec; elapsed.text = formatTime(pos) }
         }
@@ -442,8 +445,9 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
     /** Themes can swap the transport row for a click wheel or a recorder keypad. */
     private fun setupHardware() {
         val o = try { org.json.JSONObject(skin.json) } catch (e: Exception) { return }
+        setupVinyl(o)
         val mode = o.optString("npControls", "standard")
-        if (mode != "wheel" && mode != "keypad") return
+        if (mode !in listOf("wheel", "keypad", "deck", "tuner", "gauge", "pucks")) return
         val hw = o.optJSONObject(mode)
         fun c(k: String, def: Int): Int = hw?.optString(k)?.takeIf { it.isNotBlank() }?.let {
             try { android.graphics.Color.parseColor(it) } catch (e: Exception) { def }
@@ -453,6 +457,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             face = c("face", 0xFFFFFFFF.toInt()), faceEdge = c("faceEdge", 0xFFE6E7EA.toInt()),
             centerTop = c("centerTop", 0xFFF2F3F5.toInt()), centerBottom = c("centerBottom", 0xFFCDD0D6.toInt()),
             glyph = c("glyph", 0xFF8E939C.toInt()), accent = c("accent", skin.accent), label = c("label", 0xFF8E939C.toInt()),
+            led = c("led", c("accent", skin.accent)),
         )
         val row = shuffleBtn.parent as ViewGroup
         val parent = row.parent as ViewGroup
@@ -469,11 +474,46 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             w.onShuffle = { Player.service?.let { it.setShuffleMode(!it.shuffle); w.shuffleOn = it.shuffle; toast(if (it.shuffle) "Shuffle on" else "Shuffle off") } }
             w.onScrub = { ms -> Player.service?.let { sv -> sv.seekTo((sv.position() + ms).coerceIn(0, sv.duration())) } }
             parent.addView(w, idx + 1, lp); wheel = w
-        } else {
+        } else if (mode == "keypad") {
             val k = com.jslw.genz.ui.views.KeypadView(this, colors)
+            k.grille = hw?.optBoolean("grille", true) ?: true
             k.onPlayPause = toggle; k.onPrev = prev; k.onNext = next
             parent.addView(k, idx + 1, lp); keypad = k
+        } else {
+            val h: com.jslw.genz.ui.views.HardwareControl = when (mode) {
+                "deck" -> com.jslw.genz.ui.views.DeckView(this, colors)
+                "tuner" -> com.jslw.genz.ui.views.TunerView(this, colors)
+                "gauge" -> com.jslw.genz.ui.views.GaugeView(this, colors)
+                else -> com.jslw.genz.ui.views.PuckRowView(this, colors)
+            }
+            h.onPlayPause = toggle; h.onPrev = prev; h.onNext = next
+            h.onQueue = { Sheets.queue(this) }
+            h.onScrub = { ms -> Player.service?.let { sv -> sv.seekTo((sv.position() + ms).coerceIn(0, sv.duration())) } }
+            h.onSeekTo = { ms -> Player.service?.seekTo(ms) }
+            parent.addView(h, idx + 1, lp); hardware = h
         }
+    }
+
+    private var hardware: com.jslw.genz.ui.views.HardwareControl? = null
+    private var vinyl: com.jslw.genz.ui.views.VinylView? = null
+
+    /** Themes with "npCover": "vinyl" show the cover as the label of a spinning record with a tonearm. */
+    private fun setupVinyl(o: org.json.JSONObject) {
+        if (o.optString("npCover") != "vinyl") return
+        val box = artSquare as? ViewGroup ?: return
+        val v = com.jslw.genz.ui.views.VinylView(this)
+        o.optJSONObject("vinyl")?.let { j ->
+            fun c(k: String, def: Int) = j.optString(k).takeIf { it.isNotBlank() }?.let {
+                try { android.graphics.Color.parseColor(it) } catch (e: Exception) { def }
+            } ?: def
+            v.plinthTop = c("plinthTop", v.plinthTop); v.plinthBottom = c("plinthBottom", v.plinthBottom)
+            v.labelColor = c("label", v.labelColor); v.armColor = c("arm", v.armColor); v.headColor = c("head", v.headColor)
+            v.well = j.optBoolean("well", true)
+        }
+        art.visibility = View.INVISIBLE
+        coverFx.visibility = View.GONE
+        box.addView(v, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        vinyl = v
     }
 
     private fun showLyrics(show: Boolean) {
@@ -494,6 +534,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
 
     // ---------------------------------------------------------------- colours from album art
     private fun onArt(bmp: Bitmap?) {
+        vinyl?.setArt(bmp)
         // progress bar: this song's own colours (or the theme's when the setting is off / no cover)
         val songCols = com.jslw.genz.util.SongColors.from(bmp)
         seek.setStyle(skin.progressStyle, songCols ?: skin.progressColors)

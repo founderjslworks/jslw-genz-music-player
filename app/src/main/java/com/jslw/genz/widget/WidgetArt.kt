@@ -132,4 +132,124 @@ object WidgetArt {
         }
         return out
     }
+
+    // ================================================================ turntable widget (standard style)
+    private fun noise(c: Canvas, w: Int, h: Int, d: Float) {
+        val r = java.util.Random(11); val p = Paint()
+        for (i in 0 until (w * h / 90)) {
+            p.color = if (r.nextBoolean()) 0x0C000000 else 0x10FFFFFF
+            val x = r.nextInt(w).toFloat(); val y = r.nextInt(h).toFloat(); c.drawRect(x, y, x + d * 0.6f, y + d * 0.6f, p)
+        }
+    }
+
+    /** Pearl-rose body with grain, soft top light and a fine edge. */
+    fun pearl(w: Int, h: Int, radius: Float, d: Float): Bitmap {
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        val rect = RectF(2 * d, 2 * d, w - 2 * d, h - 4 * d)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        p.color = 0x55000000; p.setShadowLayer(4 * d, 0f, 2 * d, 0x66000000)
+        c.drawRoundRect(rect, radius, radius, p); p.clearShadowLayer()
+        p.shader = LinearGradient(0f, rect.top, rect.right, rect.bottom, intArrayOf(0xFFF6EDF1.toInt(), 0xFFE7D6DE.toInt(), 0xFFD3BCC8.toInt()), null, Shader.TileMode.CLAMP)
+        c.drawRoundRect(rect, radius, radius, p)
+        c.save(); c.clipPath(Path().apply { addRoundRect(rect, radius, radius, Path.Direction.CW) })
+        noise(c, w, h, d)
+        p.shader = LinearGradient(0f, rect.top, 0f, rect.top + rect.height() * 0.45f, 0x66FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+        c.drawRect(rect, p)
+        c.restore()
+        p.shader = null; p.style = Paint.Style.STROKE; p.strokeWidth = 1.2f * d
+        p.shader = LinearGradient(0f, rect.top, 0f, rect.bottom, 0xCCFFFFFF.toInt(), 0x33A07F90, Shader.TileMode.CLAMP)
+        c.drawRoundRect(rect, radius, radius, p)
+        return out
+    }
+
+    /** Record in a recessed well with the album cover as its label and a tonearm (on the record while playing). */
+    fun turntable(art: Bitmap?, playing: Boolean, size: Int, d: Float): Bitmap {
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        val cx = size * 0.46f; val cy = size * 0.54f; val r = size * 0.4f
+        // well
+        p.shader = LinearGradient(0f, cy - r * 1.1f, 0f, cy + r * 1.1f, 0xFFC9B3BF.toInt(), 0xFFF3E9EE.toInt(), Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy, r * 1.09f, p)
+        // record
+        p.shader = RadialGradient(cx, cy + 3 * d, r * 1.04f, intArrayOf(0x99000000.toInt(), 0x00000000), floatArrayOf(0.9f, 1f), Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy + 3 * d, r * 1.04f, p)
+        p.shader = null; p.color = 0xFF0D0C0E.toInt(); c.drawCircle(cx, cy, r, p)
+        p.style = Paint.Style.STROKE; p.strokeWidth = 0.6f * d
+        var rr = r * 0.96f; var k = 0
+        while (rr > r * 0.4f) { p.color = if (k % 3 == 0) 0x26FFFFFF else 0x10FFFFFF; c.drawCircle(cx, cy, rr, p); rr -= 1.5f * d; k++ }
+        p.style = Paint.Style.FILL
+        val lr = r * 0.38f
+        if (art != null) {
+            val sh = BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+            val s = (lr * 2) / minOf(art.width, art.height)
+            sh.setLocalMatrix(Matrix().apply { setScale(s, s); postTranslate(cx - art.width * s / 2, cy - art.height * s / 2) })
+            p.shader = sh; c.drawCircle(cx, cy, lr, p); p.shader = null
+        } else { p.color = 0xFFC8333F.toInt(); c.drawCircle(cx, cy, lr, p) }
+        p.color = 0xFFE0E0E0.toInt(); c.drawCircle(cx, cy, lr * 0.07f, p)
+        // sheen
+        p.shader = android.graphics.SweepGradient(cx, cy, intArrayOf(0x00FFFFFF, 0x30FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x22FFFFFF, 0x00FFFFFF),
+            floatArrayOf(0f, 0.1f, 0.2f, 0.5f, 0.6f, 0.7f))
+        c.drawCircle(cx, cy, r, p); p.shader = null
+        // tonearm
+        val px = cx + r * 0.98f; val py = cy - r * 0.98f
+        val deg = if (playing) 122.0 else 100.0
+        val len = r * 1.18f
+        val ex = px + (Math.cos(Math.toRadians(deg)) * len).toFloat(); val ey = py + (Math.sin(Math.toRadians(deg)) * len).toFloat()
+        p.style = Paint.Style.STROKE; p.strokeCap = Paint.Cap.ROUND
+        p.color = 0x44000000; p.strokeWidth = 4 * d; c.drawLine(px + 3 * d, py + 4 * d, ex + 3 * d, ey + 4 * d, p)
+        p.shader = LinearGradient(px, py, ex, ey, 0xFFF4F4F6.toInt(), 0xFF9C9CA3.toInt(), Shader.TileMode.CLAMP)
+        p.strokeWidth = 3f * d; c.drawLine(px, py, ex, ey, p); p.shader = null
+        p.style = Paint.Style.FILL
+        c.save(); c.rotate((deg - 90).toFloat(), ex, ey)
+        p.color = 0xFFEDEDED.toInt(); c.drawRoundRect(RectF(ex - 5 * d, ey - 2 * d, ex + 5 * d, ey + 11 * d), 2 * d, 2 * d, p)
+        p.color = 0xFF3A3A3A.toInt(); c.drawRect(ex - 2.5f * d, ey + 9 * d, ex + 2.5f * d, ey + 13 * d, p)
+        c.restore()
+        p.shader = RadialGradient(px - 2 * d, py - 2 * d, 11 * d, 0xFFFFFFFF.toInt(), 0xFF8E8E95.toInt(), Shader.TileMode.CLAMP)
+        c.drawCircle(px, py, 9 * d, p); p.shader = null
+        p.color = 0xFF2B2B30.toInt(); c.drawCircle(px, py, 3.5f * d, p)
+        return out
+    }
+
+    /** Round 3D button: grey, or red for play / pause. Glyphs are drawn, so they stay crisp. */
+    fun puck(kind: String, accent: Boolean, size: Int, d: Float): Bitmap {
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        val cx = size / 2f; val cy = size / 2f - 1.5f * d; val r = size * 0.42f
+        p.shader = RadialGradient(cx, cy + 3 * d, r * 1.18f, intArrayOf(0x66000000, 0x00000000), floatArrayOf(0.75f, 1f), Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy + 3 * d, r * 1.18f, p)
+        p.shader = LinearGradient(0f, cy - r, 0f, cy + r, 0xFFFFFFFF.toInt(), 0xFFBDB3B8.toInt(), Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy, r, p)
+        val ri = r * 0.84f
+        p.shader = LinearGradient(0f, cy - ri, 0f, cy + ri,
+            if (accent) 0xFFE2454F.toInt() else 0xFF8C8A91.toInt(), if (accent) 0xFFA81F2A.toInt() else 0xFF5E5C63.toInt(), Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy, ri, p)
+        p.shader = LinearGradient(0f, cy - ri, 0f, cy, 0x55FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+        c.drawOval(RectF(cx - ri * 0.78f, cy - ri * 0.94f, cx + ri * 0.78f, cy - ri * 0.05f), p); p.shader = null
+        p.color = if (accent) 0xFFFFFFFF.toInt() else 0xFF2E2C33.toInt()
+        val g = ri * 0.42f
+        fun tri(x: Float, dir: Int) {
+            c.drawPath(Path().apply { moveTo(x - dir * g * 0.5f, cy - g * 0.55f); lineTo(x - dir * g * 0.5f, cy + g * 0.55f); lineTo(x + dir * g * 0.5f, cy); close() }, p)
+        }
+        when (kind) {
+            "prev" -> { tri(cx - g * 0.45f, -1); tri(cx + g * 0.45f, -1) }
+            "next" -> { tri(cx - g * 0.45f, 1); tri(cx + g * 0.45f, 1) }
+            "play" -> tri(cx + g * 0.12f, 1)
+            "pause" -> {
+                val bw = g * 0.32f
+                c.drawRoundRect(RectF(cx - g * 0.45f, cy - g * 0.6f, cx - g * 0.45f + bw, cy + g * 0.6f), bw / 3, bw / 3, p)
+                c.drawRoundRect(RectF(cx + g * 0.45f - bw, cy - g * 0.6f, cx + g * 0.45f, cy + g * 0.6f), bw / 3, bw / 3, p)
+            }
+            "queue" -> {
+                for (k in 0..2) {
+                    val y = cy - g * 0.5f + k * g * 0.5f
+                    c.drawCircle(cx - g * 0.6f, y, g * 0.09f, p)
+                    c.drawRoundRect(RectF(cx - g * 0.38f, y - g * 0.07f, cx + g * 0.7f, y + g * 0.07f), g * 0.07f, g * 0.07f, p)
+                }
+            }
+        }
+        return out
+    }
 }

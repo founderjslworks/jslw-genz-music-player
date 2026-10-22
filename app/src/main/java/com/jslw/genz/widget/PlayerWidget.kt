@@ -91,39 +91,33 @@ object Widgets {
     }
 
     private fun views(ctx: Context, layout: Int, song: Song?, playing: Boolean, art: Bitmap?, cols: IntArray): RemoteViews {
-        val skin = SkinManager.current
         val v = RemoteViews(ctx.packageName, layout)
         val d = 2f // render at 2x for crisp edges on any launcher
         val square = layout == R.layout.widget_square
-        val (bw, bh) = when (layout) {
-            R.layout.widget_square -> 260 to 260
-            R.layout.widget_large -> 500 to 250
-            else -> 500 to 130
+        val large = layout == R.layout.widget_large
+        // turntable style: pearl body, record with the cover as its label, round 3D buttons
+        val (bw, bh) = when { square -> 220 to 220; large -> 500 to 230; else -> 500 to 120 }
+        val radius = if (square) 30 * d else bh * d / 2f
+        v.setImageViewBitmap(R.id.wBg, WidgetArt.pearl((bw * d).toInt(), (bh * d).toInt(), radius, d))
+        v.setImageViewBitmap(R.id.wArt, WidgetArt.turntable(art, playing, ((if (large) 136 else if (square) 120 else 68) * d).toInt(), d))
+        val btn = ((if (large) 46 else if (square) 36 else 40) * d).toInt()
+        v.setImageViewBitmap(R.id.wPrev, WidgetArt.puck("prev", false, btn, d))
+        v.setImageViewBitmap(R.id.wNext, WidgetArt.puck("next", false, btn, d))
+        v.setImageViewBitmap(R.id.wPlay, WidgetArt.puck(if (playing) "pause" else "play", true, (btn * 1.08f).toInt(), d))
+        if (large) {
+            v.setImageViewBitmap(R.id.wQueue, WidgetArt.puck("queue", false, btn, d))
+            v.setOnClickPendingIntent(R.id.wQueue, PendingIntentCompat.getActivity(ctx, 105,
+                Intent(ctx, com.jslw.genz.ui.NowPlayingActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT, false))
         }
-        v.setImageViewBitmap(R.id.wBg, WidgetArt.background((bw * d).toInt(), (bh * d).toInt(), art, skin, cols, d, square))
-        v.setInt(R.id.wBg, "setColorFilter", 0)
-        v.setInt(R.id.wBg, "setAlpha", 255)
-        // always light text on the rich backdrop
-        v.setTextColor(R.id.wTitle, 0xFFFFFFFF.toInt())
-        v.setTextColor(R.id.wArtist, 0xD9FFFFFF.toInt())
-        if (layout == R.layout.widget_large) v.setTextColor(R.id.wAlbum, 0x99FFFFFF.toInt())
-        for (id in intArrayOf(R.id.wPrev, R.id.wNext)) v.setInt(id, "setColorFilter", 0xF2FFFFFF.toInt())
-        v.setInt(R.id.wPlay, "setColorFilter", 0)
-        v.setImageViewBitmap(R.id.wPlay, WidgetArt.playButton(playing, (56 * d).toInt(), cols, d))
-
         v.setTextViewText(R.id.wTitle, song?.title ?: ctx.getString(R.string.nothing_playing))
         v.setTextViewText(R.id.wArtist, song?.artist ?: ctx.getString(R.string.tap_to_play))
-        if (layout == R.layout.widget_large) v.setTextViewText(R.id.wAlbum, song?.album ?: "GEN-Z Music")
-        if (square) {
-            // the cover is the backdrop itself
-            v.setViewVisibility(R.id.wArt, android.view.View.GONE)
-        } else if (art != null) {
-            val size = if (layout == R.layout.widget_large) (104 * d).toInt() else (56 * d).toInt()
-            v.setImageViewBitmap(R.id.wArt, WidgetArt.cover(art, size, d))
-            v.setInt(R.id.wArt, "setColorFilter", 0)
-        } else {
-            v.setImageViewResource(R.id.wArt, R.drawable.ic_note)
-            v.setInt(R.id.wArt, "setColorFilter", 0xFFFFFFFF.toInt())
+        if (!square) {
+            // live elapsed time without any background work: the launcher's own chronometer counts while playing
+            val dur = (Player.service?.duration() ?: song?.duration ?: 0L).coerceAtLeast(0)
+            val pos = (Player.service?.position() ?: 0L).coerceIn(0, maxOf(dur, 0))
+            val total = "%d:%02d".format(dur / 60000, (dur / 1000) % 60)
+            val fmt = if (large) "Duration: %s / $total" else "%s / $total"
+            v.setChronometer(R.id.wTime, android.os.SystemClock.elapsedRealtime() - pos, if (song == null) "GEN-Z Music" else fmt, playing && song != null)
         }
         v.setOnClickPendingIntent(R.id.wPlay, service(ctx, MusicService.ACTION_TOGGLE, 1))
         v.setOnClickPendingIntent(R.id.wNext, service(ctx, MusicService.ACTION_NEXT, 2))

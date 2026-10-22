@@ -116,3 +116,20 @@ A theme can replace the Now Playing transport row with a hardware control:
 * **keypad** – pocket-recorder speaker grille with three keys (previous · play/pause · next). Use a `"keypad"` colour block.
 
 Built-in examples: Wheel Noir, Cream Wheel, Pocket Recorder.
+
+### More control styles (v1.7)
+
+`"npControls"` can also be:
+
+* **deck** – radio deck: LCD read-out, chrome previous / next buttons, a seek knob (turn to scrub, tap to play / pause) and a status LED (`"led"` colour).
+* **tuner** – radio tuner: big pixel read-out, a glowing tuning band (drag it to move through the song) and a ribbed dial.
+* **gauge** – analog dial with a minute scale and a red needle; drag the needle to jump anywhere, tap the centre to play / pause.
+* **pucks** – a row of round 3D buttons (previous · play / pause · next · queue) with an elapsed / total read-out.
+* **keypad** now accepts `"grille": false` to hide the speaker grille.
+
+### Vinyl cover
+
+`"npCover": "vinyl"` shows the album art as the label of a spinning record with a tonearm that lifts on pause.
+Optional colours: `"vinyl": { "plinthTop", "plinthBottom", "label", "arm", "head", "well": true }`.
+
+Built-in examples: Turntable Rose, Retro Deck, Radio Deck, Tuner Orange, Analog Dial.

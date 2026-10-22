@@ -24,6 +24,7 @@ class HardwareColors(
     val panelTop: Int, val panelBottom: Int, val face: Int, val faceEdge: Int,
     val centerTop: Int, val centerBottom: Int, val glyph: Int, val accent: Int,
     val label: Int,
+    val led: Int = accent,
 )
 
 private fun tinted(ctx: Context, res: Int, color: Int): Drawable? =
@@ -178,6 +179,8 @@ class KeypadView(ctx: Context, var colors: HardwareColors) : View(ctx) {
     var onNext: () -> Unit = {}
     var onPlayPause: () -> Unit = {}
     var playing = false; set(v) { field = v; invalidate() }
+    /** Show the speaker grille above the keys (pocket-recorder look). */
+    var grille = true
 
     private val d = resources.displayMetrics.density
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -187,7 +190,7 @@ class KeypadView(ctx: Context, var colors: HardwareColors) : View(ctx) {
 
     override fun onMeasure(wm: Int, hm: Int) {
         val w = MeasureSpec.getSize(wm)
-        setMeasuredDimension(w, min((w * 0.62f).toInt(), (240 * d).toInt()))
+        setMeasuredDimension(w, if (grille) min((w * 0.62f).toInt(), (240 * d).toInt()) else min((w * 0.3f).toInt(), (120 * d).toInt()))
     }
 
     override fun onDraw(c: Canvas) {
@@ -195,19 +198,19 @@ class KeypadView(ctx: Context, var colors: HardwareColors) : View(ctx) {
         p.shader = LinearGradient(0f, 0f, 0f, h, colors.panelTop, colors.panelBottom, Shader.TileMode.CLAMP)
         c.drawRoundRect(RectF(0f, 0f, w, h), 22 * d, 22 * d, p); p.shader = null
         // speaker grille
-        val gTop = 22 * d; val gBot = h * 0.42f
+        val gTop = 22 * d; val gBot = if (grille) h * 0.42f else -10 * d
         p.color = (colors.glyph and 0x00FFFFFF) or 0x8C000000.toInt()
         val step = 7 * d; val rr = 1.5f * d
         var y = gTop
-        while (y <= gBot) {
+        while (grille && y <= gBot) {
             var x = w * 0.16f
             while (x <= w * 0.84f) { c.drawCircle(x, y, rr, p); x += step }
             y += step
         }
         tp.color = colors.label
-        val lab = "SPEAKERS"; c.drawText(lab, (w - tp.measureText(lab)) / 2f, gBot + 16 * d, tp)
+        if (grille) { val lab = "SPEAKERS"; c.drawText(lab, (w - tp.measureText(lab)) / 2f, gBot + 16 * d, tp) }
         // keys
-        val pad = 14 * d; val gap = 6 * d; val top = gBot + 26 * d; val bottom = h - 26 * d
+        val pad = 14 * d; val gap = 6 * d; val top = if (grille) gBot + 26 * d else 12 * d; val bottom = h - (if (grille) 26 else 12) * d
         val kw = (w - pad * 2 - gap * 2) / 3f
         for (i in 0..2) {
             val l = pad + i * (kw + gap)
@@ -232,10 +235,12 @@ class KeypadView(ctx: Context, var colors: HardwareColors) : View(ctx) {
                 drawIcon(c, if (i == 0) R.drawable.ic_prev else R.drawable.ic_next, kcx, kcy, (btn * 0.6f).toInt(), colors.glyph)
             }
         }
-        val l2 = "KEYPAD"; c.drawText(l2, (w - tp.measureText(l2)) / 2f, h - 10 * d, tp)
-        // little status LED
-        p.color = if (playing) colors.accent else ((colors.glyph and 0x00FFFFFF) or 0x40000000)
-        c.drawCircle(pad + 4 * d, h - 13 * d, 3 * d, p)
+        if (grille) {
+            val l2 = "KEYPAD"; c.drawText(l2, (w - tp.measureText(l2)) / 2f, h - 10 * d, tp)
+            // little status LED
+            p.color = if (playing) colors.led else ((colors.glyph and 0x00FFFFFF) or 0x40000000)
+            c.drawCircle(pad + 4 * d, h - 13 * d, 3 * d, p)
+        }
     }
 
     private fun drawIcon(c: Canvas, res: Int, x: Float, y: Float, size: Int, color: Int) {
