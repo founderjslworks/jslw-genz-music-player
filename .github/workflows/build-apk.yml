@@ -3,6 +3,7 @@ name: Build GEN-Z
 on:
   push:
     branches: [main]
+    paths-ignore: ['windows/**', '.github/workflows/build-windows.yml']
   workflow_dispatch:
 
 permissions:

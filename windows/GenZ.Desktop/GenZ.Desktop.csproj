@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- GEN-Z Music for Windows · Windows 7 SP1 to Windows 11 · .NET Framework 4.8 (WPF) -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>GenZ</RootNamespace>
+    <AssemblyName>GEN-Z Music</AssemblyName>
+    <ApplicationIcon>Assets\genz.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>GEN-Z Music</Product>
+    <Company>JSL WORKS PVT LTD</Company>
+    <Authors>Partho Ghosh</Authors>
+    <Copyright>© 2026 JSL WORKS PVT LTD. All rights reserved.</Copyright>
+    <Description>GEN-Z Music – offline music player. Made in India with love.</Description>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CSCore" Version="1.2.1.2" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- the same 42 themes as the Android app -->
+    <None Include="..\..\app\src\main\assets\skins\*.json" Link="skins\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- licences -->
+    <None Include="..\..\app\src\main\assets\licenses\*.txt" Link="licenses\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Google Fonts shared with Android -->
+    <Resource Include="..\..\app\src\main\res\font\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
+    <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\genz.png" />
+  </ItemGroup>
+</Project>
