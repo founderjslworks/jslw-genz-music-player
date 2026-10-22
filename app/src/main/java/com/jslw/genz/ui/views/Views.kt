@@ -193,7 +193,8 @@ class EqCurveView @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? =
             duration = 260
             addUpdateListener { a ->
                 val t = a.animatedValue as Float
-                shown = FloatArray(values.size) { i -> from[i] + (values[i] - from[i]) * t }
+                val target = this@EqCurveView.values
+                shown = FloatArray(target.size) { i -> from[i] + (target[i] - from[i]) * t }
                 invalidate()
             }
             start()

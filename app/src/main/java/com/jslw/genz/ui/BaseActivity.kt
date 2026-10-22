@@ -29,7 +29,7 @@ abstract class BaseActivity : AppCompatActivity() {
         // fluid: highest panel refresh rate (90/120/144 Hz); vivid: wide colour gamut where the screen has it
         com.jslw.genz.util.Smooth.preferHighRefreshRate(this)
         if (Build.VERSION.SDK_INT >= 26 && resources.configuration.isScreenWideColorGamut) {
-            window.colorMode = android.content.pm.ActivityInfo.COLOR_MODE_WIDE_COLOR
+            window.colorMode = android.content.pm.ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT
         }
     }
 
