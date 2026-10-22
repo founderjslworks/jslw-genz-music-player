@@ -41,7 +41,12 @@ namespace GenZ
             var theme = ThemeManager.All.Find(t => t.Id == Settings.Current.ThemeId) ?? ThemeManager.All.Find(t => t.Id == "vivid_genz");
             if (theme != null) ThemeManager.Apply(theme);
             base.OnStartup(e);
+            // terms of use: accepted in Setup, or here on the first run of a portable copy
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            if (!TermsWindow.EnsureAccepted()) { Shutdown(); return; }
             main = new MainWindow();
+            MainWindow = main;
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
             main.Show();
             if (e.Args.Length > 0) main.OpenFiles(e.Args);
             Listen();

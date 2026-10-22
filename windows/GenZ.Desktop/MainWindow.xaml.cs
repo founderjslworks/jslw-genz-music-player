@@ -441,18 +441,10 @@ namespace GenZ
         void OnUpdates(object sender, RoutedEventArgs e) => Open("https://www.jslworks.in/android-devlopment");
         static void Open(string url) { try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { } }
 
-        void OnLicences(object sender, RoutedEventArgs e)
-        {
-            var dir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "licenses");
-            string text = "GEN-Z Music © 2026 JSL WORKS PVT LTD.\n\nOpen-source components: CSCore (MS-PL), TagLib# (LGPL 2.1), Google Fonts (SIL OFL 1.1).\n\n";
-            try { foreach (var f in System.IO.Directory.GetFiles(dir, "*.txt")) text += System.IO.File.ReadAllText(f) + "\n\n"; } catch { }
-            var w = new Window
-            {
-                Title = "Open-source licences", Width = 720, Height = 560, Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Content = new TextBox { Text = text, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, FontSize = 12, Padding = new Thickness(12) }
-            };
-            w.ShowDialog();
-        }
+        void OnLicences(object sender, RoutedEventArgs e) =>
+            new TermsWindow("Open-source licences", TermsWindow.ReadNotices(), false) { Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner }.ShowDialog();
+        void OnTerms(object sender, RoutedEventArgs e) =>
+            new TermsWindow("Terms of use", TermsWindow.ReadEula(), false) { Owner = this, WindowStartupLocation = WindowStartupLocation.CenterOwner }.ShowDialog();
 
         // ================================================================ playback UI
         void OnPlay(object sender, EventArgs e)

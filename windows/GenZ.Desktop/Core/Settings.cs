@@ -34,6 +34,7 @@ namespace GenZ.Core
 
         // picture-in-picture mini player
         public bool AutoPip { get; set; } = false;
+        public bool TermsAccepted { get; set; } = false;
         public string PipMode { get; set; } = "compact";           // compact, cover
         public double PipLeft { get; set; } = -1;
         public double PipTop { get; set; } = -1;

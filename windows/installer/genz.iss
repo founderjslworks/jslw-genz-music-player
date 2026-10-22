@@ -36,7 +36,8 @@ UninstallDisplayName={#AppName}
 WizardStyle=modern
 WizardImageFile=wizard.bmp,wizard_2x.bmp
 WizardSmallImageFile=small.bmp,small_2x.bmp
-LicenseFile=..\..\LICENSE
+LicenseFile=EULA.txt
+InfoBeforeFile=THIRD-PARTY.txt
 Compression=lzma2/max
 SolidCompression=yes
 MinVersion=6.1sp1
@@ -58,6 +59,7 @@ Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; Comment: "GEN-Z 
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Registry]
+Root: HKCU; Subkey: "Software\JSL WORKS\GEN-Z Music"; ValueType: dword; ValueName: "TermsAccepted"; ValueData: 1; Flags: uninsdeletekey
 ; "Open with" entry for common audio files
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "{#AppName}"; Flags: uninsdeletekey; Tasks: openwith
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""; Tasks: openwith
@@ -73,6 +75,16 @@ Root: HKA; Subkey: "Software\Classes\.m4a\OpenWithList\{#AppExe}"; ValueType: no
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Start {#AppName} now"; Flags: nowait postinstall skipifsilent
+
+[Messages]
+WizardLicense=Terms and Conditions
+LicenseLabel=Please read the GEN-Z Music Terms and Conditions (End-User Licence Agreement).
+LicenseLabel3=You must accept these terms before GEN-Z Music can be installed. Use the scroll bar or press Page Down to read the whole agreement.
+LicenseAccepted=I &accept the Terms and Conditions
+LicenseNotAccepted=I &do not accept
+WizardInfoBefore=Licence information
+InfoBeforeLabel=GEN-Z Music is built with these open-source components, used under their own licences.
+InfoBeforeClickLabel=When you are ready to install, click Next.
 
 [Code]
 // .NET Framework 4.8 is built into Windows 10 / 11; Windows 7 and 8.1 may need it.

@@ -1,0 +1,28 @@
+GEN-Z MUSIC – OPEN-SOURCE LICENCE INFORMATION
+
+GEN-Z Music is proprietary software, (c) 2026 JSL WORKS PVT LTD. It is built with the following
+open-source components, each used under its own licence. The full licence texts are installed in
+the "licenses" folder and are shown in the app under Settings & About > Licences.
+
+CSCore – audio playback, decoders and equalizer
+  Copyright (c) Florian Rosmann. Microsoft Public License (MS-PL).
+  https://github.com/filoe/cscore
+
+TagLib# (TagLibSharp) – reads song titles, artists, albums, lyrics and covers
+  Copyright (c) the TagLib# authors. GNU Lesser General Public License 2.1 (LGPL-2.1).
+  Used unmodified as a separate library (TagLibSharp.dll), which you may replace with a
+  compatible version. Source: https://github.com/mono/taglib-sharp
+
+Newtonsoft.Json – reads and writes settings and themes
+  Copyright (c) James Newton-King. MIT License.
+  https://www.newtonsoft.com/json
+
+Google Fonts – Inter, Poppins, Playfair Display, Space Grotesk, Doto, VT323, Orbitron, Cinzel,
+Lora, Montserrat, Rubik, Caveat, Teko, Josefin Sans, Quicksand, Bebas Neue, Righteous,
+Press Start 2P, Monoton, Audiowide, Jersey 10, Barlow Condensed
+  SIL Open Font License 1.1. https://fonts.google.com
+
+Microsoft .NET Framework 4.8 and Windows Media Foundation are components of Microsoft Windows,
+used under Microsoft's licence terms. Windows is a trademark of Microsoft Corporation.
+
+Made in India with love by JSL WORKS PVT LTD · https://www.jslworks.in/

@@ -220,6 +220,7 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                                         <Button Style="{StaticResource PillButton}" Content="www.jslworks.in" Click="OnWebsite" Margin="0,0,10,0" />
                                         <Button Style="{StaticResource GhostPill}" Content="Updates &amp; downloads" Click="OnUpdates" Margin="0,0,10,0" />
+                                        <Button Style="{StaticResource GhostPill}" Content="Terms of use" Click="OnTerms" Margin="0,0,10,0" />
                                         <Button Style="{StaticResource GhostPill}" Content="Licences" Click="OnLicences" />
                                     </StackPanel>
                                 </StackPanel>

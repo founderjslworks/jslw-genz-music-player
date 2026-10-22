@@ -12,8 +12,8 @@
     <AssemblyName>GEN-Z Music</AssemblyName>
     <ApplicationIcon>Assets\genz.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.2.0</Version>
-    <FileVersion>1.2.0.0</FileVersion>
+    <Version>1.2.1</Version>
+    <FileVersion>1.2.1.0</FileVersion>
     <Product>GEN-Z Music</Product>
     <Company>JSL WORKS PVT LTD</Company>
     <Authors>Partho Ghosh</Authors>
@@ -40,6 +40,9 @@
     <None Include="..\..\app\src\main\assets\skins\*.json" Link="skins\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!-- licences -->
     <None Include="..\..\app\src\main\assets\licenses\*.txt" Link="licenses\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- terms of use and third-party notices (also shown by the installer) -->
+    <None Include="..\installer\EULA.txt" Link="legal\EULA.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\installer\THIRD-PARTY.txt" Link="legal\THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
     <!-- Google Fonts shared with Android -->
     <Resource Include="..\..\app\src\main\res\font\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
     <Resource Include="Assets\logo.png" />

@@ -1,0 +1,72 @@
+GEN-Z MUSIC FOR WINDOWS
+END-USER LICENCE AGREEMENT AND TERMS OF USE
+
+Copyright (c) 2026 JSL WORKS PVT LTD. All rights reserved.
+Designed and developed by Partho Ghosh. Made in India.
+Website: https://www.jslworks.in/
+
+Please read this agreement carefully before installing GEN-Z Music ("the Software"). By clicking
+"I accept the agreement" and installing, copying or using the Software, you agree to these terms.
+If you do not agree, click "I do not accept the agreement" and do not install the Software.
+
+1. LICENCE
+JSL WORKS PVT LTD ("JSL WORKS", "we") grants you a personal, non-exclusive, non-transferable,
+revocable licence to install and use the Software on computers that you own or control, for
+playing and organising audio files that you have the right to play.
+
+2. RESTRICTIONS
+You may not: (a) sell, rent, lease, sub-license or distribute the Software, or include it in
+another product, without our written permission; (b) modify, translate, decompile, disassemble or
+reverse-engineer the Software, except to the extent that applicable law expressly permits it;
+(c) remove or alter any copyright notice, trademark or branding, including the JSL WORKS name and
+logo; (d) use the Software for any unlawful purpose, including playing or distributing content you
+have no right to use.
+
+3. OWNERSHIP
+The Software, including its code, design, themes, graphics, icons and documentation, is owned by
+JSL WORKS PVT LTD and is protected by copyright and other intellectual-property laws. This
+agreement does not transfer ownership to you. All rights not expressly granted are reserved.
+
+4. YOUR MUSIC AND YOUR PRIVACY
+GEN-Z Music works fully offline. It reads the audio files on your computer only to play them and
+to show their titles, artists and covers. It does not collect, store or send any personal data,
+usage statistics or files to JSL WORKS or anyone else, and it shows no advertising. Your library,
+playlists and settings are stored only on your computer (in your user profile) and are removed
+when you delete them. Links in the Software (for example to www.jslworks.in) open in your web
+browser only when you click them.
+
+5. THIRD-PARTY COMPONENTS
+The Software includes open-source components (listed on the next page and in the "licenses"
+folder of the installation). Those components are provided under their own licences, which
+apply to them in addition to this agreement.
+
+6. UPDATES
+JSL WORKS may provide updates from time to time at https://www.jslworks.in/android-devlopment.
+Updates are covered by this agreement unless they come with different terms. The Software never
+updates itself without your action.
+
+7. NO WARRANTY
+The Software is provided "AS IS" and "AS AVAILABLE", without warranty of any kind, express or
+implied, including warranties of merchantability, fitness for a particular purpose and
+non-infringement. JSL WORKS does not warrant that the Software will be error-free, uninterrupted
+or compatible with every file, device or system.
+
+8. LIMITATION OF LIABILITY
+To the maximum extent permitted by applicable law, JSL WORKS PVT LTD, its directors and
+developers shall not be liable for any indirect, incidental, special or consequential damages, or
+for any loss of data, files, profits or business, arising out of or in connection with the use of,
+or inability to use, the Software, even if advised of the possibility of such damages. Please keep
+backups of your music.
+
+9. TERMINATION
+This licence ends automatically if you breach these terms. On termination you must stop using the
+Software and uninstall it. Sections 3, 7, 8 and 10 survive termination.
+
+10. GOVERNING LAW
+This agreement is governed by the laws of India. Any dispute shall be subject to the exclusive
+jurisdiction of the competent courts in India.
+
+11. CONTACT
+For questions about this agreement, permissions or licensing, please visit https://www.jslworks.in/
+
+By installing GEN-Z Music you confirm that you have read, understood and agree to these terms.
