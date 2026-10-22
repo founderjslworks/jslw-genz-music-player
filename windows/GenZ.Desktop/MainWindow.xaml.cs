@@ -57,6 +57,9 @@ namespace GenZ
             };
             SizeChanged += (s, e) => ApplyScale();
             NpPanel.SizeChanged += (s, e) => FitCover();
+            NpInfo.SizeChanged += (s, e) => FitCover();
+            NpControls.SizeChanged += (s, e) => FitCover();
+            Loaded += (s, e) => { ApplyScale(); FitCover(); };
             FitWindowToScreen();
             PreviewKeyDown += OnKeys;
             SourceInitialized += (s, e) => RegisterMediaKeys();
@@ -844,9 +847,11 @@ namespace GenZ
         /// <summary>The Now Playing cover grows and shrinks so the controls always fit.</summary>
         void FitCover()
         {
-            double w = NpPanel.ActualWidth - 56, h = NpPanel.ActualHeight - 380;
-            double size = Math.Max(110, Math.Min(420, Math.Min(w, h)));
-            NpCoverHost.Width = NpCoverHost.Height = size;
+            // the cover gets whatever the title, progress and controls leave free – they are always fully visible
+            double used = 26 + 18 + NpInfo.ActualHeight + NpInfo.Margin.Top + NpControls.ActualHeight + NpControls.Margin.Top + 8;
+            double w = NpPanel.ActualWidth - 56, h = NpPanel.ActualHeight - used;
+            double size = Math.Max(90, Math.Min(420, Math.Min(w, h)));
+            if (Math.Abs(NpCoverHost.Width - size) > 0.5) NpCoverHost.Width = NpCoverHost.Height = size;
         }
 
         // ================================================================ animations

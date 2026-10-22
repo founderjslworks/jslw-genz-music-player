@@ -252,7 +252,7 @@
                             <Path x:Name="NpCoverNote" Data="{StaticResource IcNote}" Fill="{DynamicResource AccentBrush}" Width="80" Height="80" Stretch="Uniform" />
                         </Border>
                     </Grid>
-                    <StackPanel Grid.Row="1" Margin="0,24,0,0">
+                    <StackPanel x:Name="NpInfo" Grid.Row="1" Margin="0,20,0,0">
                         <Grid>
                             <StackPanel Margin="0,0,44,0">
                                 <TextBlock x:Name="NpTitle" Text="Nothing playing" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource NpTextBrush}" FontFamily="{DynamicResource DisplayFont}" />
@@ -265,7 +265,7 @@
                             <TextBlock x:Name="NpBadgeText" FontSize="11" FontWeight="Bold" Foreground="#101020" />
                         </Border>
                     </StackPanel>
-                    <StackPanel Grid.Row="2" Margin="0,14,0,0">
+                    <StackPanel x:Name="NpControls" Grid.Row="2" Margin="0,12,0,0">
                         <c:SparkleBar x:Name="NpBar" />
                         <Grid Margin="0,2,0,0">
                             <TextBlock x:Name="NpElapsed" Text="0:00" FontSize="12" Foreground="{DynamicResource NpText2Brush}" />
