@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="clr-namespace:GenZ.Controls"
-        Title="GEN-Z Music" Width="1300" Height="800" MinWidth="980" MinHeight="620"
+        Title="GEN-Z Music" Width="1300" Height="800" MinWidth="760" MinHeight="520"
         WindowStartupLocation="CenterScreen" Background="{DynamicResource BgBrush}"
         FontFamily="{DynamicResource BodyFont}" Icon="Assets/genz.png"
         WindowStyle="None" ResizeMode="CanResize" UseLayoutRounding="True">
@@ -24,7 +24,7 @@
             <RowDefinition Height="56" />
             <RowDefinition Height="*" />
             <RowDefinition Height="92" />
-            <RowDefinition Height="26" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ============ title bar ============ -->
@@ -50,6 +50,7 @@
                                Foreground="{DynamicResource HeaderTextBrush}" Opacity="0.7" IsHitTestVisible="False" FontSize="13" />
                 </Grid>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button Style="{StaticResource IconButton}" Tag="{StaticResource IcPip}" Foreground="{DynamicResource HeaderTextBrush}" Click="OnPip" ToolTip="Mini player – picture in picture (Ctrl+P)" />
                     <Button Style="{StaticResource IconButton}" Tag="{StaticResource IcPanel}" Foreground="{DynamicResource HeaderTextBrush}" Click="OnTogglePanel" ToolTip="Show / hide Now Playing" />
                     <Button Style="{StaticResource IconButton}" Tag="{StaticResource IcMin}" Foreground="{DynamicResource HeaderTextBrush}" Click="OnMin" Width="46" />
                     <Button Style="{StaticResource IconButton}" Tag="{StaticResource IcMax}" Foreground="{DynamicResource HeaderTextBrush}" Click="OnMax" Width="46" />
@@ -82,6 +83,7 @@
                         <RadioButton x:Name="NavQueue" Style="{StaticResource NavItem}" Content="Up next" Tag="{StaticResource IcQueue}" Checked="OnNav" />
                         <TextBlock Text="EXTRAS" Margin="26,16,0,6" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Text2Brush}" />
                         <RadioButton x:Name="NavThemes" Style="{StaticResource NavItem}" Content="Themes" Tag="{StaticResource IcPalette}" Checked="OnNav" />
+                        <RadioButton x:Name="NavAnim" Style="{StaticResource NavItem}" Content="Animations" Tag="{StaticResource IcSpark}" Checked="OnNav" />
                         <RadioButton x:Name="NavEq" Style="{StaticResource NavItem}" Content="Equalizer" Tag="{StaticResource IcEq}" Checked="OnNav" />
                         <RadioButton x:Name="NavAbout" Style="{StaticResource NavItem}" Content="Settings &amp; About" Tag="{StaticResource IcSettings}" Checked="OnNav" />
                     </StackPanel>
@@ -187,10 +189,16 @@
                     </StackPanel>
                 </ScrollViewer>
 
+                <!-- animations -->
+                <ScrollViewer x:Name="PageAnim" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="AnimPanel" Margin="28,22,28,20" MaxWidth="760" HorizontalAlignment="Left" />
+                </ScrollViewer>
+
                 <!-- settings & about -->
                 <ScrollViewer x:Name="PageAbout" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="28,22,28,20" MaxWidth="760" HorizontalAlignment="Left">
                         <TextBlock Text="Settings &amp; About" FontSize="30" FontWeight="Bold" FontFamily="{DynamicResource DisplayFont}" />
+                        <StackPanel x:Name="PrefsPanel" />
                         <TextBlock Text="MUSIC FOLDERS" Margin="0,22,0,8" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
                         <StackPanel x:Name="FolderList" />
                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
@@ -233,7 +241,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Grid x:Name="NpCoverHost" Height="324" Width="324" HorizontalAlignment="Center">
+                    <Grid x:Name="NpCoverHost" Height="300" Width="300" HorizontalAlignment="Center" Cursor="Hand" MouseLeftButtonDown="OnCoverClick" ToolTip="Touch the cover">
                         <Border x:Name="NpGlow" CornerRadius="26" Margin="10,18,10,-6" Background="{DynamicResource AccentBrush}" Opacity="0.55">
                             <Border.Effect><BlurEffect Radius="38" /></Border.Effect>
                         </Border>
@@ -339,7 +347,7 @@
         </Border>
 
         <!-- ============ made in india ============ -->
-        <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}">
+        <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" Padding="0,5,0,6">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <c:Tricolor Margin="0,0,8,0" />
                 <TextBlock Text="Made in India with" FontSize="11" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center" />

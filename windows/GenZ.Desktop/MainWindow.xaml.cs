@@ -19,7 +19,7 @@ namespace GenZ
 {
     public partial class MainWindow : Window
     {
-        enum View { Songs, Albums, Artists, Favourites, Queue, Themes, Eq, About, Search, Detail }
+        enum View { Songs, Albums, Artists, Favourites, Queue, Themes, Anim, Eq, About, Search, Detail }
 
         View view = View.Songs;
         List<Song> listed = new List<Song>();
@@ -49,7 +49,15 @@ namespace GenZ
             timer.Tick += (s, e) => Tick();
             timer.Start();
 
-            StateChanged += (s, e) => Root.Margin = WindowState == WindowState.Maximized ? new Thickness(7) : new Thickness(0);
+            StateChanged += (s, e) =>
+            {
+                Root.Margin = WindowState == WindowState.Maximized ? new Thickness(7) : new Thickness(0);
+                if (WindowState == WindowState.Minimized && Settings.Current.AutoPip && Player.IsPlaying && pip == null) EnterPip(false);
+                else if (WindowState != WindowState.Minimized && pip != null) { pip.Close(); pip = null; }
+            };
+            SizeChanged += (s, e) => ApplyScale();
+            NpPanel.SizeChanged += (s, e) => FitCover();
+            FitWindowToScreen();
             PreviewKeyDown += OnKeys;
             SourceInitialized += (s, e) => RegisterMediaKeys();
             Closing += (s, e) => { Settings.Current.NowPlayingOpen = NpColumn.Width.Value > 0; Settings.Save(); };
@@ -91,6 +99,7 @@ namespace GenZ
             else if (sender == NavFav) ShowView(View.Favourites);
             else if (sender == NavQueue) ShowView(View.Queue);
             else if (sender == NavThemes) ShowView(View.Themes);
+            else if (sender == NavAnim) ShowView(View.Anim);
             else if (sender == NavEq) ShowView(View.Eq);
             else if (sender == NavAbout) ShowView(View.About);
         }
@@ -98,12 +107,7 @@ namespace GenZ
         void ShowPage(FrameworkElement page)
         {
             foreach (FrameworkElement p in Pages.Children) p.Visibility = p == page ? Visibility.Visible : Visibility.Collapsed;
-            page.Opacity = 0;
-            var tt = new TranslateTransform(0, 14);
-            page.RenderTransform = tt;
-            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-            page.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(260)));
-            tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(320)) { EasingFunction = ease });
+            AnimateIn(page, Settings.Current.PageTransition);
         }
 
         void ShowView(View v)
@@ -120,6 +124,7 @@ namespace GenZ
                 case View.Albums: ShowAlbums(); break;
                 case View.Artists: ShowArtists(); break;
                 case View.Themes: ShowThemes(); break;
+                case View.Anim: BuildAnimPage(); ShowPage(PageAnim); break;
                 case View.Eq: ShowPage(PageEq); break;
                 case View.About: ShowAbout(); break;
             }
@@ -139,6 +144,7 @@ namespace GenZ
             }
             else ListCover.Visibility = Visibility.Collapsed;
             ShowPage(PageList);
+            CascadeList();
         }
 
         void OnSearch(object sender, TextChangedEventArgs e)
@@ -199,6 +205,7 @@ namespace GenZ
                 tile.MouseLeftButtonUp += (s, e) => { view = View.Detail; ShowList(album.Title, album.Artist + " · " + album.Subtitle, album.Songs, album.First); };
                 GridPanel.Children.Add(tile);
             }
+            Cascade(GridPanel);
         }
 
         void ShowArtists()
@@ -211,6 +218,7 @@ namespace GenZ
                 tile.MouseLeftButtonUp += (s, e) => { view = View.Detail; ShowList(artist.Name, artist.Subtitle, artist.Songs, artist.First); };
                 GridPanel.Children.Add(tile);
             }
+            Cascade(GridPanel);
         }
 
         FrameworkElement Tile(string title, string sub, Song coverOf, bool round)
@@ -296,6 +304,7 @@ namespace GenZ
                 card.MouseLeftButtonUp += (s, e) => { ThemeManager.Apply(theme); Settings.Save(); RefreshCoverGlow(); };
                 GridPanel.Children.Add(card);
             }
+            Cascade(GridPanel);
         }
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? "" : char.ToUpper(s[0]) + s.Substring(1);
@@ -378,6 +387,7 @@ namespace GenZ
         // ---------------------------------------------------------------- settings & about
         void ShowAbout()
         {
+            BuildPrefs();
             FolderList.Children.Clear();
             foreach (var f in Settings.Current.Folders.ToList())
             {
@@ -524,15 +534,16 @@ namespace GenZ
                 lastPlaying = playing;
                 var geo = (Geometry)FindResource(playing ? "IcPause" : "IcPlay");
                 BarPlay.Tag = geo;
-                if (animate) MorphPlay(geo, playing); else NpPlayIcon.Data = geo;
+                if (animate && Settings.Current.PlayMorph && !Settings.Current.ReduceMotion) MorphPlay(geo, playing); else NpPlayIcon.Data = geo;
                 Taskbar.ProgressState = playing ? TaskbarItemProgressState.Normal : TaskbarItemProgressState.Paused;
                 SetThumbIcons();
                 // the cover "breathes": a little smaller while paused
                 var st = (ScaleTransform)((TransformGroup)NpCover.RenderTransform).Children[0];
-                var a = new DoubleAnimation(playing ? 1 : 0.93, TimeSpan.FromMilliseconds(420)) { EasingFunction = new BackEase { Amplitude = 0.3, EasingMode = EasingMode.EaseOut } };
+                var a = new DoubleAnimation(playing || !Settings.Current.CoverBreathe ? 1 : 0.93, Settings.Ms(420)) { EasingFunction = new BackEase { Amplitude = 0.3, EasingMode = EasingMode.EaseOut } };
                 st.BeginAnimation(ScaleTransform.ScaleXProperty, a); st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
             }
-            NpBar.Playing = playing; BarBar.Playing = playing;
+            NpBar.Playing = playing && Settings.Current.Sparkles && !Settings.Current.ReduceMotion;
+            BarBar.Playing = NpBar.Playing;
             UpdateToggles();
         }
 
@@ -579,6 +590,7 @@ namespace GenZ
         /// <summary>Next / previous: the cover flies out in that direction and the next one swings in.</summary>
         void Skip(bool forward)
         {
+            if (Settings.Current.ReduceMotion) return;
             var tt = (TranslateTransform)((TransformGroup)NpCover.RenderTransform).Children[1];
             double d = forward ? -1 : 1;
             var outA = new DoubleAnimation(d * 160, TimeSpan.FromMilliseconds(150)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
@@ -593,11 +605,12 @@ namespace GenZ
         }
 
         /// <summary>Little sparkle burst around a control (favourite, skip).</summary>
-        void Burst(FrameworkElement around, int count)
+        void Burst(FrameworkElement around, int count, Point? at = null)
         {
+            if (Settings.Current.ReduceMotion) return;
             var layer = AdornerLayerCanvas();
             if (layer == null) return;
-            var p = around.TranslatePoint(new Point(around.ActualWidth / 2, around.ActualHeight / 2), layer);
+            var p = around.TranslatePoint(at ?? new Point(around.ActualWidth / 2, around.ActualHeight / 2), layer);
             var rnd = new Random();
             var accent = (Brush)FindResource("AccentBrush");
             for (int i = 0; i < count; i++)
@@ -664,6 +677,7 @@ namespace GenZ
         {
             bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
             if (e.Key == Key.F && ctrl) { SearchBox.Focus(); SearchBox.SelectAll(); e.Handled = true; }
+            else if (e.Key == Key.P && ctrl) { OnPip(this, null); e.Handled = true; }
             else if (SearchBox.IsKeyboardFocusWithin) { if (e.Key == Key.Escape) { SearchBox.Text = ""; SongList.Focus(); } }
             else if (e.Key == Key.Space) { Player.Toggle(); e.Handled = true; }
             else if (ctrl && e.Key == Key.Right) { OnNext(this, EventArgs.Empty); e.Handled = true; }
@@ -718,6 +732,309 @@ namespace GenZ
                 handled = true;
             }
             return IntPtr.Zero;
+        }
+    
+        // ================================================================ scaling (fits small screens and high-DPI displays)
+        void FitWindowToScreen()
+        {
+            var wa = SystemParameters.WorkArea;
+            Width = Math.Min(Width, wa.Width * 0.92);
+            Height = Math.Min(Height, wa.Height * 0.92);
+            if (Width < MinWidth) MinWidth = Math.Max(640, Width);
+            if (Height < MinHeight) MinHeight = Math.Max(480, Height);
+        }
+
+        double scale = 1;
+        void ApplyScale()
+        {
+            double w = ActualWidth, h = ActualHeight;
+            if (w <= 0 || h <= 0) return;
+            double s = Settings.Current.UiScale > 0 ? Settings.Current.UiScale
+                : Math.Max(0.66, Math.Min(1.0, Math.Min(w / 1240.0, h / 790.0)));
+            if (Math.Abs(s - scale) < 0.004 && Root.LayoutTransform is ScaleTransform) return;
+            scale = s;
+            Root.LayoutTransform = Math.Abs(s - 1) < 0.004 ? Transform.Identity : new ScaleTransform(s, s);
+            var chrome = WindowChrome.GetWindowChrome(this);
+            if (chrome != null)
+            {
+                if (chrome.IsFrozen) { chrome = (WindowChrome)chrome.Clone(); chrome.CaptionHeight = 56 * s; WindowChrome.SetWindowChrome(this, chrome); }
+                else chrome.CaptionHeight = 56 * s;
+            }
+        }
+
+        /// <summary>The Now Playing cover grows and shrinks so the controls always fit.</summary>
+        void FitCover()
+        {
+            double w = NpPanel.ActualWidth - 56, h = NpPanel.ActualHeight - 380;
+            double size = Math.Max(110, Math.Min(420, Math.Min(w, h)));
+            NpCoverHost.Width = NpCoverHost.Height = size;
+        }
+
+        // ================================================================ animations
+        void AnimateIn(FrameworkElement page, string kind)
+        {
+            page.BeginAnimation(OpacityProperty, null); page.Opacity = 1;
+            page.RenderTransform = Transform.Identity;
+            if (Settings.Current.ReduceMotion || kind == "none") return;
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            page.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Settings.Ms(260)));
+            switch (kind)
+            {
+                case "slide-left":
+                {
+                    var tt = new TranslateTransform(36, 0); page.RenderTransform = tt;
+                    tt.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(0, Settings.Ms(340)) { EasingFunction = ease });
+                    break;
+                }
+                case "zoom":
+                {
+                    var st = new ScaleTransform(0.94, 0.94); page.RenderTransformOrigin = new Point(0.5, 0.4); page.RenderTransform = st;
+                    var a = new DoubleAnimation(1, Settings.Ms(360)) { EasingFunction = new BackEase { Amplitude = 0.3, EasingMode = EasingMode.EaseOut } };
+                    st.BeginAnimation(ScaleTransform.ScaleXProperty, a); st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
+                    break;
+                }
+                case "fade": break;
+                default:
+                {
+                    var tt = new TranslateTransform(0, 18); page.RenderTransform = tt;
+                    tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, Settings.Ms(340)) { EasingFunction = ease });
+                    break;
+                }
+            }
+        }
+
+        /// <summary>Tiles drop in one after another.</summary>
+        void Cascade(Panel panel)
+        {
+            if (Settings.Current.ReduceMotion || Settings.Current.ListAnimation == "none") return;
+            int i = 0;
+            foreach (UIElement el in panel.Children)
+            {
+                if (i >= 36) break;
+                var fe = (FrameworkElement)el;
+                fe.Opacity = 0;
+                var delay = Settings.Ms(i * 28);
+                var fade = new DoubleAnimation(0, 1, Settings.Ms(300)) { BeginTime = delay };
+                fe.BeginAnimation(OpacityProperty, fade);
+                if (Settings.Current.ListAnimation == "cascade")
+                {
+                    var tt = new TranslateTransform(0, 26);
+                    var group = new TransformGroup();
+                    var holder = fe.RenderTransform;
+                    group.Children.Add(holder ?? Transform.Identity); group.Children.Add(tt);
+                    fe.RenderTransform = group;
+                    tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(26, 0, Settings.Ms(420)) { BeginTime = delay, EasingFunction = new BackEase { Amplitude = 0.35, EasingMode = EasingMode.EaseOut } });
+                }
+                i++;
+            }
+            for (int k = 36; k < panel.Children.Count; k++) ((FrameworkElement)panel.Children[k]).Opacity = 1;
+        }
+
+        /// <summary>Song rows slide in one after another (only the rows on screen).</summary>
+        void CascadeList()
+        {
+            if (Settings.Current.ReduceMotion || Settings.Current.ListAnimation == "none") return;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                for (int i = 0; i < 22; i++)
+                {
+                    if (!(SongList.ItemContainerGenerator.ContainerFromIndex(i) is FrameworkElement row)) break;
+                    var delay = Settings.Ms(i * 22);
+                    row.Opacity = 0;
+                    row.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Settings.Ms(260)) { BeginTime = delay });
+                    if (Settings.Current.ListAnimation == "cascade")
+                    {
+                        var tt = new TranslateTransform(-24, 0); row.RenderTransform = tt;
+                        tt.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-24, 0, Settings.Ms(380)) { BeginTime = delay, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                    }
+                }
+            }), DispatcherPriority.Loaded);
+        }
+
+        // cover touch effects on Now Playing
+        Canvas coverFx;
+        void OnCoverClick(object sender, MouseButtonEventArgs e)
+        {
+            if (Settings.Current.ReduceMotion || Settings.Current.CoverEffect == "none") return;
+            if (coverFx == null)
+            {
+                coverFx = new Canvas { IsHitTestVisible = false, ClipToBounds = true };
+                NpCoverHost.Children.Add(coverFx);
+            }
+            coverFx.Clip = new RectangleGeometry(new Rect(0, 0, NpCoverHost.ActualWidth, NpCoverHost.ActualHeight), 22, 22);
+            var p = e.GetPosition(NpCoverHost);
+            if (Settings.Current.CoverEffect == "burst") { Burst(NpCoverHost, 22, p); return; }
+            var accent = (Color)FindResource("AccentColor");
+            for (int k = 0; k < 4; k++)
+            {
+                var ring = new Ellipse { Width = 20, Height = 20, Stroke = new SolidColorBrush(k % 2 == 0 ? Colors.White : accent), StrokeThickness = 3 - k * 0.5 };
+                Canvas.SetLeft(ring, p.X - 10); Canvas.SetTop(ring, p.Y - 10);
+                var st = new ScaleTransform(1, 1); ring.RenderTransformOrigin = new Point(0.5, 0.5); ring.RenderTransform = st;
+                coverFx.Children.Add(ring);
+                var delay = Settings.Ms(k * 140);
+                var grow = new DoubleAnimation(1, 14 + k * 2, Settings.Ms(1100)) { BeginTime = delay, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                st.BeginAnimation(ScaleTransform.ScaleXProperty, grow); st.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+                var fade = new DoubleAnimation(0.9, 0, Settings.Ms(1100)) { BeginTime = delay };
+                var r = ring;
+                fade.Completed += (o, a) => coverFx.Children.Remove(r);
+                ring.Opacity = 0;
+                ring.BeginAnimation(OpacityProperty, fade);
+            }
+            // the cover gives a little squish
+            var cs = (ScaleTransform)((TransformGroup)NpCover.RenderTransform).Children[0];
+            var squish = new DoubleAnimation(0.96, 1, Settings.Ms(420)) { EasingFunction = new ElasticEase { Oscillations = 1, Springiness = 4 } };
+            cs.BeginAnimation(ScaleTransform.ScaleXProperty, squish); cs.BeginAnimation(ScaleTransform.ScaleYProperty, squish);
+        }
+
+        // ================================================================ Animations page
+        void BuildAnimPage()
+        {
+            var cur = Settings.Current;
+            AnimPanel.Children.Clear();
+            AnimPanel.Children.Add(new TextBlock { Text = "Animations", FontSize = 30, FontWeight = FontWeights.Bold, FontFamily = (FontFamily)FindResource("DisplayFont") });
+            AnimPanel.Children.Add(new TextBlock { Text = "Choose how GEN-Z moves. Changes apply instantly.", Margin = new Thickness(0, 2, 0, 6), FontSize = 13, Foreground = (Brush)FindResource("Text2Brush") });
+
+            Section(AnimPanel, "PAGE TRANSITION", "How a screen appears when you switch pages.");
+            AnimPanel.Children.Add(Choices(new[] { ("slide-up", "Slide up"), ("slide-left", "Slide in"), ("fade", "Fade"), ("zoom", "Zoom"), ("none", "None") },
+                cur.PageTransition, v => { cur.PageTransition = v; AnimateIn(PageAnim, v); }));
+
+            Section(AnimPanel, "LISTS & GRIDS", "Songs, albums and theme cards arriving on screen.");
+            AnimPanel.Children.Add(Choices(new[] { ("cascade", "Cascade"), ("fade", "Fade in"), ("none", "None") },
+                cur.ListAnimation, v => cur.ListAnimation = v));
+
+            Section(AnimPanel, "COVER TOUCH EFFECT", "Click the album cover on Now Playing.");
+            AnimPanel.Children.Add(Choices(new[] { ("ripple", "Water ripple"), ("burst", "Sparkle burst"), ("none", "None") },
+                cur.CoverEffect, v => cur.CoverEffect = v));
+
+            Section(AnimPanel, "EFFECTS", null);
+            AnimPanel.Children.Add(Toggle("Sparkling progress bar", "Stars drift off the progress bar while music plays", cur.Sparkles, v => { cur.Sparkles = v; OnPlayerState(); }));
+            AnimPanel.Children.Add(Toggle("Play / pause morph", "The icon spins, the button beats and a ring bursts", cur.PlayMorph, v => cur.PlayMorph = v));
+            AnimPanel.Children.Add(Toggle("Cover breathes", "The cover shrinks a little while paused", cur.CoverBreathe, v => { cur.CoverBreathe = v; lastPlaying = null; OnPlayerState(); }));
+            AnimPanel.Children.Add(Toggle("Reduce motion", "Turn off movement everywhere (fades only)", cur.ReduceMotion, v => { cur.ReduceMotion = v; OnPlayerState(); }));
+
+            Section(AnimPanel, "SPEED", null);
+            var row = new Grid { Margin = new Thickness(0, 4, 0, 0), MaxWidth = 520, HorizontalAlignment = HorizontalAlignment.Left, Width = 520 };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition());
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(new TextBlock { Text = "Slower", FontSize = 12, Foreground = (Brush)FindResource("Text2Brush"), VerticalAlignment = VerticalAlignment.Center });
+            var sl = new Slider { Style = (Style)FindResource("ThinSlider"), Minimum = 0.5, Maximum = 2, Value = cur.AnimSpeed, Margin = new Thickness(12, 0, 12, 0) };
+            Grid.SetColumn(sl, 1); row.Children.Add(sl);
+            var lbl = new TextBlock { Text = "Faster", FontSize = 12, Foreground = (Brush)FindResource("Text2Brush"), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(lbl, 2); row.Children.Add(lbl);
+            sl.ValueChanged += (s, e) => { cur.AnimSpeed = Math.Round(e.NewValue, 2); };
+            AnimPanel.Children.Add(row);
+            var preview = new Button { Style = (Style)FindResource("PillButton"), Content = "Preview", Margin = new Thickness(0, 22, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+            preview.Click += (s, e) => { Settings.Save(); AnimateIn(PageAnim, cur.PageTransition); OnCoverClickPreview(); };
+            AnimPanel.Children.Add(preview);
+        }
+
+        void OnCoverClickPreview()
+        {
+            if (NpColumn.Width.Value <= 0) return;
+            // ripple from the centre of the cover
+            if (coverFx == null) { coverFx = new Canvas { IsHitTestVisible = false, ClipToBounds = true }; NpCoverHost.Children.Add(coverFx); }
+            var fake = new Point(NpCoverHost.ActualWidth / 2, NpCoverHost.ActualHeight / 2);
+            if (Settings.Current.CoverEffect == "burst") Burst(NpCoverHost, 22, fake);
+            else if (Settings.Current.CoverEffect == "ripple")
+            {
+                // reuse the ripple drawing by simulating a click at the centre
+                RippleAt(fake);
+            }
+        }
+
+        void RippleAt(Point p)
+        {
+            var accent = (Color)FindResource("AccentColor");
+            coverFx.Clip = new RectangleGeometry(new Rect(0, 0, NpCoverHost.ActualWidth, NpCoverHost.ActualHeight), 22, 22);
+            for (int k = 0; k < 4; k++)
+            {
+                var ring = new Ellipse { Width = 20, Height = 20, Stroke = new SolidColorBrush(k % 2 == 0 ? Colors.White : accent), StrokeThickness = 3 - k * 0.5, Opacity = 0 };
+                Canvas.SetLeft(ring, p.X - 10); Canvas.SetTop(ring, p.Y - 10);
+                var st = new ScaleTransform(1, 1); ring.RenderTransformOrigin = new Point(0.5, 0.5); ring.RenderTransform = st;
+                coverFx.Children.Add(ring);
+                var delay = Settings.Ms(k * 140);
+                var grow = new DoubleAnimation(1, 14 + k * 2, Settings.Ms(1100)) { BeginTime = delay, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                st.BeginAnimation(ScaleTransform.ScaleXProperty, grow); st.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+                var fade = new DoubleAnimation(0.9, 0, Settings.Ms(1100)) { BeginTime = delay };
+                var r = ring; fade.Completed += (o, a) => coverFx.Children.Remove(r);
+                ring.BeginAnimation(OpacityProperty, fade);
+            }
+        }
+
+        void Section(Panel host, string title, string sub)
+        {
+            host.Children.Add(new TextBlock { Text = title, Margin = new Thickness(0, 24, 0, 2), FontSize = 11, FontWeight = FontWeights.Bold, Foreground = (Brush)FindResource("AccentBrush") });
+            if (sub != null) host.Children.Add(new TextBlock { Text = sub, Margin = new Thickness(0, 0, 0, 8), FontSize = 12, Foreground = (Brush)FindResource("Text2Brush") });
+        }
+
+        FrameworkElement Choices((string value, string label)[] options, string current, Action<string> pick)
+        {
+            var wrap = new WrapPanel { Margin = new Thickness(0, 2, 0, 0) };
+            foreach (var o in options)
+            {
+                var b = new Button { Content = o.label, Style = (Style)FindResource(o.value == current ? "PillButton" : "GhostPill"), Margin = new Thickness(0, 0, 8, 8), Padding = new Thickness(16, 7, 16, 7) };
+                var val = o.value;
+                b.Click += (s, e) =>
+                {
+                    pick(val); Settings.Save();
+                    foreach (Button other in wrap.Children) other.Style = (Style)FindResource(other == b ? "PillButton" : "GhostPill");
+                };
+                wrap.Children.Add(b);
+            }
+            return wrap;
+        }
+
+        FrameworkElement Toggle(string title, string sub, bool value, Action<bool> set)
+        {
+            var text = new StackPanel();
+            text.Children.Add(new TextBlock { Text = title, FontSize = 14, FontWeight = FontWeights.SemiBold });
+            if (sub != null) text.Children.Add(new TextBlock { Text = sub, FontSize = 12, Foreground = (Brush)FindResource("Text2Brush"), Margin = new Thickness(0, 1, 0, 0) });
+            var cb = new CheckBox { Style = (Style)FindResource("Switch"), Content = text, IsChecked = value, Margin = new Thickness(0, 6, 0, 6), MaxWidth = 560, HorizontalAlignment = HorizontalAlignment.Left, Width = 560 };
+            cb.Checked += (s, e) => { set(true); Settings.Save(); };
+            cb.Unchecked += (s, e) => { set(false); Settings.Save(); };
+            return cb;
+        }
+
+        // ================================================================ settings: interface size & mini player
+        void BuildPrefs()
+        {
+            PrefsPanel.Children.Clear();
+            Section(PrefsPanel, "INTERFACE SIZE", "Automatic fits GEN-Z to your window and display scaling.");
+            var cur = Settings.Current;
+            var opts = new[] { ("0", "Automatic"), ("0.8", "80%"), ("0.9", "90%"), ("1", "100%"), ("1.1", "110%"), ("1.25", "125%"), ("1.5", "150%") };
+            string now = cur.UiScale <= 0 ? "0" : cur.UiScale.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            PrefsPanel.Children.Add(Choices(opts, now, v =>
+            {
+                cur.UiScale = double.Parse(v, System.Globalization.CultureInfo.InvariantCulture);
+                scale = -1; ApplyScale();
+            }));
+            Section(PrefsPanel, "MINI PLAYER (PICTURE IN PICTURE)", "A small always-on-top player. Open it with the button in the title bar or Ctrl+P.");
+            PrefsPanel.Children.Add(Toggle("Open the mini player when minimized", "While music plays, minimizing GEN-Z shows the mini player", cur.AutoPip, v => cur.AutoPip = v));
+            var b = new Button { Style = (Style)FindResource("PillButton"), Content = "Open mini player now", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0) };
+            b.Click += (s, e) => OnPip(this, null);
+            PrefsPanel.Children.Add(b);
+        }
+
+        // ================================================================ picture in picture
+        MiniPlayer pip;
+        void OnPip(object sender, RoutedEventArgs e) { if (pip == null) EnterPip(true); else ExitPip(); }
+
+        void EnterPip(bool minimize)
+        {
+            if (pip != null) return;
+            pip = new MiniPlayer(this);
+            pip.Show();
+            if (minimize) WindowState = WindowState.Minimized;
+        }
+
+        public void ExitPip()
+        {
+            var p = pip; pip = null;
+            p?.Close();
+            Settings.Save();
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate();
         }
     }
 }
