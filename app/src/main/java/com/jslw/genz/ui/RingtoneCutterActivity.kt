@@ -157,9 +157,13 @@ class RingtoneCutterActivity : BaseActivity() {
                 if (RingtoneMaker.canSetDefault(this)) {
                     toast(if (RingtoneMaker.setDefault(this, uri, type)) "Saved and set as default ✓" else "Saved ✓")
                 } else {
-                    pendingDefault = uri to type
-                    toast("Allow GEN-Z to modify system settings to set the default sound")
-                    writeSettings.launch(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+                    toast("Saved ✓")
+                    Sheets.explainPermission(this, "Allow \"Modify system settings\"?",
+                        "To make your new sound the phone's default ringtone, notification or alarm, Android requires the " +
+                            "\"Modify system settings\" permission. GEN-Z uses it only to set the sound you just made.") {
+                        pendingDefault = uri to type
+                        writeSettings.launch(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+                    }
                 }
             }
         }.start()

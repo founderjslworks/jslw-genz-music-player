@@ -123,6 +123,9 @@ class ThemeEditorActivity : BaseActivity() {
         items += Item.Section("Style")
         items += Item.Toggle("translucent", "Translucent glass (blurred cover behind panels)", false)
         items += Item.Toggle("cards", "Rows as rounded cards (dashboard look)", false)
+        items += Item.Choice("Card & button style", { pickCardStyle() }) {
+            when (o.optString("cardStyle", "flat")) { "soft" -> "Soft (neumorphic)"; "brutal" -> "Neo-brutalist"; else -> "Flat" }
+        }
         items += Item.Toggle("colorfulIcons", "Colourful icon tiles", false)
         items += Item.Toggle("lcd", "Retro LCD strip on Now Playing", false)
         items += Item.Toggle("npDynamicColors", "Now Playing follows album-art colours", false)
@@ -156,6 +159,15 @@ class ThemeEditorActivity : BaseActivity() {
         MaterialAlertDialogBuilder(this).setTitle("Font").setSingleChoiceItems(all.toTypedArray(), all.indexOf(o.optString(key))) { d, w ->
             o.put(key, all[w]); changed(); d.dismiss()
         }.show()
+    }
+
+    private fun pickCardStyle() {
+        val keys = listOf("flat", "soft", "brutal")
+        val labels = arrayOf("Flat", "Soft (neumorphic)", "Neo-brutalist (outline + hard shadow)")
+        MaterialAlertDialogBuilder(this).setTitle("Card & button style")
+            .setSingleChoiceItems(labels, keys.indexOf(o.optString("cardStyle", "flat")).coerceAtLeast(0)) { dlg, w ->
+                o.put("cardStyle", keys[w]); if (w > 0) o.put("cards", true); changed(); dlg.dismiss()
+            }.show()
     }
 
     private fun pickProgress() {

@@ -122,8 +122,16 @@ object SkinPainter {
                 it.setTextColor(np.onAccent)
             }
             "skin_play" -> {
-                v.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(np.accent) }
-                if (Build.VERSION.SDK_INT >= 21) v.elevation = 6 * d
+                if (skin.cardStyle == "flat" || !skin.cards) {
+                    v.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(np.accent) }
+                    if (Build.VERSION.SDK_INT >= 21) v.elevation = 6 * d
+                } else {
+                    v.background = StateListDrawable().apply {
+                        addState(intArrayOf(android.R.attr.state_pressed), styledCard(skin, d, np.accent, pressed = true, oval = skin.cardStyle == "soft", inset = false))
+                        addState(intArrayOf(), styledCard(skin, d, np.accent, pressed = false, oval = skin.cardStyle == "soft", inset = false))
+                    }
+                    if (Build.VERSION.SDK_INT >= 21) v.elevation = 0f
+                }
             }
             "skin_on_accent" -> tint(v, np.onAccent)
             "skin_lcd" -> (v as? TextView)?.let {
@@ -173,6 +181,15 @@ object SkinPainter {
 
     /** Row background: classic gradient highlight bar when pressed, optional hairline divider. */
     fun rowBackground(skin: Skin, d: Float): Drawable {
+        if (skin.cards && skin.cardStyle != "flat") {
+            return StateListDrawable().apply {
+                addState(intArrayOf(android.R.attr.state_pressed), styledCard(skin, d, skin.rowHighlight, pressed = true))
+                addState(intArrayOf(android.R.attr.state_activated), styledCard(skin, d,
+                    androidx.core.graphics.ColorUtils.compositeColors(withAlpha(skin.accent, 0x40), skin.surface or 0xFF000000.toInt()), pressed = false))
+                addState(intArrayOf(), styledCard(skin, d, skin.surface, pressed = false))
+                setExitFadeDuration(160)
+            }
+        }
         if (skin.cards) {
             // dashboard tiles: every row is its own rounded (translucent) card
             val r = skin.cornerRadiusDp * d
@@ -237,6 +254,59 @@ object SkinPainter {
         override fun setColorFilter(colorFilter: ColorFilter?) {}
         @Deprecated("Deprecated in Java")
         override fun getOpacity(): Int = PixelFormat.OPAQUE
+    }
+
+    private fun shape(color: Int, r: Float, oval: Boolean, strokeW: Int = 0, strokeC: Int = 0) = GradientDrawable().apply {
+        if (oval) shape = GradientDrawable.OVAL else cornerRadius = r
+        setColor(color)
+        if (strokeW > 0) setStroke(strokeW, strokeC)
+    }
+
+    /**
+     * "soft": neumorphic – a dark shadow bottom-right and a light highlight top-left around the surface.
+     * "brutal": neo-brutalist – thick outline and a hard, offset black shadow; pressing pushes the card into it.
+     * [inset] leaves room around list rows; buttons use 0.
+     */
+    fun styledCard(skin: Skin, d: Float, fill: Int, pressed: Boolean, oval: Boolean = false, inset: Boolean = true): Drawable {
+        val r = skin.cornerRadiusDp * d
+        val ix = if (inset) (8 * d).toInt() else (3 * d).toInt()
+        val iy = if (inset) (4 * d).toInt() else (3 * d).toInt()
+        val o = (if (skin.cardStyle == "brutal") 4 else 3) * d
+        val oi = o.toInt()
+        val layers: Array<Drawable>
+        val insets: Array<IntArray>
+        if (skin.cardStyle == "brutal") {
+            val ink = if (androidx.core.graphics.ColorUtils.calculateLuminance(skin.background or 0xFF000000.toInt()) > 0.5) Color.BLACK else Color.WHITE
+            val sw = (2 * d).toInt().coerceAtLeast(2)
+            layers = arrayOf(shape(ink, r, oval), shape(fill or 0xFF000000.toInt(), r, oval, sw, ink))
+            insets = if (pressed) arrayOf(intArrayOf(ix + oi, iy + oi, ix - oi, iy - oi), intArrayOf(ix + oi, iy + oi, ix - oi, iy - oi))
+            else arrayOf(intArrayOf(ix + oi, iy + oi, ix - oi, iy - oi), intArrayOf(ix, iy, ix, iy))
+        } else {
+            val base = skin.background or 0xFF000000.toInt()
+            val dark = androidx.core.graphics.ColorUtils.blendARGB(base, Color.BLACK, if (skin.dark) 0.55f else 0.16f)
+            val light = androidx.core.graphics.ColorUtils.blendARGB(base, Color.WHITE, if (skin.dark) 0.08f else 0.85f)
+            val soft = arrayOf<Drawable>(
+                shape(withAlpha(dark, 0x55), r + o, oval), shape(withAlpha(dark, 0x88), r, oval),
+                shape(withAlpha(light, 0x88), r + o, oval), shape(light, r, oval),
+                shape(fill or 0xFF000000.toInt(), r, oval),
+            )
+            layers = soft
+            // pressed = the shadows swap sides, so the card looks pushed in
+            val a = if (pressed) -1 else 1
+            insets = arrayOf(
+                intArrayOf(ix + a * oi + oi / 2, iy + a * oi + oi / 2, ix - a * oi - oi / 2, iy - a * oi - oi / 2),
+                intArrayOf(ix + a * oi / 2, iy + a * oi / 2, ix - a * oi / 2, iy - a * oi / 2),
+                intArrayOf(ix - a * oi - oi / 2, iy - a * oi - oi / 2, ix + a * oi + oi / 2, iy + a * oi + oi / 2),
+                intArrayOf(ix - a * oi / 2, iy - a * oi / 2, ix + a * oi / 2, iy + a * oi / 2),
+                intArrayOf(ix, iy, ix, iy),
+            )
+        }
+        val ld = android.graphics.drawable.LayerDrawable(layers)
+        for (k in layers.indices) {
+            val i = insets[k]
+            ld.setLayerInset(k, i[0].coerceAtLeast(0), i[1].coerceAtLeast(0), i[2].coerceAtLeast(0), i[3].coerceAtLeast(0))
+        }
+        return ld
     }
 
     fun styleChip(chip: Chip, skin: Skin = SkinManager.current) {

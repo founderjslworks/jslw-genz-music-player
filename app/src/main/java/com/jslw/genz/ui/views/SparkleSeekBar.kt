@@ -34,7 +34,7 @@ import kotlin.random.Random
  *  notes    – music notes rising from a spinning record                  (vinyl)
  *  snow     – soft snowfall across the bar                               (glow)
  *  tape     – moving cassette tape                                       (tape reel)
- *  classic  – glossy iPod-style bar                                      (dot)
+ *  classic  – glossy classic bar                                      (dot)
  *  dots     – dot-matrix level meter                                     (dot column)
  *
  * Runs on the display's vsync (60–144 Hz) only while music plays or particles are still moving.

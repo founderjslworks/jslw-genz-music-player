@@ -92,8 +92,8 @@ with this list.
 
 ## Built-in themes
 
-GEN-Z Vivid (default) · Modern Dark · Modern Light · Pure Black (AMOLED) · iPod Classic ·
-Winamp Classic · Walkman '84 · Vinyl Hi-Fi · Aqua 2002 · Terminal
+GEN-Z Vivid (default) · Modern Dark · Modern Light · Pure Black (AMOLED) · Retro Clickwheel ·
+Retro Amp · Cassette '84 · Vinyl Hi-Fi · Glossy 2002 · Terminal
 
 Export any of them as a pack to use as a starting point.
 

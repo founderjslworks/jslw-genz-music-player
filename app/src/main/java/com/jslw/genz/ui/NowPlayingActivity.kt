@@ -105,7 +105,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)) {
             Prefs.floatingLyrics = true
             toast("Floating lyrics on")
-        }
+        } else toast("Permission not given – floating lyrics stay off")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -283,7 +283,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
                 com.jslw.genz.skin.Icons.set(playIcon, if (playing) R.drawable.ic_pause_large else R.drawable.ic_play_large)
                 playIcon.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(160).start()
             }.start()
-            // art "breathes": slightly smaller while paused, like Apple Music
+            // art "breathes": slightly smaller while paused, like modern players
             artSquare.animate().scaleX(if (playing) 1f else 0.92f).scaleY(if (playing) 1f else 0.92f)
                 .setDuration(380).setInterpolator(android.view.animation.OvershootInterpolator(1.2f)).start()
         }
@@ -481,8 +481,11 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
     private fun toggleFloating() {
         if (Prefs.floatingLyrics) { Prefs.floatingLyrics = false; toast("Floating lyrics off"); return }
         if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
-            toast("Allow \"display over other apps\" for floating lyrics")
-            overlayPermission.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            Sheets.explainPermission(this, Sheets.OVERLAY_TITLE,
+                "Floating lyrics show the current line of the song in a small bubble on top of other apps. To draw " +
+                    "that bubble, Android requires the \"Display over other apps\" permission. GEN-Z uses it only for the lyrics bubble.") {
+                overlayPermission.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            }
             return
         }
         Prefs.floatingLyrics = true

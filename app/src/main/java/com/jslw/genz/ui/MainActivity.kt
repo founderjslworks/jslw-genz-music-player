@@ -28,7 +28,7 @@ import com.jslw.genz.util.toast
 import kotlin.math.abs
 
 /**
- * Classic, iPod-style drill-down navigation: Music ▸ Artists ▸ Albums ▸ Songs, sliding left/right,
+ * Classic, classic drill-down navigation: Music ▸ Artists ▸ Albums ▸ Songs, sliding left/right,
  * with a mini player that you swipe up (or tap) to open Now Playing and swipe sideways to skip.
  */
 class MainActivity : BaseActivity(), Player.Listener {

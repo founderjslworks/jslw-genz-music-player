@@ -32,8 +32,8 @@ No internet permission. Package: `com.jslw.genz` · App name: **GEN-Z Music**.
 - Audio focus, pause on headphone unplug, optional resume on plug-in
 
 **Library**
-- Classic iPod-style drill-down: Music ▸ Artists ▸ Albums ▸ Songs, plus Genres, Folders, Playlists
-- **Album Flow** (Cover Flow): 3D tilted covers, reflections, fling, tap to flip and see tracks
+- Classic drill-down: Music ▸ Artists ▸ Albums ▸ Songs, plus Genres, Folders, Playlists
+- **Album Flow**: 3D tilted covers, reflections, fling, tap to flip and see tracks
 - Playlists (create, rename, reorder by drag, swipe to remove), Favorites, Recently played,
   Most played, Recently added; queue with drag-reorder and swipe-to-remove; instant search
 - Tag & cover editor (saved in-app for any file; written into MP3 files on request)
@@ -50,11 +50,11 @@ No internet permission. Package: `com.jslw.genz` · App name: **GEN-Z Music**.
 **Look & feel**
 - Skin packs: colours, Google Fonts or your own fonts, icon packs, background image — import,
   update, export, or build one in the on-phone Theme Editor. See **THEMES.md**
-- 10 built-in themes incl. iPod Classic, Winamp, Walkman, Vinyl, Aqua, Terminal, Pure Black
+- 10 built-in themes incl. Retro Clickwheel, Retro Amp, Cassette '84, Vinyl, Glossy 2002, Terminal, Pure Black
 - Gestures: swipe up mini player → Now Playing; swipe down to close it; swipe the cover to skip;
   double-tap cover to play/pause; swipe songs right = play next, left = add to queue; predictive back
 - Smooth: highest refresh rate (90/120/144 Hz), vsync-driven progress & lyrics, allocation-free
-  Cover Flow, wide-colour-gamut on capable screens
+  album carousel, wide-colour-gamut on capable screens
 - Tablets: text and controls scale up on 7" and 10"+ screens; landscape Now Playing layout
 
 **Battery**

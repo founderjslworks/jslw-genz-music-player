@@ -276,6 +276,22 @@ object Sheets {
 
     fun skinColor() = SkinManager.current.accent
 
+    /**
+     * Explains a special permission (display over other apps, modify system settings) BEFORE sending the
+     * user to the system screen. Nothing is requested unless they tap "Continue".
+     */
+    fun explainPermission(a: Activity, title: String, why: String, onContinue: () -> Unit) {
+        MaterialAlertDialogBuilder(a)
+            .setTitle(title)
+            .setMessage(why + "\n\nOn the next screen, find GEN-Z Music and switch the permission on. " +
+                "You can turn it off again at any time in your phone's settings.")
+            .setPositiveButton("Continue") { _, _ -> onContinue() }
+            .setNegativeButton("Not now", null)
+            .show()
+    }
+
+    const val OVERLAY_TITLE = "Allow \"Display over other apps\"?"
+
     /** Picker for the cover touch effect ("Theme default" follows the active theme). */
     fun coverEffect(a: Activity, changed: () -> Unit) {
         val fx = com.jslw.genz.ui.views.CoverEffectView.EFFECTS

@@ -61,6 +61,8 @@ data class Skin(
     val translucent: Boolean,
     /** List rows drawn as separate rounded cards (dashboard / tile look). */
     val cards: Boolean,
+    /** Card / button look: "flat", "soft" (neumorphic raised) or "brutal" (thick outline + hard shadow). */
+    val cardStyle: String,
     val lcd: Boolean,
     val npDynamicColors: Boolean,
     val reflection: Boolean,
@@ -145,6 +147,7 @@ data class Skin(
                 colorfulIcons = o.optBoolean("colorfulIcons", false),
                 translucent = o.optBoolean("translucent", false),
                 cards = o.optBoolean("cards", false),
+                cardStyle = o.optString("cardStyle", "flat"),
                 lcd = o.optBoolean("lcd", false),
                 npDynamicColors = o.optBoolean("npDynamicColors", false),
                 reflection = o.optBoolean("reflection", true),
@@ -185,12 +188,13 @@ object SkinManager {
     fun all(): List<Skin> {
         cache?.let { return it }
         val out = ArrayList<Skin>()
-        val order = listOf("vivid_genz", "dot_matrix", "glass_aurora",
+        val order = listOf("vivid_genz", "dot_matrix", "glass_aurora", "soft_ui", "neo_brutal", "swiss_mono", "mesh_gradient",
+            "clay_pastel", "midnight_minimal", "chrome_y2k",
             "bollywood_nights", "bhakti_diya", "romantic_rose", "bhangra_beat", "lofi_chill", "edm_neon", "synthwave_84",
             "hiphop_mixtape", "rock_arena", "jazz_lounge", "classical_symphony", "kpop_candy", "ocean_ambient", "indie_acoustic",
             "arcade_8bit",
-            "modern_dark", "modern_light", "pure_black", "ipod_classic", "winamp_classic",
-            "walkman_80s", "vinyl_hifi", "aqua_2002", "terminal_green")
+            "modern_dark", "modern_light", "pure_black", "retro_clickwheel", "retro_amp",
+            "cassette_84", "vinyl_hifi", "glossy_2002", "terminal_green")
         val assets = app.assets.list("skins")?.toList() ?: emptyList()
         for (f in assets.sortedBy { order.indexOf(it.removeSuffix(".json")).let { i -> if (i < 0) 99 else i } }) {
             try {

@@ -84,7 +84,7 @@ class HomeFragment : BaseListFragment() {
         val rows = ArrayList<Row>()
         val loaded = Library.loaded
         fun n(x: Int) = if (loaded) x.toString() else ""
-        rows += Row("Album Flow", icon = R.drawable.ic_coverflow, iconColor = 0xFFFF2D55.toInt(), chevron = true, onClick = { open(AlbumFlowFragment()) })
+        rows += Row("Album Flow", icon = R.drawable.ic_album_flow, iconColor = 0xFFFF2D55.toInt(), chevron = true, onClick = { open(AlbumFlowFragment()) })
         rows += Row("Playlists", icon = R.drawable.ic_playlist, iconColor = 0xFFFF9500.toInt(), chevron = true, extra = n(LibraryDb.playlists().size),
             onClick = { open(BrowseFragment.of("playlists")) })
         rows += Row("Artists", icon = R.drawable.ic_artist, iconColor = 0xFFAF52DE.toInt(), chevron = true, extra = n(Library.artists.size), onClick = { open(BrowseFragment.of("artists")) })

@@ -30,7 +30,7 @@ import kotlin.math.min
 import kotlin.math.sign
 
 /**
- * Album Flow – the classic iPod / iTunes / macOS Cover Flow:
+ * Album Flow – the classic album carousel:
  * 3D-tilted covers with mirror reflections, fling to browse, tap the centre cover to flip it
  * over and see (and play) its tracks.
  */

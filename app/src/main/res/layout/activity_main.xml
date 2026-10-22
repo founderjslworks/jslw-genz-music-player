@@ -7,7 +7,7 @@
     android:orientation="vertical"
     android:tag="skin_bg">
 
-    <!-- Classic header bar (iPod-style title strip) -->
+    <!-- Classic header bar (classic title strip) -->
     <LinearLayout
         android:id="@+id/header"
         android:layout_width="match_parent"

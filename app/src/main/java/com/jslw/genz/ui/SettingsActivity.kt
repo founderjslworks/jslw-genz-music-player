@@ -50,8 +50,27 @@ class SettingsActivity : BaseActivity() {
         adapter.notifyDataSetChanged()
     }
 
+    /** Which feature asked for the overlay permission ("lock" / "lyrics"); switched on only if it was granted. */
+    private var pendingOverlay: String? = null
+
     private val overlay = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val granted = canOverlay()
+        when (pendingOverlay) {
+            "lock" -> Prefs.lockScreenPlayer = granted
+            "lyrics" -> Prefs.floatingLyrics = granted
+        }
+        if (pendingOverlay != null && !granted) toast("Permission not given – the feature stays off")
+        pendingOverlay = null
         adapter.notifyDataSetChanged()
+    }
+
+    private fun canOverlay() = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
+
+    private fun askOverlay(feature: String, why: String) {
+        Sheets.explainPermission(this, Sheets.OVERLAY_TITLE, why) {
+            pendingOverlay = feature
+            overlay.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -134,13 +153,13 @@ class SettingsActivity : BaseActivity() {
             "Full-screen lock-screen player",
             "Big cover and controls over the lock screen while music plays" +
                 (if (Build.VERSION.SDK_INT >= 29) " (needs \"display over other apps\")" else ""),
-            { Prefs.lockScreenPlayer },
+            { Prefs.lockScreenPlayer && (Build.VERSION.SDK_INT < 29 || canOverlay()) },
         ) { on ->
-            Prefs.lockScreenPlayer = on
-            if (on && Build.VERSION.SDK_INT >= 29 && !Settings.canDrawOverlays(this)) {
-                toast("Allow \"display over other apps\" so GEN-Z can show its lock-screen player")
-                overlay.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-            }
+            if (on && Build.VERSION.SDK_INT >= 29 && !canOverlay()) {
+                askOverlay("lock", "Android only lets an app show a full-screen player on the lock screen if it may " +
+                    "display over other apps. GEN-Z uses this permission only to show its own player while music plays " +
+                    "and the screen is locked. It is never used for anything else.")
+            } else Prefs.lockScreenPlayer = on
         }
         items += Item.Action("Lock-screen media controls", { "Always on: cover, title and controls on every Android version" }) {}
         items += Item.Action("Add a widget to the home screen", {
@@ -176,11 +195,13 @@ class SettingsActivity : BaseActivity() {
                 Prefs.shakeStrength = it; Player.service?.refreshShake()
             }
         }
-        items += Item.Toggle("Floating lyrics", "Show the current synced lyric line over other apps", { Prefs.floatingLyrics }) { on ->
-            Prefs.floatingLyrics = on
-            if (on && Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
-                overlay.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-            }
+        items += Item.Toggle("Floating lyrics", "Show the current synced lyric line over other apps (optional)",
+            { Prefs.floatingLyrics && canOverlay() }) { on ->
+            if (on && !canOverlay()) {
+                askOverlay("lyrics", "Floating lyrics show the current line of the song in a small bubble on top of other " +
+                    "apps. To draw that bubble, Android requires the \"Display over other apps\" permission. GEN-Z uses it " +
+                    "only for the lyrics bubble.")
+            } else Prefs.floatingLyrics = on
         }
         items += Item.Action("Sleep timer", { "Stop music after a while" }) { Player.with(this) { Sheets.sleepTimer(this) } }
 

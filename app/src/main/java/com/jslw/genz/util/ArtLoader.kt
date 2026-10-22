@@ -134,7 +134,7 @@ object ArtLoader {
         return BitmapFactory.decodeByteArray(b, 0, b.size, BitmapFactory.Options().apply { inSampleSize = sample })
     }
 
-    /** Mirror image fading to transparent – the classic Cover Flow reflection. */
+    /** Mirror image fading to transparent – the classic album-carousel reflection. */
     fun reflection(src: Bitmap, heightFraction: Float = 0.35f): Bitmap {
         val w = src.width
         val h = (src.height * heightFraction).toInt().coerceAtLeast(1)

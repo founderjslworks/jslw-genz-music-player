@@ -25,7 +25,7 @@ object Icons {
         R.drawable.ic_close to "close", R.drawable.ic_add to "add", R.drawable.ic_drag to "drag",
         R.drawable.ic_album to "album", R.drawable.ic_artist to "artist", R.drawable.ic_genre to "genre",
         R.drawable.ic_folder to "folder", R.drawable.ic_playlist to "playlist", R.drawable.ic_note to "song",
-        R.drawable.ic_coverflow to "album_flow", R.drawable.ic_palette to "themes", R.drawable.ic_cut to "ringtone",
+        R.drawable.ic_album_flow to "album_flow", R.drawable.ic_palette to "themes", R.drawable.ic_cut to "ringtone",
         R.drawable.ic_edit to "edit", R.drawable.ic_speed to "speed", R.drawable.ic_delete to "delete",
         R.drawable.ic_history to "recent", R.drawable.ic_star to "most_played", R.drawable.ic_playlist_add to "playlist_add",
         R.drawable.ic_check to "check", R.drawable.ic_play_next to "play_next", R.drawable.ic_info to "info",
