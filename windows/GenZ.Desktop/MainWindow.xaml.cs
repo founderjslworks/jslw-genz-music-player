@@ -452,9 +452,44 @@ namespace GenZ
         }
 
         // ================================================================ playback UI
-        void OnPlay(object sender, EventArgs e) => Player.Toggle();
-        void OnNext(object sender, EventArgs e) { Skip(true); Player.Next(); }
-        void OnPrev(object sender, EventArgs e) { Skip(false); Player.Prev(); }
+        void OnPlay(object sender, EventArgs e)
+        {
+            if (sender is FrameworkElement b) Ring(b);
+            Player.Toggle();
+        }
+        void OnNext(object sender, EventArgs e)
+        {
+            Controls.Fx.Pop(sender as FrameworkElement ?? NpNext, 1); Ring(sender as FrameworkElement ?? NpNext);
+            Skip(true); Player.Next();
+        }
+        void OnPrev(object sender, EventArgs e)
+        {
+            Controls.Fx.Pop(sender as FrameworkElement ?? NpPrev, -1); Ring(sender as FrameworkElement ?? NpPrev);
+            Skip(false); Player.Prev();
+        }
+
+        /// <summary>A ring ripples out from a button.</summary>
+        void Ring(FrameworkElement b)
+        {
+            if (b == null || Settings.Current.ReduceMotion || !b.IsVisible) return;
+            var layer = AdornerLayerCanvas();
+            var size = Math.Max(b.ActualWidth, b.ActualHeight);
+            if (size <= 0) return;
+            var c = b.TranslatePoint(new Point(b.ActualWidth / 2, b.ActualHeight / 2), layer);
+            for (int k = 0; k < 2; k++)
+            {
+                var ring = new Ellipse { Width = size, Height = size, Stroke = (Brush)FindResource("AccentBrush"), StrokeThickness = 2.5 - k, IsHitTestVisible = false, Opacity = 0 };
+                Canvas.SetLeft(ring, c.X - size / 2); Canvas.SetTop(ring, c.Y - size / 2);
+                var st = new ScaleTransform(0.6, 0.6); ring.RenderTransformOrigin = new Point(0.5, 0.5); ring.RenderTransform = st;
+                layer.Children.Add(ring);
+                var delay = Settings.Ms(k * 120);
+                var grow = new DoubleAnimation(0.6, 2.0, Settings.Ms(600)) { BeginTime = delay, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                st.BeginAnimation(ScaleTransform.ScaleXProperty, grow); st.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+                var fade = new DoubleAnimation(0.85, 0, Settings.Ms(600)) { BeginTime = delay };
+                var r = ring; fade.Completed += (o, a) => layer.Children.Remove(r);
+                ring.BeginAnimation(OpacityProperty, fade);
+            }
+        }
         void OnShuffle(object sender, RoutedEventArgs e) { Player.SetShuffle(!Settings.Current.Shuffle); UpdateToggles(); }
         void OnRepeat(object sender, RoutedEventArgs e) { Player.CycleRepeat(); UpdateToggles(); }
 
@@ -546,6 +581,7 @@ namespace GenZ
                 lastPlaying = playing;
                 var geo = (Geometry)FindResource(playing ? "IcPause" : "IcPlay");
                 BarPlay.Tag = geo;
+                if (animate) { Controls.Fx.Pop(BarPlay); Ring(BarPlay); }
                 if (animate && Settings.Current.PlayMorph && !Settings.Current.ReduceMotion) MorphPlay(geo, playing); else NpPlayIcon.Data = geo;
                 Taskbar.ProgressState = playing ? TaskbarItemProgressState.Normal : TaskbarItemProgressState.Paused;
                 SetThumbIcons();

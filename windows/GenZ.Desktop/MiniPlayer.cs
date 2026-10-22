@@ -72,10 +72,11 @@ namespace GenZ
             playIcon.Fill = (Brush)Application.Current.Resources["AccentBrush"]; playIcon.Width = 18; playIcon.Height = 18; playIcon.Stretch = Stretch.Uniform;
             playIcon.Data = (Geometry)Application.Current.Resources["IcPlay"];
             play.Content = playIcon;
-            play.Click += (s, e) => Player.Toggle();
+            play.Click += (s, e) => { Fx.Pop(play); Player.Toggle(); };
 
-            var prev = Icon("IcPrev", 36, (s, e) => Player.Prev(), "Previous");
-            var next = Icon("IcNext", 36, (s, e) => Player.Next(), "Next");
+            Button prev = null, next = null;
+            prev = Icon("IcPrev", 36, (s, e) => { Fx.Pop(prev, -1); Player.Prev(); }, "Previous");
+            next = Icon("IcNext", 36, (s, e) => { Fx.Pop(next, 1); Player.Next(); }, "Next");
             var mode = Icon("IcPanel", 28, (s, e) => { Settings.Current.PipMode = Settings.Current.PipMode == "cover" ? "compact" : "cover"; Layout(content); }, "Switch look");
             var expand = Icon("IcExpand", 28, (s, e) => main.ExitPip(), "Back to full window");
             var close = Icon("IcClose", 28, (s, e) => main.ExitPip(), "Close mini player");
@@ -180,9 +181,7 @@ namespace GenZ
             if (playIcon.Data != geo)
             {
                 playIcon.Data = geo;
-                var st = (ScaleTransform)play.RenderTransform;
-                var a = new DoubleAnimation(1.18, 1, Settings.Ms(420)) { EasingFunction = new ElasticEase { Oscillations = 1, Springiness = 5 } };
-                st.BeginAnimation(ScaleTransform.ScaleXProperty, a); st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
+                Fx.Pop(play);
             }
             bar.Playing = playing && Settings.Current.Sparkles;
             if (s != shown)
