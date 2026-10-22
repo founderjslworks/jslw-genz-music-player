@@ -9,7 +9,7 @@ namespace GenZ.Core
     public static class Json
     {
         public static Dictionary<string, object> Parse(string text) => ToDict(JObject.Parse(text));
-        public static T Read<T>(string text) => JsonConvert.DeserializeObject<T>(text);
+        public static T Read<T>(string text) => JsonConvert.DeserializeObject<T>(text, new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace });
         public static string Write(object o) => JsonConvert.SerializeObject(o);
 
         static object Plain(JToken t)
