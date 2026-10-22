@@ -166,6 +166,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         repeatBtn.setOnClickListener {
             Player.service?.let { it.cycleRepeat(); toast(arrayOf("Repeat off", "Repeat all", "Repeat one")[it.repeatMode]) }
         }
+        setupHardware()
         favBtn.setOnClickListener {
             val s = Player.current ?: return@setOnClickListener
             val on = LibraryDb.toggleFavorite(s.id)
@@ -314,6 +315,8 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
                 .setDuration(380).setInterpolator(android.view.animation.OvershootInterpolator(1.2f)).start()
         }
         if (playing) frames.start()
+        wheel?.playing = playing; wheel?.shuffleOn = svc.shuffle
+        keypad?.playing = playing
         coverFx.ambient = playing
         tintToggle(shuffleBtn, svc.shuffle)
         com.jslw.genz.skin.Icons.set(repeatBtn, if (svc.repeatMode == MusicService.REPEAT_ONE) R.drawable.ic_repeat_one else R.drawable.ic_repeat)
@@ -431,6 +434,47 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
     }
 
     private fun fxColor(): Int = com.jslw.genz.skin.SkinManager.current.accent
+
+    // ---------------------------------------------------------------- hardware-style controls (theme "npControls")
+    private var wheel: com.jslw.genz.ui.views.ClickWheelView? = null
+    private var keypad: com.jslw.genz.ui.views.KeypadView? = null
+
+    /** Themes can swap the transport row for a click wheel or a recorder keypad. */
+    private fun setupHardware() {
+        val o = try { org.json.JSONObject(skin.json) } catch (e: Exception) { return }
+        val mode = o.optString("npControls", "standard")
+        if (mode != "wheel" && mode != "keypad") return
+        val hw = o.optJSONObject(mode)
+        fun c(k: String, def: Int): Int = hw?.optString(k)?.takeIf { it.isNotBlank() }?.let {
+            try { android.graphics.Color.parseColor(it) } catch (e: Exception) { def }
+        } ?: def
+        val colors = com.jslw.genz.ui.views.HardwareColors(
+            panelTop = c("panelTop", 0), panelBottom = c("panelBottom", 0),
+            face = c("face", 0xFFFFFFFF.toInt()), faceEdge = c("faceEdge", 0xFFE6E7EA.toInt()),
+            centerTop = c("centerTop", 0xFFF2F3F5.toInt()), centerBottom = c("centerBottom", 0xFFCDD0D6.toInt()),
+            glyph = c("glyph", 0xFF8E939C.toInt()), accent = c("accent", skin.accent), label = c("label", 0xFF8E939C.toInt()),
+        )
+        val row = shuffleBtn.parent as ViewGroup
+        val parent = row.parent as ViewGroup
+        val idx = parent.indexOfChild(row)
+        row.visibility = View.GONE
+        val lp = android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lp.topMargin = (10 * resources.displayMetrics.density).toInt()
+        val toggle = { Player.service?.toggle(); Unit }
+        val prev = { slideArt(1); Player.service?.prev(); Unit }
+        val next = { slideArt(-1); Player.service?.next(); Unit }
+        if (mode == "wheel") {
+            val w = com.jslw.genz.ui.views.ClickWheelView(this, colors)
+            w.onPlayPause = toggle; w.onPrev = prev; w.onNext = next
+            w.onShuffle = { Player.service?.let { it.setShuffleMode(!it.shuffle); w.shuffleOn = it.shuffle; toast(if (it.shuffle) "Shuffle on" else "Shuffle off") } }
+            w.onScrub = { ms -> Player.service?.let { sv -> sv.seekTo((sv.position() + ms).coerceIn(0, sv.duration())) } }
+            parent.addView(w, idx + 1, lp); wheel = w
+        } else {
+            val k = com.jslw.genz.ui.views.KeypadView(this, colors)
+            k.onPlayPause = toggle; k.onPrev = prev; k.onNext = next
+            parent.addView(k, idx + 1, lp); keypad = k
+        }
+    }
 
     private fun showLyrics(show: Boolean) {
         if (show == (lyricsPanel.visibility == View.VISIBLE)) return

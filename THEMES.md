@@ -101,3 +101,18 @@ Export any of them as a pack to use as a starting point.
 
 Bundled fonts are Google Fonts under the SIL Open Font License 1.1: Inter, Lora, VT323,
 Barlow Condensed, Orbitron. Only put fonts in a pack that you are allowed to redistribute.
+
+## Hardware-style controls (v1.6)
+
+A theme can replace the Now Playing transport row with a hardware control:
+
+```json
+"npControls": "wheel",            // "standard" (default), "wheel" or "keypad"
+"wheel": { "panelTop": "#F4F4F6", "panelBottom": "#D8D9DE", "face": "#FFFFFF", "faceEdge": "#ECEDF1",
+           "centerTop": "#F1F2F5", "centerBottom": "#C6C9D0", "glyph": "#8E929B", "accent": "#2B2E35", "label": "#8E929B" }
+```
+
+* **wheel** – click wheel: top = shuffle, left/right = previous/next, bottom or centre = play/pause; circle a finger around the ring to scrub (5 s per step).
+* **keypad** – pocket-recorder speaker grille with three keys (previous · play/pause · next). Use a `"keypad"` colour block.
+
+Built-in examples: Wheel Noir, Cream Wheel, Pocket Recorder.
