@@ -202,6 +202,16 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         lyricsList.post { val pad = lyricsList.height / 2; lyricsList.setPadding(0, pad, 0, pad) }
 
         Player.connect(this)
+        debugShot()
+    }
+
+    /** Debug screenshot tour: open lyrics / queue, or trigger the favourite celebration. */
+    private fun debugShot() {
+        if (!com.jslw.genz.BuildConfig.DEBUG) return
+        when (intent.getStringExtra(Tour.EXTRA_SHOT)) {
+            "lyrics" -> handler.postDelayed({ showLyrics(true) }, 1500)
+            "queue" -> handler.postDelayed({ Sheets.queue(this) }, 1500)
+        }
     }
 
     private fun setupInsets() {

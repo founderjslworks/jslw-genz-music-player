@@ -41,6 +41,7 @@ class SearchActivity : BaseActivity() {
             }
         })
         input.requestFocus()
+        if (com.jslw.genz.BuildConfig.DEBUG) intent.getStringExtra("q")?.let { input.setText(it) }
     }
 
     private fun search(q: String) {

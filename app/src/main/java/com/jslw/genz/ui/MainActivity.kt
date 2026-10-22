@@ -62,6 +62,7 @@ class MainActivity : BaseActivity(), Player.Listener {
     private val reload = Runnable { Library.load(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Tour.prepare(intent) // debug screenshot tour only
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val root = findViewById<View>(R.id.root)
@@ -88,7 +89,9 @@ class MainActivity : BaseActivity(), Player.Listener {
         supportFragmentManager.addOnBackStackChangedListener { updateBack() }
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction().replace(R.id.content, HomeFragment()).commit()
-            if (!splashShown) { splashShown = true; Brand.splash(this) }
+            if (!splashShown && !(com.jslw.genz.BuildConfig.DEBUG && intent.hasExtra(Tour.EXTRA_SHOT))) {
+                splashShown = true; Brand.splash(this)
+            }
         }
         updateBack()
 
@@ -102,6 +105,7 @@ class MainActivity : BaseActivity(), Player.Listener {
 
         Player.connect(this)
         handleIntent(intent)
+        Tour.run(this, intent)
     }
 
     override fun onNewIntent(intent: Intent) {
