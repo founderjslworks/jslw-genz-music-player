@@ -272,6 +272,10 @@ class SettingsActivity : BaseActivity() {
         items += Item.Action("GEN-Z Music ${BuildConfig.VERSION_NAME}", { "100% offline · no internet permission · Android 4.4+" }) { about() }
         items += Item.Action("Designed & developed by", { getString(R.string.developer) + " · " + getString(R.string.company) }) { about() }
         items += Item.Action("Copyright", { getString(R.string.copyright) }) { about() }
+        items += Item.Action("Website", { "www.jslworks.in" }) { Brand.open(this, Brand.SITE) }
+        items += Item.Action("Updates & downloads", { "www.jslworks.in/android-devlopment" }) { Brand.open(this, Brand.UPDATES) }
+        items += Item.Action("Project on GitHub", { "Latest release, user guide (PDF) and source" }) { Brand.open(this, Brand.RELEASES) }
+        items += Item.Action("Share GEN-Z Music", { "Send the download link to a friend" }) { Brand.share(this) }
         items += Item.Action("Open-source licences", { "AndroidX, Material Components, XuiMod animations (Apache 2.0) · Google Fonts (OFL 1.1)" }) {
             fun asset(n: String) = try { assets.open("licenses/$n").bufferedReader().use { it.readText() } } catch (e: Exception) { "" }
             val text = asset("NOTICES.txt") + "\n\n" + asset("FONTS.txt") + "\n\n" + asset("OFL-1.1.txt") + "\n\n" + asset("APACHE-2.0.txt")

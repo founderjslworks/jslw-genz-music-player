@@ -41,6 +41,7 @@ class MainActivity : BaseActivity(), Player.Listener {
     private lateinit var miniTitle: TextView
     private lateinit var miniArtist: TextView
     private lateinit var miniPlay: ImageButton
+    private var miniWasPlaying: Boolean? = null
     private lateinit var miniProgress: SparkleSeekBar
     private val handler = Handler(Looper.getMainLooper())
     private var shownSongId: Long? = -1
@@ -180,8 +181,17 @@ class MainActivity : BaseActivity(), Player.Listener {
     private fun setupMiniPlayer() {
         val body = findViewById<View>(R.id.miniBody)
         body.setOnClickListener { openNowPlaying() }
-        miniPlay.setOnClickListener { Player.service?.toggle() }
-        findViewById<View>(R.id.miniNext).setOnClickListener { Player.service?.next() }
+        miniPlay.setOnClickListener { com.jslw.genz.util.ControlFx.pop(miniPlay); Player.service?.toggle() }
+        findViewById<View>(R.id.miniNext).setOnClickListener { v ->
+            com.jslw.genz.util.ControlFx.skip(v, true, com.jslw.genz.skin.SkinManager.current.accent)
+            miniArt.animate().cancel()
+            miniArt.animate().translationX(-miniArt.width * 0.6f).alpha(0f).rotation(-12f).setDuration(150).withEndAction {
+                miniArt.translationX = miniArt.width * 0.6f; miniArt.rotation = 12f
+                miniArt.animate().translationX(0f).alpha(1f).rotation(0f).setDuration(420)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(1.6f)).start()
+            }.start()
+            Player.service?.next()
+        }
 
         // swipe up → Now Playing; swipe left/right → next/previous with a slide animation
         val gd = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
@@ -250,7 +260,12 @@ class MainActivity : BaseActivity(), Player.Listener {
             } else root.background = new
         }
         val playing = Player.isPlaying
-        com.jslw.genz.skin.Icons.set(miniPlay, if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+        if (miniWasPlaying != null && miniWasPlaying != playing) {
+            com.jslw.genz.util.ControlFx.morphPlay(miniPlay, miniPlay, playing, com.jslw.genz.skin.SkinManager.current.accent) {
+                com.jslw.genz.skin.Icons.set(miniPlay, if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+            }
+        } else com.jslw.genz.skin.Icons.set(miniPlay, if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+        miniWasPlaying = playing
         com.jslw.genz.skin.Icons.set(headerPlaying, if (playing) R.drawable.ic_play else R.drawable.ic_pause)
         headerPlaying.visibility = View.VISIBLE
         (currentFragment() as? Refreshable)?.playingChanged()

@@ -156,8 +156,12 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         findViewById<View>(R.id.npClose).setOnClickListener { root.dismiss() }
         findViewById<View>(R.id.npMore).setOnClickListener { moreMenu(it) }
         playWrap.setOnClickListener { pulse(playWrap); Player.service?.toggle() }
-        findViewById<View>(R.id.npNext).setOnClickListener { slideArt(-1); Player.service?.next() }
-        findViewById<View>(R.id.npPrev).setOnClickListener { slideArt(1); Player.service?.prev() }
+        findViewById<View>(R.id.npNext).setOnClickListener { v ->
+            com.jslw.genz.util.ControlFx.skip(v, true, fxColor()); slideArt(-1); Player.service?.next()
+        }
+        findViewById<View>(R.id.npPrev).setOnClickListener { v ->
+            com.jslw.genz.util.ControlFx.skip(v, false, fxColor()); slideArt(1); Player.service?.prev()
+        }
         shuffleBtn.setOnClickListener { Player.service?.let { it.setShuffleMode(!it.shuffle); toast(if (it.shuffle) "Shuffle on" else "Shuffle off") } }
         repeatBtn.setOnClickListener {
             Player.service?.let { it.cycleRepeat(); toast(arrayOf("Repeat off", "Repeat all", "Repeat one")[it.repeatMode]) }
@@ -301,11 +305,10 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         }
         val playing = svc.isPlaying
         if (wasPlaying != playing) {
+            val first = wasPlaying == null
             wasPlaying = playing
-            playIcon.animate().scaleX(0.6f).scaleY(0.6f).alpha(0f).setDuration(90).withEndAction {
-                com.jslw.genz.skin.Icons.set(playIcon, if (playing) R.drawable.ic_pause_large else R.drawable.ic_play_large)
-                playIcon.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(160).start()
-            }.start()
+            val setIcon = { com.jslw.genz.skin.Icons.set(playIcon, if (playing) R.drawable.ic_pause_large else R.drawable.ic_play_large) }
+            if (first) setIcon() else com.jslw.genz.util.ControlFx.morphPlay(playWrap, playIcon, playing, fxColor(), setIcon)
             // art "breathes": slightly smaller while paused, like modern players
             artSquare.animate().scaleX(if (playing) 1f else 0.92f).scaleY(if (playing) 1f else 0.92f)
                 .setDuration(380).setInterpolator(android.view.animation.OvershootInterpolator(1.2f)).start()
@@ -406,11 +409,28 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         }.start()
     }
 
+    /** Cover flies out in the skip direction with a slight 3D turn, the next one swings in from the other side. */
     private fun slideArt(dir: Int) {
-        artSquare.animate().translationX(dir * artSquare.width * 0.25f).alpha(0.4f).setDuration(110).withEndAction {
-            artSquare.animate().translationX(0f).alpha(1f).setDuration(240).start()
-        }.start()
+        val w = artSquare.width.toFloat().coerceAtLeast(1f)
+        artSquare.animate().cancel()
+        artSquare.cameraDistance = 12000 * resources.displayMetrics.density
+        artSquare.animate().translationX(dir * w * 0.7f).rotationY(-dir * 28f).alpha(0f).scaleX(0.86f).scaleY(0.86f)
+            .setDuration(170).setInterpolator(android.view.animation.AccelerateInterpolator()).withEndAction {
+                artSquare.translationX = -dir * w * 0.7f
+                artSquare.rotationY = dir * 28f
+                artSquare.animate().translationX(0f).rotationY(0f).alpha(1f).scaleX(1f).scaleY(1f)
+                    .setDuration(460).setInterpolator(android.view.animation.OvershootInterpolator(1.4f)).start()
+            }.start()
+        for (t in listOf(titleTv, artistTv)) {
+            t.animate().cancel()
+            t.animate().translationX(dir * 60f).alpha(0f).setDuration(150).withEndAction {
+                t.translationX = -dir * 60f
+                t.animate().translationX(0f).alpha(1f).setDuration(360).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+            }.start()
+        }
     }
+
+    private fun fxColor(): Int = com.jslw.genz.skin.SkinManager.current.accent
 
     private fun showLyrics(show: Boolean) {
         if (show == (lyricsPanel.visibility == View.VISIBLE)) return

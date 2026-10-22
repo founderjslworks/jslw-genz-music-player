@@ -80,15 +80,19 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
         titleTv.typeface = SkinManager.current.boldTypeface
         progress.setIndicatorColor(SkinManager.current.accent)
 
-        findViewById<View>(R.id.lockPlayWrap).setOnClickListener { Player.service?.toggle() }
+        findViewById<View>(R.id.lockPlayWrap).setOnClickListener { v ->
+            com.jslw.genz.util.ControlFx.pop(v)
+            com.jslw.genz.util.ControlFx.rings(v, 0xFFFFFFFF.toInt(), outward = Player.service?.isPlaying != true)
+            Player.service?.toggle()
+        }
         findViewById<com.jslw.genz.ui.views.SlideToUnlockBar>(R.id.lockSlide).apply {
             text = "slide to unlock"
             typeface = SkinManager.current.typeface
             tint = SkinManager.current.accent
             onUnlock = { close() }
         }
-        findViewById<View>(R.id.lockNext).setOnClickListener { Player.service?.next() }
-        findViewById<View>(R.id.lockPrev).setOnClickListener { Player.service?.prev() }
+        findViewById<View>(R.id.lockNext).setOnClickListener { v -> com.jslw.genz.util.ControlFx.skip(v, true, 0xFFFFFFFF.toInt()); Player.service?.next() }
+        findViewById<View>(R.id.lockPrev).setOnClickListener { v -> com.jslw.genz.util.ControlFx.skip(v, false, 0xFFFFFFFF.toInt()); Player.service?.prev() }
 
         // swipe up to close, the content following the finger
         val gd = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {

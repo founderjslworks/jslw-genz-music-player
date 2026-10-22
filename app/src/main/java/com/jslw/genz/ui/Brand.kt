@@ -38,8 +38,34 @@ object Brand {
         v.findViewById<TextView>(R.id.brandTitle).text = "GEN-Z Music ${BuildConfig.VERSION_NAME}"
         v.findViewById<TextView>(R.id.brandCredit).text =
             "Designed & developed by ${ctx.getString(R.string.developer)}\n${ctx.getString(R.string.company)}"
+        v.findViewById<TextView>(R.id.brandCopyright).text = ctx.getString(R.string.copyright) + "\nwww.jslworks.in"
         SkinPainter.apply(v)
         return v
+    }
+
+    const val SITE = "https://www.jslworks.in/"
+    const val UPDATES = "https://www.jslworks.in/android-devlopment"
+    const val PROJECT = "https://github.com/founderjslworks/jslw-genz-music-player"
+    const val RELEASES = "https://github.com/founderjslworks/jslw-genz-music-player/releases/latest"
+
+    /** Opens a link in the user's browser (GEN-Z itself never uses the internet). */
+    fun open(a: Activity, url: String) {
+        try {
+            a.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(a, url, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun shareText() = "🎧 GEN-Z Music ${BuildConfig.VERSION_NAME} is here!\n$PROJECT\n\n" +
+        "An offline music player for Android 4.4 – 16: 34 themes, 10-band EQ, Hi-Res & DSD, lyrics, widgets – no ads, no tracking.\n\n" +
+        "⬇️ Download the app + user guide:\n$RELEASES\n\nBy Partho Ghosh · JSL WORKS PVT LTD · www.jslworks.in"
+
+    fun share(a: Activity) {
+        val i = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+            .putExtra(android.content.Intent.EXTRA_SUBJECT, "GEN-Z Music")
+            .putExtra(android.content.Intent.EXTRA_TEXT, shareText())
+        try { a.startActivity(android.content.Intent.createChooser(i, "Share GEN-Z Music")) } catch (_: Exception) {}
     }
 
     fun about(a: Activity) {
@@ -53,8 +79,17 @@ object Brand {
             setPadding(pad, 0, pad, pad / 2)
             tag = "skin_text2"
         })
+        col.addView(TextView(a).apply {
+            text = "🌐  www.jslworks.in\n⬇️  www.jslworks.in/android-devlopment"
+            textSize = 13f
+            setPadding(pad, 0, pad, pad / 2)
+            tag = "skin_accent_text"
+            setOnClickListener { open(a, UPDATES) }
+        })
         SkinPainter.apply(col)
         MaterialAlertDialogBuilder(a).setView(android.widget.ScrollView(a).apply { addView(col) })
+            .setNeutralButton("Share") { _, _ -> share(a) }
+            .setNegativeButton("Website") { _, _ -> open(a, UPDATES) }
             .setPositiveButton("OK", null).show()
     }
 

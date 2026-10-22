@@ -50,11 +50,16 @@ object Widgets {
         if (!force && key == lastKey) return
         lastKey = key
         val mgr = AppWidgetManager.getInstance(ctx)
-        val small = art?.let { Bitmap.createScaledBitmap(it, 200, 200, true) }
+        val small = art?.let { Bitmap.createScaledBitmap(it, 320, 320, true) }
+        val cols = WidgetArt.palette(small, SkinManager.current)
         for ((cls, layout) in KINDS) {
             val ids = mgr.getAppWidgetIds(ComponentName(ctx, cls))
             if (ids.isEmpty()) continue
-            mgr.updateAppWidget(ids, views(ctx, layout, song, playing, small))
+            try {
+                mgr.updateAppWidget(ids, views(ctx, layout, song, playing, small, cols))
+            } catch (e: Exception) {
+                // never let a widget problem affect playback
+            }
         }
     }
 
@@ -85,30 +90,41 @@ object Widgets {
         else PendingIntentCompat.getService(ctx, 100 + rc, i, PendingIntent.FLAG_UPDATE_CURRENT, false)
     }
 
-    private fun views(ctx: Context, layout: Int, song: Song?, playing: Boolean, art: Bitmap?): RemoteViews {
+    private fun views(ctx: Context, layout: Int, song: Song?, playing: Boolean, art: Bitmap?, cols: IntArray): RemoteViews {
         val skin = SkinManager.current
         val v = RemoteViews(ctx.packageName, layout)
-        // theme colours
-        v.setInt(R.id.wBg, "setColorFilter", skin.surface)
-        v.setInt(R.id.wBg, "setAlpha", 240)
-        val onBg = if (com.jslw.genz.util.isLight(skin.surface)) 0xFF111111.toInt() else 0xFFFFFFFF.toInt()
+        val d = 2f // render at 2x for crisp edges on any launcher
         val square = layout == R.layout.widget_square
-        v.setTextColor(R.id.wTitle, if (square) 0xFFFFFFFF.toInt() else onBg)
-        v.setTextColor(R.id.wArtist, if (square) 0xCCFFFFFF.toInt() else (onBg and 0x00FFFFFF) or 0xB3000000.toInt())
-        for (id in intArrayOf(R.id.wPrev, R.id.wNext)) v.setInt(id, "setColorFilter", if (square) 0xFFFFFFFF.toInt() else onBg)
-        v.setInt(R.id.wPlay, "setColorFilter", if (square) 0xFFFFFFFF.toInt() else skin.accent)
+        val (bw, bh) = when (layout) {
+            R.layout.widget_square -> 260 to 260
+            R.layout.widget_large -> 500 to 250
+            else -> 500 to 130
+        }
+        v.setImageViewBitmap(R.id.wBg, WidgetArt.background((bw * d).toInt(), (bh * d).toInt(), art, skin, cols, d, square))
+        v.setInt(R.id.wBg, "setColorFilter", 0)
+        v.setInt(R.id.wBg, "setAlpha", 255)
+        // always light text on the rich backdrop
+        v.setTextColor(R.id.wTitle, 0xFFFFFFFF.toInt())
+        v.setTextColor(R.id.wArtist, 0xD9FFFFFF.toInt())
+        if (layout == R.layout.widget_large) v.setTextColor(R.id.wAlbum, 0x99FFFFFF.toInt())
+        for (id in intArrayOf(R.id.wPrev, R.id.wNext)) v.setInt(id, "setColorFilter", 0xF2FFFFFF.toInt())
+        v.setInt(R.id.wPlay, "setColorFilter", 0)
+        v.setImageViewBitmap(R.id.wPlay, WidgetArt.playButton(playing, (56 * d).toInt(), cols, d))
 
         v.setTextViewText(R.id.wTitle, song?.title ?: ctx.getString(R.string.nothing_playing))
         v.setTextViewText(R.id.wArtist, song?.artist ?: ctx.getString(R.string.tap_to_play))
-        if (layout == R.layout.widget_large) v.setTextViewText(R.id.wAlbum, song?.album ?: "")
-        if (art != null) {
-            v.setImageViewBitmap(R.id.wArt, art)
+        if (layout == R.layout.widget_large) v.setTextViewText(R.id.wAlbum, song?.album ?: "GEN-Z Music")
+        if (square) {
+            // the cover is the backdrop itself
+            v.setViewVisibility(R.id.wArt, android.view.View.GONE)
+        } else if (art != null) {
+            val size = if (layout == R.layout.widget_large) (104 * d).toInt() else (56 * d).toInt()
+            v.setImageViewBitmap(R.id.wArt, WidgetArt.cover(art, size, d))
             v.setInt(R.id.wArt, "setColorFilter", 0)
         } else {
             v.setImageViewResource(R.id.wArt, R.drawable.ic_note)
-            v.setInt(R.id.wArt, "setColorFilter", skin.accent)
+            v.setInt(R.id.wArt, "setColorFilter", 0xFFFFFFFF.toInt())
         }
-        v.setImageViewResource(R.id.wPlay, if (playing) R.drawable.ic_pause else R.drawable.ic_play)
         v.setOnClickPendingIntent(R.id.wPlay, service(ctx, MusicService.ACTION_TOGGLE, 1))
         v.setOnClickPendingIntent(R.id.wNext, service(ctx, MusicService.ACTION_NEXT, 2))
         v.setOnClickPendingIntent(R.id.wPrev, service(ctx, MusicService.ACTION_PREV, 3))

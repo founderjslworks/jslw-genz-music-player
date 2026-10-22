@@ -97,9 +97,9 @@ class EqualizerActivity : BaseActivity() {
         }
         findViewById<MaterialButton>(R.id.eqReset).setOnClickListener { applyPreset("Flat", IntArray(levels.size)) }
 
-        slider(R.id.eqBass, Prefs.bassStrength) { Prefs.bassStrength = it }
-        slider(R.id.eqVirt, Prefs.virtStrength) { Prefs.virtStrength = it }
-        slider(R.id.eqLoud, Prefs.loudness) { Prefs.loudness = it }
+        slider(R.id.eqBass, R.id.eqBassVal, Prefs.bassStrength) { Prefs.bassStrength = it }
+        slider(R.id.eqVirt, R.id.eqVirtVal, Prefs.virtStrength) { Prefs.virtStrength = it }
+        slider(R.id.eqLoud, R.id.eqLoudVal, Prefs.loudness) { Prefs.loudness = it }
 
         val reverb = findViewById<ChipGroup>(R.id.eqReverb)
         reverb.removeAllViews()
@@ -109,12 +109,14 @@ class EqualizerActivity : BaseActivity() {
             c.isCheckable = true
             c.id = View.generateViewId()
             SkinPainter.styleChip(c)
+            chipIcon(c, reverbIcon(n))
             c.isChecked = Prefs.reverb == i
             c.setOnClickListener { Prefs.reverb = i; svc.effectsChanged() }
             reverb.addView(c)
         }
         setEnabled(Prefs.eqEnabled)
         SkinPainter.apply(findViewById(R.id.root))
+        decorate()
         animateIn()
     }
 
@@ -146,10 +148,90 @@ class EqualizerActivity : BaseActivity() {
         }
     }
 
-    private fun slider(id: Int, value: Int, set: (Int) -> Unit) {
+    private fun slider(id: Int, valId: Int, value: Int, set: (Int) -> Unit) {
         val s = findViewById<Slider>(id)
+        val label = findViewById<TextView>(valId)
         s.value = value.coerceIn(0, 1000).toFloat()
-        s.addOnChangeListener { _, v, fromUser -> if (fromUser) { set(v.toInt()); svc.effectsChanged() } }
+        label.text = "${value.coerceIn(0, 1000) / 10}%"
+        s.addOnChangeListener { _, v, fromUser ->
+            label.text = "${v.toInt() / 10}%"
+            if (fromUser) { set(v.toInt()); svc.effectsChanged() }
+        }
+    }
+
+    // ---------------------------------------------------------------- iconography
+    private fun dp(v: Float) = v * resources.displayMetrics.density
+
+    /** Gradient icon tiles, guide icons and button icons, all in the active theme's colours. */
+    private fun decorate() {
+        val sk = com.jslw.genz.skin.SkinManager.current
+        fun tile(id: Int, c1: Int, c2: Int) {
+            val iv = findViewById<android.widget.ImageView>(id)
+            iv.background = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TL_BR, intArrayOf(c1, c2)
+            ).apply { cornerRadius = dp(12f) }
+            iv.setColorFilter(0xFFFFFFFF.toInt())
+        }
+        tile(R.id.eqTitleIcon, sk.header, sk.headerEnd)
+        tile(R.id.eqBassIcon, sk.header, sk.headerEnd)
+        tile(R.id.eqVirtIcon, sk.accent, sk.header)
+        tile(R.id.eqLoudIcon, sk.headerEnd, sk.accent)
+        tile(R.id.eqReverbIcon, sk.header, sk.accent)
+        for ((id, ic) in listOf(R.id.eqGuideLow to R.drawable.ic_eq_bass, R.id.eqGuideMid to R.drawable.ic_eq_mid, R.id.eqGuideHigh to R.drawable.ic_eq_treble)) {
+            val tv = findViewById<TextView>(id)
+            val d = androidx.appcompat.content.res.AppCompatResources.getDrawable(this, ic)?.mutate() ?: continue
+            androidx.core.graphics.drawable.DrawableCompat.setTint(androidx.core.graphics.drawable.DrawableCompat.wrap(d), sk.accent)
+            val sz = dp(16f).toInt(); d.setBounds(0, 0, sz, sz)
+            tv.setCompoundDrawables(d, null, null, null)
+        }
+        for ((id, ic) in listOf(R.id.eqSave to R.drawable.ic_eq_save, R.id.eqDelete to R.drawable.ic_delete, R.id.eqReset to R.drawable.ic_eq_flat)) {
+            val b = findViewById<MaterialButton>(id)
+            b.setIconResource(ic)
+            b.iconSize = dp(18f).toInt()
+            b.iconPadding = dp(6f).toInt()
+            b.iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+            b.iconTint = b.textColors
+            b.maxLines = 1
+        }
+    }
+
+    private fun chipIcon(c: Chip, res: Int) {
+        c.setChipIconResource(res)
+        c.isChipIconVisible = true
+        c.chipIconSize = dp(18f)
+        c.chipIconTint = c.textColors
+        c.iconStartPadding = dp(4f)
+    }
+
+    private fun presetIcon(name: String): Int {
+        val n = name.lowercase()
+        return when {
+            "flat" in n || "normal" in n -> R.drawable.ic_eq_flat
+            "bass" in n -> R.drawable.ic_eq_bass
+            "rock" in n || "metal" in n -> R.drawable.ic_eq_rock
+            "pop" in n || "dance" in n -> R.drawable.ic_star
+            "jazz" in n || "classical" in n || "folk" in n -> R.drawable.ic_note
+            "vocal" in n || "voice" in n || "podcast" in n -> R.drawable.ic_eq_vocal
+            "electr" in n || "edm" in n -> R.drawable.ic_eq_electronic
+            "hip" in n || "rap" in n -> R.drawable.ic_eq_hiphop
+            "acoustic" in n -> R.drawable.ic_eq_acoustic
+            "treble" in n -> R.drawable.ic_eq_treble
+            "loud" in n -> R.drawable.ic_eq_loudness
+            "night" in n -> R.drawable.ic_eq_night
+            "heavy" in n -> R.drawable.ic_eq_rock
+            name in fx.customPresets().keys -> R.drawable.ic_eq_custom
+            else -> R.drawable.ic_eq_device
+        }
+    }
+
+    private fun reverbIcon(name: String): Int {
+        val n = name.lowercase()
+        return when {
+            "none" in n || "off" in n -> R.drawable.ic_eq_none
+            "hall" in n -> R.drawable.ic_eq_hall
+            "plate" in n -> R.drawable.ic_eq_plate
+            else -> R.drawable.ic_eq_reverb
+        }
     }
 
     private fun buildPresets() {
@@ -161,6 +243,7 @@ class EqualizerActivity : BaseActivity() {
             c.isCheckable = true
             c.id = View.generateViewId()
             SkinPainter.styleChip(c)
+            chipIcon(c, presetIcon(name))
             c.isChecked = name == Prefs.eqPreset
             c.setOnClickListener { applyPreset(name, vals) }
             presetGroup.addView(c)
