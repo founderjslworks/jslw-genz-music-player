@@ -6,7 +6,17 @@ A fully offline music player for Android, built for music lovers who want a play
 feels like their music. It runs on **Android 4.4 KitKat through Android 16**, on phones and tablets,
 with no internet permission at all.
 
-> Package `com.jslw.genz` · Version 1.4
+> Package `com.jslw.genz` · Version 1.7 · 🇮🇳 Made in India with ♥
+
+**⬇️ [Download the latest APK and user guide](https://github.com/founderjslworks/jslw-genz-music-player/releases/latest)** · 🌐 [www.jslworks.in](https://www.jslworks.in/android-devlopment)
+
+## What's new in 1.7
+- **Turntable widgets**: pearl turntable design with your cover as the record label, a tonearm, round 3D buttons and a live duration (4×1, 4×2 and 2×2)
+- **Spinning vinyl** cover mode with a tonearm that lifts on pause
+- **Hardware-style controls**: click wheel, recorder keypad, radio seek knob, tuning dial and analog needle gauge
+- **8 new themes**: Wheel Noir, Cream Wheel, Pocket Recorder, Turntable Rose, Retro Deck, Radio Deck, Tuner Orange, Analog Dial
+- Animated play / pause / next, equalizer iconography, new app icon, website links and Share in About
+- 🇮🇳 *Made in India with ♥* – with a beating heart – on every screen
 
 ---
 
@@ -22,7 +32,7 @@ with no internet permission at all.
   GEN-Z's own decoder
 
 **Look and feel**
-- **34 built-in themes**: devotional, Bollywood, lo-fi, EDM neon, synthwave, hip-hop, rock, jazz,
+- **42 built-in themes**: turntable, click wheel, radio deck, tuner, analog dial, devotional, Bollywood, lo-fi, EDM neon, synthwave, hip-hop, rock, jazz,
   classical, K-pop, glass, dot-matrix, soft UI, neo-brutalist and more
 - Every theme has its own Google Fonts, its own animated progress bar (sparkle, neon, wave, spectrum,
   8-bit, fire, bubbles, petals, hearts, notes, snow, tape, classic, dot matrix) and its own cover effect
