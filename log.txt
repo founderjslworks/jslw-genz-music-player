@@ -1,0 +1,129 @@
+adb: error: failed to copy 'demo/./06_03 Continue?.mp3' to '/sdcard/Music/GENZ/./06_03 Continue?.mp3': remote couldn't create file: Operation not permitted
+demo/./: 25 files pushed, 0 skipped. 9.7 MB/s (39668392 bytes in 3.882s)
+Performing Streamed Install
+Success
+captured 01_home
+captured 02_album_flow
+captured 03_now_playing
+captured 04_lyrics
+captured 05_queue
+captured 06_equalizer
+captured 07_themes
+captured 08_theme_editor
+captured 09_settings
+captured 10_search
+captured 11_albums
+captured 12_songs
+captured 13_playlists
+captured 14_lock_screen
+captured theme_dot_matrix_home
+captured theme_dot_matrix_np
+captured theme_glass_aurora_home
+captured theme_glass_aurora_np
+captured theme_soft_ui_home
+captured theme_soft_ui_np
+captured theme_neo_brutal_home
+captured theme_neo_brutal_np
+captured theme_swiss_mono_home
+captured theme_swiss_mono_np
+captured theme_mesh_gradient_home
+captured theme_mesh_gradient_np
+captured theme_clay_pastel_home
+captured theme_clay_pastel_np
+captured theme_midnight_minimal_home
+captured theme_midnight_minimal_np
+captured theme_chrome_y2k_home
+captured theme_chrome_y2k_np
+captured theme_bollywood_nights_home
+captured theme_bollywood_nights_np
+captured theme_bhakti_diya_home
+captured theme_bhakti_diya_np
+captured theme_romantic_rose_home
+captured theme_romantic_rose_np
+captured theme_bhangra_beat_home
+captured theme_bhangra_beat_np
+captured theme_lofi_chill_home
+captured theme_lofi_chill_np
+captured theme_edm_neon_home
+captured theme_edm_neon_np
+captured theme_synthwave_84_home
+captured theme_synthwave_84_np
+captured theme_hiphop_mixtape_home
+captured theme_hiphop_mixtape_np
+captured theme_rock_arena_home
+captured theme_rock_arena_np
+captured theme_jazz_lounge_home
+captured theme_jazz_lounge_np
+captured theme_classical_symphony_home
+captured theme_classical_symphony_np
+captured theme_kpop_candy_home
+captured theme_kpop_candy_np
+captured theme_ocean_ambient_home
+captured theme_ocean_ambient_np
+captured theme_indie_acoustic_home
+captured theme_indie_acoustic_np
+captured theme_arcade_8bit_home
+captured theme_arcade_8bit_np
+captured theme_modern_dark_home
+captured theme_modern_dark_np
+captured theme_modern_light_home
+captured theme_modern_light_np
+captured theme_pure_black_home
+captured theme_pure_black_np
+captured theme_retro_clickwheel_home
+captured theme_retro_clickwheel_np
+captured theme_retro_amp_home
+captured theme_retro_amp_np
+captured theme_cassette_84_home
+captured theme_cassette_84_np
+captured theme_vinyl_hifi_home
+captured theme_vinyl_hifi_np
+captured theme_glossy_2002_home
+captured theme_glossy_2002_np
+captured theme_terminal_green_home
+captured theme_terminal_green_np
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/ui.xml'
+captured fx_ripple
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/ui.xml'
+captured fx_stone
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/ui.xml'
+captured fx_lens_flare
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/ui.xml'
+captured fx_popping
+captured fx_brilliant_ring
+captured fx_ink
+captured fx_watercolor
+captured fx_tiles
+captured fx_mosaic
+captured fx_droplet
+captured fx_bubbles
+captured fx_blinds
+captured fx_brilliant_cut
+captured fx_rect_traveller
+captured fx_bouncing
+captured fx_white_hole
+captured fx_dewdrop
+captured fx_hula
+captured fx_hula2
+captured fx_soda
+captured fx_particle
+captured fx_light_particle
+captured fx_pixelate
+captured fx_crystal
+captured fx_vector
+captured fx_circle_mosaic
+captured fx_revolving_glass
+captured fx_spring
+captured fx_summer
+captured fx_autumn
+captured fx_winter
+done
+113
