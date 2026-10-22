@@ -61,6 +61,7 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
         }
         setContentView(R.layout.activity_lock)
+        IndiaBadge.attach(findViewById(R.id.lockRoot), 0xFFFFFFFF.toInt())
         bg = findViewById(R.id.lockBg)
         art = findViewById(R.id.lockArt)
         titleTv = findViewById(R.id.lockTitle)

@@ -167,6 +167,8 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             Player.service?.let { it.cycleRepeat(); toast(arrayOf("Repeat off", "Repeat all", "Repeat one")[it.repeatMode]) }
         }
         setupHardware()
+        // "Made in India with ♥" under the controls
+        (shuffleBtn.parent?.parent as? ViewGroup)?.let { IndiaBadge.attach(it, skin.npTextSecondary) }
         favBtn.setOnClickListener {
             val s = Player.current ?: return@setOnClickListener
             val on = LibraryDb.toggleFavorite(s.id)

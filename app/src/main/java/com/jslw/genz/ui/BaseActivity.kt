@@ -44,6 +44,7 @@ abstract class BaseActivity : AppCompatActivity() {
      */
     protected fun setupScreen(root: View, header: View? = root.findViewById(R.id.hdr) ?: root.findViewById(R.id.header)) {
         SkinPainter.apply(root)
+        IndiaBadge.attach(root)
         if (Build.VERSION.SDK_INT >= 21) {
             SystemBars.setup(this, root, skin.header, skin.background)
             if (header != null) {

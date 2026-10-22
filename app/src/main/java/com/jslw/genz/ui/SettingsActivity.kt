@@ -272,6 +272,7 @@ class SettingsActivity : BaseActivity() {
         items += Item.Action("GEN-Z Music ${BuildConfig.VERSION_NAME}", { "100% offline · no internet permission · Android 4.4+" }) { about() }
         items += Item.Action("Designed & developed by", { getString(R.string.developer) + " · " + getString(R.string.company) }) { about() }
         items += Item.Action("Copyright", { getString(R.string.copyright) }) { about() }
+        items += Item.Action("Made in India with ♥", { "Designed & developed in India by JSL WORKS PVT LTD" }) { about() }
         items += Item.Action("Website", { "www.jslworks.in" }) { Brand.open(this, Brand.SITE) }
         items += Item.Action("Updates & downloads", { "www.jslworks.in/android-devlopment" }) { Brand.open(this, Brand.UPDATES) }
         items += Item.Action("Project on GitHub", { "Latest release, user guide (PDF) and source" }) { Brand.open(this, Brand.RELEASES) }

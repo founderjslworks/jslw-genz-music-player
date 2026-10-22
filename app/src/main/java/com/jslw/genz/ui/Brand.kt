@@ -79,6 +79,7 @@ object Brand {
             setPadding(pad, 0, pad, pad / 2)
             tag = "skin_text2"
         })
+        col.addView(IndiaBadge.view(a))
         col.addView(TextView(a).apply {
             text = "🌐  www.jslworks.in\n⬇️  www.jslworks.in/android-devlopment"
             textSize = 13f
