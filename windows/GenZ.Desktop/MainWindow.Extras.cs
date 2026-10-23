@@ -27,6 +27,25 @@ namespace GenZ
             BuildTheater();
         }
 
+        /// <summary>A new theme: everything built in code is rebuilt so no part keeps the old colours or fonts.</summary>
+        void OnThemeChanged()
+        {
+            noTransition = true;
+            try
+            {
+                if (view == View.Themes) RenderThemes(true);
+                else ShowView(view, true);
+            }
+            finally { noTransition = false; }
+            UpdateToggles();
+            UpdateFav(Player.Current ?? shownSong);
+            BuildEq();
+            BuildTheater();
+            BuildNavPlaylists();
+            if (shownSong != null) LoadLyrics(shownSong);
+            lastPlaying = null; OnPlayerState();
+        }
+
         // ================================================================ sidebar: space click effects
         void OnNavClickFx(object sender, MouseButtonEventArgs e)
         {
@@ -48,52 +67,15 @@ namespace GenZ
 
         void Live(Slider s, Border glow, Path icon)
         {
-            double w = Math.Max(0, s.ActualWidth * (s.Value - s.Minimum) / Math.Max(0.0001, s.Maximum - s.Minimum));
-            glow.Width = w;
-            glow.Height = 4 + volPulse * 12;
+            // only transforms change every frame – no layout work
+            double frac = (s.Value - s.Minimum) / Math.Max(0.0001, s.Maximum - s.Minimum);
+            if (Math.Abs(glow.Width - s.ActualWidth) > 0.5) glow.Width = Math.Max(0, s.ActualWidth);
+            if (!(glow.RenderTransform is ScaleTransform gs) || gs.IsFrozen) { gs = new ScaleTransform(1, 1, 0, 2); glow.RenderTransform = gs; }
+            gs.ScaleX = Math.Max(0.001, frac);
+            gs.ScaleY = 1 + volPulse * 3;
             glow.Opacity = volPulse > 0.01 ? 0.25 + volPulse * 0.75 : 0;
             var st = (ScaleTransform)icon.RenderTransform;
             st.ScaleX = st.ScaleY = 1 + volPulse * 0.28;
-        }
-
-        // ================================================================ favourite: full-window heart celebration (as on Android)
-        Controls.Celebration celebration;
-
-        void Celebrate(bool on)
-        {
-            if (Settings.Current.ReduceMotion) return;
-            if (celebration == null)
-            {
-                celebration = new Controls.Celebration();
-                Grid.SetRowSpan(celebration, 4);
-                Panel.SetZIndex(celebration, 1000);
-                Root.Children.Add(celebration);
-            }
-            if (Application.Current.Resources["AccentColor"] is Color a) celebration.SetColors(a, ((SolidColorBrush)FindResource("NpTextBrush")).Color);
-            FrameworkElement at = NpColumn.Width.Value > 0 && NpCoverHost.IsVisible ? (FrameworkElement)NpCoverHost : BarCover;
-            var p = at.TranslatePoint(new Point(at.ActualWidth / 2, at.ActualHeight / 2), celebration);
-            double size = Math.Max(at.ActualWidth, 160);
-            celebration.Style = Settings.Current.LikeEffect;
-            if (on) celebration.Celebrate(p, size); else celebration.Unlove(p, size);
-        }
-
-        /// <summary>The heart button jumps, spins a little and settles (Android heartPop).</summary>
-        static void HeartPop(FrameworkElement v, bool on)
-        {
-            var st = new ScaleTransform(1, 1); var rt = new RotateTransform();
-            var g = new TransformGroup(); g.Children.Add(st); g.Children.Add(rt);
-            v.RenderTransformOrigin = new Point(0.5, 0.5); v.RenderTransform = g;
-            var up = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(560) };
-            up.KeyFrames.Add(new EasingDoubleKeyFrame(on ? 1.6 : 0.7, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(on ? 140 : 120))));
-            up.KeyFrames.Add(new EasingDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(560)), new BackEase { Amplitude = 0.9, EasingMode = EasingMode.EaseOut }));
-            st.BeginAnimation(ScaleTransform.ScaleXProperty, up); st.BeginAnimation(ScaleTransform.ScaleYProperty, up);
-            if (on)
-            {
-                var spin = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(560) };
-                spin.KeyFrames.Add(new EasingDoubleKeyFrame(-12, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(140))));
-                spin.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(560)), new BackEase { Amplitude = 0.9, EasingMode = EasingMode.EaseOut }));
-                rt.BeginAnimation(RotateTransform.AngleProperty, spin);
-            }
         }
 
         // ================================================================ GEN-Z Home Theater

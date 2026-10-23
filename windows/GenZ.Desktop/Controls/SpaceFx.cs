@@ -43,9 +43,8 @@ namespace GenZ.Controls
 
         static Path MakeStar(double size, Brush fill)
         {
-            var path = new Path { Data = Star, Fill = fill, Width = size, Height = size, Stretch = Stretch.Uniform, IsHitTestVisible = false };
-            path.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.White, BlurRadius = size, ShadowDepth = 0, Opacity = 0.8 };
-            return path;
+            // no pixel-shader glow: a dozen glowing shapes per click is what made the clicks stutter
+            return new Path { Data = Star, Fill = fill, Width = size, Height = size, Stretch = Stretch.Uniform, IsHitTestVisible = false };
         }
 
         /// <summary>Twinkling four-point stars burst out, spin and fade.</summary>
@@ -133,7 +132,6 @@ namespace GenZ.Controls
                     Width = len, Height = 3, RadiusX = 1.5, RadiusY = 1.5, IsHitTestVisible = false,
                     Fill = new LinearGradientBrush(Color.FromArgb(0, accent.R, accent.G, accent.B), Colors.White, 0)
                 };
-                tail.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = accent, BlurRadius = 10, ShadowDepth = 0, Opacity = 1 };
                 Canvas.SetLeft(tail, p.X - len); Canvas.SetTop(tail, p.Y - 1.5);
                 var tt = new TranslateTransform();
                 var g = new TransformGroup(); g.Children.Add(tt); g.Children.Add(new RotateTransform(ang, len, 1.5));
@@ -168,7 +166,10 @@ namespace GenZ.Controls
             }
         }
 
-        /// <summary>Slowly drifting, twinkling stars (the canvas sits behind the sidebar items).</summary>
+        /// <summary>
+        /// Slowly drifting, twinkling stars behind the sidebar. The stars are drawn once into two cached layers that only move
+        /// and fade (cheap for the GPU), at a gentle 30 frames per second so the rest of the app stays smooth.
+        /// </summary>
         public static void StarField(Canvas field, bool on)
         {
             field.Children.Clear();
@@ -177,25 +178,42 @@ namespace GenZ.Controls
             {
                 field.Children.Clear();
                 double w = Math.Max(200, field.ActualWidth), h = Math.Max(400, field.ActualHeight);
-                for (int i = 0; i < 46; i++)
+                var accent = Accent;
+                for (int layer = 0; layer < 2; layer++)
                 {
-                    bool big = i % 9 == 0;
-                    double size = big ? 7 + rnd.NextDouble() * 4 : 1.2 + rnd.NextDouble() * 2;
-                    FrameworkElement star = big ? (FrameworkElement)MakeStar(size, Accent) : new Ellipse { Width = size, Height = size, Fill = i % 3 == 0 ? Accent : Brushes.White };
-                    star.IsHitTestVisible = false;
-                    star.Opacity = 0.15 + rnd.NextDouble() * 0.4;
-                    double x = rnd.NextDouble() * w, y = rnd.NextDouble() * h;
-                    Canvas.SetLeft(star, x); Canvas.SetTop(star, y);
-                    var tt = new TranslateTransform(); star.RenderTransform = tt;
-                    field.Children.Add(star);
-                    // drift up and a little sideways, forever
-                    var drift = TimeSpan.FromSeconds(30 + rnd.Next(40));
-                    tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, -h - 20, drift) { RepeatBehavior = RepeatBehavior.Forever, BeginTime = TimeSpan.FromSeconds(-rnd.NextDouble() * drift.TotalSeconds) });
-                    tt.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-8, 8, TimeSpan.FromSeconds(6 + rnd.Next(6))) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
-                    var tw = new DoubleAnimation(star.Opacity, Math.Min(1, star.Opacity + 0.5), TimeSpan.FromSeconds(1.2 + rnd.NextDouble() * 2.5)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, BeginTime = TimeSpan.FromSeconds(rnd.NextDouble() * 3) };
-                    star.BeginAnimation(UIElement.OpacityProperty, tw);
-                    // wrap: stars start below the bottom again when they drift past the top
-                    Canvas.SetTop(star, y + h);
+                    // each layer is twice as tall (two copies) so it can scroll up forever without a gap
+                    var dv = new DrawingVisual();
+                    using (var dc = dv.RenderOpen())
+                    {
+                        for (int copy = 0; copy < 2; copy++)
+                        {
+                            var r2 = new Random(layer * 31 + 7);
+                            for (int i = 0; i < 26; i++)
+                            {
+                                double x = r2.NextDouble() * w, y = r2.NextDouble() * h + copy * h;
+                                bool big = i % 9 == 0;
+                                var brush = i % 3 == 0 ? accent : Brushes.White;
+                                if (big)
+                                {
+                                    double sz = 3.5 + r2.NextDouble() * 2.5;
+                                    dc.PushTransform(new TranslateTransform(x, y)); dc.PushTransform(new ScaleTransform(sz, sz));
+                                    dc.DrawGeometry(brush, null, Star);
+                                    dc.Pop(); dc.Pop();
+                                }
+                                else { double rr = 0.6 + r2.NextDouble() * 1.1; dc.DrawEllipse(brush, null, new Point(x, y), rr, rr); }
+                            }
+                        }
+                    }
+                    var host = new Rectangle { Width = w, Height = h * 2, Fill = new VisualBrush(dv) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top, ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, w, h * 2) }, IsHitTestVisible = false, Opacity = layer == 0 ? 0.45 : 0.3 };
+                    host.CacheMode = new BitmapCache();
+                    var tt = new TranslateTransform(); host.RenderTransform = tt;
+                    field.Children.Add(host);
+                    var drift = new DoubleAnimation(0, -h, TimeSpan.FromSeconds(layer == 0 ? 70 : 45)) { RepeatBehavior = RepeatBehavior.Forever };
+                    Timeline.SetDesiredFrameRate(drift, 30);
+                    tt.BeginAnimation(TranslateTransform.YProperty, drift);
+                    var tw = new DoubleAnimation(host.Opacity, host.Opacity * 0.35, TimeSpan.FromSeconds(layer == 0 ? 2.6 : 1.9)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever };
+                    Timeline.SetDesiredFrameRate(tw, 30);
+                    host.BeginAnimation(UIElement.OpacityProperty, tw);
                 }
             }
             if (field.ActualHeight > 0) Fill(); else field.Loaded += (s, e) => Fill();

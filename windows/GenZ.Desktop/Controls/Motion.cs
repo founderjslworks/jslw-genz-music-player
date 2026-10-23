@@ -11,6 +11,30 @@ using GenZ.Core;
 
 namespace GenZ.Controls
 {
+    /// <summary>Makes sure an element always ends an animation at rest (no leftover offsets, rotation or transparency).</summary>
+    public static class AnimEnd
+    {
+        static readonly DependencyProperty TokenProperty = DependencyProperty.RegisterAttached("Token", typeof(int), typeof(AnimEnd), new PropertyMetadata(0));
+
+        /// <summary>Call when starting an animation on <paramref name="v"/>; after <paramref name="after"/> the element is reset,
+        /// unless a newer animation has started on it in the meantime.</summary>
+        public static void Schedule(FrameworkElement v, TimeSpan after)
+        {
+            int token = (int)v.GetValue(TokenProperty) + 1;
+            v.SetValue(TokenProperty, token);
+            var t = new System.Windows.Threading.DispatcherTimer(System.Windows.Threading.DispatcherPriority.Background) { Interval = after + TimeSpan.FromMilliseconds(40) };
+            t.Tick += (s, e) =>
+            {
+                t.Stop();
+                if ((int)v.GetValue(TokenProperty) != token) return;
+                v.BeginAnimation(UIElement.OpacityProperty, null); v.Opacity = 1;
+                v.RenderTransform = Transform.Identity;
+                v.CacheMode = null;
+            };
+            t.Start();
+        }
+    }
+
     /// <summary>sin(πt): goes out and comes back, like Android's CycleInterpolator(0.5).</summary>
     public class CycleEase : EasingFunctionBase
     {
@@ -59,6 +83,7 @@ namespace GenZ.Controls
             var dur = Settings.Ms(durationMs);
             if (dur == TimeSpan.Zero) return;
             var ease = Ease(interp);
+            AnimEnd.Schedule(v, dur);
             var st = new ScaleTransform(1, 1); var rt = new RotateTransform(0); var tt = new TranslateTransform();
             var g = new TransformGroup(); g.Children.Add(st); g.Children.Add(rt); g.Children.Add(tt);
             v.RenderTransform = g;
@@ -157,6 +182,7 @@ namespace GenZ.Controls
                 if (i >= max) { v.Opacity = 1; continue; }
                 var delay = Settings.Ms(i * stepMs);
                 var dur = Settings.Ms(520);
+                AnimEnd.Schedule(v, delay + dur);
                 v.Opacity = 0;
                 v.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, Settings.Ms(300)) { BeginTime = delay, EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } });
                 if (s.ListAnimation == "fade") { v.RenderTransform = Transform.Identity; continue; }
@@ -251,6 +277,7 @@ namespace GenZ.Controls
         {
             var delay = Settings.Ms(delayMs);
             var dur = Settings.Ms(520);
+            AnimEnd.Schedule(v, delay + dur);
             v.Opacity = 0;
             v.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, Settings.Ms(320)) { BeginTime = delay });
             var st = new ScaleTransform(0.96, 0.96); var tt = new TranslateTransform(0, distance);
@@ -265,6 +292,7 @@ namespace GenZ.Controls
         public static void Pop(FrameworkElement v, double delayMs)
         {
             var delay = Settings.Ms(delayMs);
+            AnimEnd.Schedule(v, delay + Settings.Ms(420));
             v.Opacity = 0;
             v.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, Settings.Ms(220)) { BeginTime = delay });
             var st = new ScaleTransform(0.6, 0.6);
@@ -331,6 +359,8 @@ namespace GenZ.Controls
             TimeSpan Ms(double ms) => Settings.Ms(ms);
 
             var inT = Setup(page, 0.5, 0.5);
+            // the entering page is drawn once into a GPU bitmap and only moved while it animates
+            page.CacheMode = new BitmapCache { RenderAtScale = 1, SnapsToDevicePixels = true };
             (ScaleTransform s, TranslateTransform t)? outT = null;
             if (old != null) outT = Setup(old, 0.5, 0.5);
             double longest = 0;
@@ -404,6 +434,11 @@ namespace GenZ.Controls
                     }
                     break;
             }
+            // the page returns to normal (sharp, interactive) when the transition ends
+            var endT = new System.Windows.Threading.DispatcherTimer { Interval = Ms(longest + 40) };
+            if (endT.Interval == TimeSpan.Zero) endT.Interval = TimeSpan.FromMilliseconds(1);
+            endT.Tick += (s, e) => { endT.Stop(); page.CacheMode = null; page.BeginAnimation(UIElement.OpacityProperty, null); page.Opacity = 1; page.RenderTransform = Transform.Identity; };
+            endT.Start();
             // the old picture goes when its animation ends
             if (old != null)
             {
@@ -448,11 +483,14 @@ namespace GenZ.Controls
                 {
                     if (it == null || !it.IsVisible || it.ActualHeight <= 0) continue;
                     Rect r;
-                    try { r = it.TransformToAncestor(sv).TransformBounds(new Rect(0, 0, it.ActualWidth, it.ActualHeight)); }
+                    // layout position only (ignores a running fly-in), so items are not re-triggered while they move
+                    try { var o = it.TranslatePoint(new Point(0, 0), sv); var ofs = it.RenderTransform?.Value ?? Matrix.Identity; r = new Rect(o.X - ofs.OffsetX, o.Y - ofs.OffsetY, it.ActualWidth, it.ActualHeight); }
                     catch { continue; }
                     if (r.Bottom < 0 || r.Top > sv.ViewportHeight) continue;
                     now.Add(it);
-                    if (animate && !visible.Contains(it)) ListAnim.Animate(it, down, cur.ScrollAnim, cur.ScrollDuration, cur.ScrollInterp);
+                    // big sections (cards, the equalizer) stay put – flying them in looks jumpy
+                    if (animate && !visible.Contains(it) && it.ActualHeight < sv.ViewportHeight * 0.4)
+                        ListAnim.Animate(it, down, cur.ScrollAnim, cur.ScrollDuration, cur.ScrollInterp);
                 }
                 visible.Clear();
                 foreach (var x in now) visible.Add(x);

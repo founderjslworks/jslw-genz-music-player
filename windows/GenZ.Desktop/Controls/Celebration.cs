@@ -245,7 +245,7 @@ namespace GenZ.Controls
                 {
                     // light trail
                     double k = Math.Min(0.06, 18 / Math.Max(1, sp));
-                    dc.DrawLine(new Pen(B(c, 210 * a), esz[i]) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round },
+                    dc.DrawLine(P(c, 210 * a, esz[i], true),
                         new Point(ex[i] - evx[i] * k * 2.2, ey[i] - evy[i] * k * 2.2), new Point(ex[i], ey[i]));
                 }
                 dc.DrawEllipse(B(c, 90 * a * tw), null, new Point(ex[i], ey[i]), esz[i] * 3, esz[i] * 3);
@@ -459,7 +459,28 @@ namespace GenZ.Controls
             if (bigT < 0 && count == 0 && rings == 0 && frameT < 0 && glitT < 0 && expT < 0) { CompositionTarget.Rendering -= Frame; running = false; }
         }
 
-        static Brush B(Color c, double a) { var b = new SolidColorBrush(Color.FromArgb((byte)Math.Max(0, Math.Min(255, a)), c.R, c.G, c.B)); b.Freeze(); return b; }
+        // brushes and pens are cached (alpha in 32 steps) so hundreds of particles don't allocate new ones every frame
+        static readonly System.Collections.Generic.Dictionary<uint, Brush> brushCache = new System.Collections.Generic.Dictionary<uint, Brush>();
+        static readonly System.Collections.Generic.Dictionary<ulong, Pen> penCache = new System.Collections.Generic.Dictionary<ulong, Pen>();
+        static Brush B(Color c, double a)
+        {
+            byte al = (byte)((int)Math.Max(0, Math.Min(255, a)) & 0xF8);
+            uint key = (uint)(al << 24 | c.R << 16 | c.G << 8 | c.B);
+            if (brushCache.TryGetValue(key, out var b)) return b;
+            if (brushCache.Count > 4000) brushCache.Clear();
+            b = new SolidColorBrush(Color.FromArgb(al, c.R, c.G, c.B)); b.Freeze();
+            brushCache[key] = b; return b;
+        }
+        static Pen P(Color c, double a, double width, bool round)
+        {
+            byte al = (byte)((int)Math.Max(0, Math.Min(255, a)) & 0xF0);
+            ulong key = ((ulong)(al << 24 | c.R << 16 | c.G << 8 | c.B) << 16) | ((ulong)Math.Round(width * 4) << 1) | (round ? 1UL : 0UL);
+            if (penCache.TryGetValue(key, out var p)) return p;
+            if (penCache.Count > 4000) penCache.Clear();
+            p = new Pen(B(c, al), Math.Round(width * 4) / 4);
+            if (round) { p.StartLineCap = PenLineCap.Round; p.EndLineCap = PenLineCap.Round; }
+            p.Freeze(); penCache[key] = p; return p;
+        }
 
         protected override void OnRender(DrawingContext dc)
         {
@@ -472,7 +493,7 @@ namespace GenZ.Controls
             {
                 double t = ringT[k]; if (t < 0) continue;
                 double f = Math.Min(1, t / 0.9);
-                var pen = new Pen(B(colors[k % colors.Length], 220 * (1 - f)), 14 * (1 - f) + 1);
+                var pen = P(colors[k % colors.Length], 220 * (1 - f), 14 * (1 - f) + 1, false);
                 double r = bigSize * 0.4 + f * Math.Max(W, H) * 0.75;
                 dc.DrawEllipse(null, pen, new Point(bigX, bigY), r, r);
             }
@@ -494,7 +515,7 @@ namespace GenZ.Controls
                     }
                     // rocket or spark with a glowing trail
                     double tl = kind[i] == 3 ? 0.06 : 0.045;
-                    var tail = new Pen(B(col[i], (kind[i] == 3 ? 200 : 170) * a), size[i] * 0.9) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+                    var tail = P(col[i], (kind[i] == 3 ? 200 : 170) * a, size[i] * 0.9, true);
                     dc.DrawLine(tail, new Point(x[i] - vx[i] * tl, y[i] - vy[i] * tl), new Point(x[i], y[i]));
                     double tw = kind[i] == 4 ? 0.6 + 0.4 * Math.Sin(time * 30 + i) : 1;
                     dc.DrawEllipse(B(Colors.White, 255 * a * tw), null, new Point(x[i], y[i]), size[i] * 0.7, size[i] * 0.7);

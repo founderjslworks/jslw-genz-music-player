@@ -61,6 +61,14 @@ namespace GenZ
             }
 
             DispatcherUnhandledException += OnError;
+            // WPF animations run at 60 fps by default – follow the monitor instead (120 / 144 / 165 / 240 Hz)
+            try
+            {
+                int hz = Core.Display.RefreshRate();
+                System.Windows.Media.Animation.Timeline.DesiredFrameRateProperty.OverrideMetadata(
+                    typeof(System.Windows.Media.Animation.Timeline), new FrameworkPropertyMetadata { DefaultValue = hz });
+            }
+            catch { }
             // multicore JIT: the second and later starts compile the startup code in parallel
             try { System.Runtime.ProfileOptimization.SetProfileRoot(Settings.Dir); System.Runtime.ProfileOptimization.StartProfile("startup.jitprofile"); } catch { }
             Settings.Load();

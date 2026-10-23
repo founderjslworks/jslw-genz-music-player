@@ -49,7 +49,9 @@ namespace GenZ
             coverBg.CornerRadius = new CornerRadius(20);
             coverBg.Effect = new BlurEffect { Radius = 30 };
             coverBg.Margin = new Thickness(-30);
-            root.Children.Add(new Border { CornerRadius = new CornerRadius(20), Background = (Brush)Application.Current.Resources["NpBrush"] });
+            var npBg = new Border { CornerRadius = new CornerRadius(20) };
+            npBg.SetResourceReference(Border.BackgroundProperty, "NpBrush");
+            root.Children.Add(npBg);
             root.Children.Add(coverBg);
             root.Children.Add(new Border { CornerRadius = new CornerRadius(20), Background = new LinearGradientBrush(Color.FromArgb(90, 0, 0, 0), Color.FromArgb(200, 0, 0, 0), 90) });
             var content = new Grid { Margin = new Thickness(12) };
@@ -84,7 +86,7 @@ namespace GenZ
             play.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(
                 "<ControlTemplate TargetType='Button' xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" +
                 "<Grid><Ellipse Fill='White'/><ContentPresenter HorizontalAlignment='Center' VerticalAlignment='Center'/></Grid></ControlTemplate>");
-            playIcon.Fill = (Brush)Application.Current.Resources["AccentBrush"]; playIcon.Width = 18; playIcon.Height = 18; playIcon.Stretch = Stretch.Uniform;
+            playIcon.SetResourceReference(Shape.FillProperty, "AccentBrush"); playIcon.Width = 18; playIcon.Height = 18; playIcon.Stretch = Stretch.Uniform;
             playIcon.Data = (Geometry)Application.Current.Resources["IcPlay"];
             play.Content = playIcon;
             play.Click += (s, e) => { Fx.Pop(play); Player.Toggle(); };

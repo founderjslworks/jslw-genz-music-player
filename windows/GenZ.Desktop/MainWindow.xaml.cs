@@ -47,14 +47,19 @@ namespace GenZ
             Player.TrackChanged += OnTrackChanged;
             Player.StateChanged += OnPlayerState;
             Library.Changed += OnLibraryChanged;
-            ThemeManager.Changed += () => { if (view == View.Themes) ShowView(View.Themes, true); UpdateToggles(); };
-            timer.Tick += (s, e) => Tick();
+            ThemeManager.Changed += OnThemeChanged;
+            // progress, lyrics and live effects update every frame (smooth on 120 / 144 / 240 Hz screens) while music plays,
+            // and a few times a second when paused
+            timer.Interval = TimeSpan.FromMilliseconds(250);
+            timer.Tick += (s, e) => { if (!frameHooked) Tick(); };
             timer.Start();
+            Player.StateChanged += HookFrames;
 
             StateChanged += (s, e) =>
             {
                 Root.Margin = new Thickness(0);
-                MaxBtn.Tag = FindResource(WindowState == WindowState.Maximized ? "IcRestore" : "IcMax");
+                HookFrames();
+                MaxBtn.Tag = FindResource(WindowState == WindowState.Maximized ? "TbRestore" : "TbMax");
                 MaxBtn.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximize";
                 if (WindowState == WindowState.Minimized && Settings.Current.AutoPip && Player.IsPlaying && pip == null) EnterPip(false);
                 else if (WindowState != WindowState.Minimized && pip != null) { pip.Close(); pip = null; }
@@ -322,6 +327,7 @@ namespace GenZ
         {
             EqOn.IsChecked = Settings.Current.EqEnabled;
             EqBands.ColumnDefinitions.Clear(); EqBands.Children.Clear();
+            eqSliders.Clear(); eqValues.Clear();
             for (int i = 0; i < 10; i++)
             {
                 EqBands.ColumnDefinitions.Add(new ColumnDefinition());
@@ -675,6 +681,34 @@ namespace GenZ
             return fxLayer;
         }
 
+        bool frameHooked;
+        TimeSpan smoothPos, lastRaw = TimeSpan.MinValue;
+        DateTime smoothAt;
+        int taskbarSkip;
+        string lastElapsed, lastRemain, lastTotal;
+
+        void HookFrames()
+        {
+            bool want = Player.IsPlaying && WindowState != WindowState.Minimized;
+            if (want && !frameHooked) { CompositionTarget.Rendering += OnFrame; frameHooked = true; }
+            else if (!want && frameHooked) { CompositionTarget.Rendering -= OnFrame; frameHooked = false; Tick(); }
+        }
+
+        void OnFrame(object sender, EventArgs e) => Tick();
+
+        /// <summary>The audio position only moves in buffer-sized steps; glide between them so the bar moves every frame.</summary>
+        TimeSpan SmoothPosition()
+        {
+            var raw = Player.Position;
+            var now = DateTime.UtcNow;
+            if (!Player.IsPlaying) { smoothPos = raw; smoothAt = now; lastRaw = raw; return raw; }
+            var guess = smoothPos + (now - smoothAt);
+            if (raw != lastRaw) { lastRaw = raw; if (Math.Abs((guess - raw).TotalMilliseconds) > 160) guess = raw; }
+            if (guess < raw - TimeSpan.FromMilliseconds(160)) guess = raw;
+            smoothPos = guess; smoothAt = now;
+            return guess;
+        }
+
         void Tick()
         {
             SleepTick();
@@ -682,22 +716,27 @@ namespace GenZ
             var cur = Player.Current;
             if (cur == null) return;
             LyricsTick();
-            var dur = Player.Duration; var pos = Player.Position;
+            var dur = Player.Duration; var pos = SmoothPosition();
+            if (pos > dur && dur > TimeSpan.Zero) pos = dur;
             double f = dur.TotalMilliseconds > 0 ? pos.TotalMilliseconds / dur.TotalMilliseconds : 0;
             if (!seeking)
             {
                 NpBar.Value = f; BarBar.Value = f;
                 ShowTimes(pos);
             }
-            if (Player.IsPlaying) Taskbar.ProgressValue = f;
+            if (Player.IsPlaying && ++taskbarSkip % 15 == 0) Taskbar.ProgressValue = f;
         }
 
         void ShowTimes(TimeSpan pos)
         {
             var dur = Player.Duration;
-            NpElapsed.Text = BarElapsed.Text = Library.Format((long)pos.TotalMilliseconds);
-            NpRemain.Text = "-" + Library.Format((long)(dur - pos).TotalMilliseconds);
-            BarTotal.Text = Library.Format((long)dur.TotalMilliseconds);
+            // only touch the text when the second changes (text changes cost a layout pass)
+            var el = Library.Format((long)pos.TotalMilliseconds);
+            var rm = "-" + Library.Format((long)(dur - pos).TotalMilliseconds);
+            var tt = Library.Format((long)dur.TotalMilliseconds);
+            if (el != lastElapsed) { lastElapsed = el; NpElapsed.Text = BarElapsed.Text = el; }
+            if (rm != lastRemain) { lastRemain = rm; NpRemain.Text = rm; }
+            if (tt != lastTotal) { lastTotal = tt; BarTotal.Text = tt; }
         }
 
         // ================================================================ window, keys, taskbar

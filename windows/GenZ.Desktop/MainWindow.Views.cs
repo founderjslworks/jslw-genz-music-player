@@ -385,12 +385,75 @@ namespace GenZ
         }
 
         // ================================================================ themes: cards, small cards, list
+        string themeFilter = "";
+        TextBox themeSearch;
+
         void ShowThemes()
         {
             ShowGrid("Themes", $"{ThemeManager.All.Count} themes · the same looks as GEN-Z on Android");
             BuildTools(GridTools, "themes", ThemeModes, "cards", null, null, null);
+            GridTools.Children.Insert(0, ThemeSearchBox());
+            RenderThemes(false);
+        }
+
+        /// <summary>A small rounded search field for themes (name, dark / light, font, bar style).</summary>
+        FrameworkElement ThemeSearchBox()
+        {
+            var host = new Grid { Width = 230, Height = 34, Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
+            var bg = new Border { CornerRadius = new CornerRadius(17), BorderThickness = new Thickness(1) };
+            bg.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
+            bg.SetResourceReference(Border.BorderBrushProperty, "DividerBrush");
+            host.Children.Add(bg);
+            var icon = new Path { Data = (Geometry)FindResource("IcSearch"), Width = 13, Height = 13, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(13, 0, 0, 0), IsHitTestVisible = false };
+            icon.SetResourceReference(Shape.FillProperty, "Text2Brush");
+            host.Children.Add(icon);
+            var hint = new TextBlock { Text = "Search themes", FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(34, 0, 0, 0), IsHitTestVisible = false };
+            hint.SetResourceReference(TextBlock.ForegroundProperty, "Text2Brush");
+            host.Children.Add(hint);
+            themeSearch = new TextBox
+            {
+                Text = themeFilter, Background = Brushes.Transparent, BorderThickness = new Thickness(0), FontSize = 12.5,
+                VerticalContentAlignment = VerticalAlignment.Center, Padding = new Thickness(30, 0, 28, 0)
+            };
+            themeSearch.SetResourceReference(Control.ForegroundProperty, "TextBrush");
+            themeSearch.SetResourceReference(TextBox.CaretBrushProperty, "AccentBrush");
+            var clear = new Button { Style = (Style)FindResource("IconButton"), Tag = FindResource("IcClose"), Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, 6, 0), ToolTip = "Clear" };
+            hint.Visibility = themeFilter.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+            clear.Visibility = themeFilter.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+            themeSearch.TextChanged += (s, e) =>
+            {
+                themeFilter = themeSearch.Text ?? "";
+                hint.Visibility = themeFilter.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+                clear.Visibility = themeFilter.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+                RenderThemes(true);
+            };
+            themeSearch.KeyDown += (s, e) => { if (e.Key == Key.Escape) themeSearch.Text = ""; };
+            clear.Click += (s, e) => { themeSearch.Text = ""; themeSearch.Focus(); };
+            host.Children.Add(themeSearch);
+            host.Children.Add(clear);
+            return host;
+        }
+
+        static bool ThemeMatches(Theme t, string q)
+        {
+            if (string.IsNullOrWhiteSpace(q)) return true;
+            foreach (var word in q.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var hay = (t.Name + " " + t.Id + " " + (t.Dark ? "dark" : "light") + " " + t.Font + " " + t.DisplayFont + " " + t.ProgressStyle + " " + t.NpControls).ToLowerInvariant();
+                if (hay.IndexOf(word.ToLowerInvariant(), StringComparison.Ordinal) < 0) return false;
+            }
+            return true;
+        }
+
+        /// <summary>Fills the theme page (cards, small cards or list) with the themes that match the search.</summary>
+        void RenderThemes(bool quick)
+        {
+            GridPanel.Children.Clear(); GridRows.Children.Clear();
             var mode = Settings.Current.Mode("themes", "cards");
-            foreach (var t in ThemeManager.All)
+            var list = ThemeManager.All.Where(t => ThemeMatches(t, themeFilter)).ToList();
+            GridSub.Text = themeFilter.Length == 0 ? $"{ThemeManager.All.Count} themes · the same looks as GEN-Z on Android"
+                         : list.Count == 0 ? $"No theme matches “{themeFilter.Trim()}”" : $"{list.Count} of {ThemeManager.All.Count} themes match “{themeFilter.Trim()}”";
+            foreach (var t in list)
             {
                 var theme = t;
                 if (mode == "list") { GridRows.Children.Add(ThemeRow(theme)); continue; }
@@ -400,12 +463,9 @@ namespace GenZ
                 Bounce.Press(holder);
                 GridPanel.Children.Add(holder);
             }
-            if (mode == "list")
-            {
-                var rows = GridRows.Children.OfType<FrameworkElement>().ToList();
-                if (quietNav) foreach (var r in rows) r.Opacity = 1; else Bounce.Enter(rows, 26, 30);
-            }
-            else Cascade(GridPanel);
+            var items = (mode == "list" ? GridRows.Children : GridPanel.Children).OfType<FrameworkElement>().ToList();
+            if (quietNav || quick) foreach (var r in items) r.Opacity = 1;
+            else Bounce.Enter(items, mode == "list" ? 26 : 30, 30);
         }
 
         void ApplyTheme(Theme theme) { ThemeManager.Apply(theme); Settings.Save(); RefreshCoverGlow(); }
