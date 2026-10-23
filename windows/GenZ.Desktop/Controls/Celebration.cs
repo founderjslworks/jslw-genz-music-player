@@ -166,8 +166,95 @@ namespace GenZ.Controls
             }
         }
 
-        /// <summary>"frame", "glitter", "both" or "simple".</summary>
-        public string Style = "both";
+        // ---- glowing particle explosion (a bright core flash, a shock wave, particles with light trails, floating embers)
+        double expT = -1;
+        const double ExpLen = 3.4;
+        const int EN = 720;
+        readonly double[] ex = new double[EN], ey = new double[EN], evx = new double[EN], evy = new double[EN], epx = new double[EN], epy = new double[EN], edl = new double[EN], esz = new double[EN], eph = new double[EN];
+        readonly bool[] ember = new bool[EN];
+        double expX, expY;
+        Color expA = Color.FromRgb(0x2E, 0x9B, 0xFF), expB = Color.FromRgb(0x00, 0xE5, 0xFF);
+
+        void BuildExplosion(Point c)
+        {
+            expX = c.X; expY = c.Y;
+            for (int i = 0; i < EN; i++)
+            {
+                double ang = R(0, Math.PI * 2);
+                // three waves: a fast outer shell, a medium cloud and slow embers that linger
+                int wave = i % 3;
+                double sp = wave == 0 ? R(700, 1300) : wave == 1 ? R(250, 700) : R(40, 220);
+                ex[i] = epx[i] = expX + Math.Cos(ang) * R(0, 10); ey[i] = epy[i] = expY + Math.Sin(ang) * R(0, 10);
+                evx[i] = Math.Cos(ang) * sp; evy[i] = Math.Sin(ang) * sp;
+                edl[i] = wave * 0.06 + R(0, 0.05);
+                esz[i] = wave == 2 ? R(1.5, 3.5) : R(1, 2.6);
+                eph[i] = R(0, 6.28);
+                ember[i] = wave == 2;
+            }
+        }
+
+        void StepExplosion(double dt)
+        {
+            for (int i = 0; i < EN; i++)
+            {
+                if (expT < edl[i]) continue;
+                epx[i] = ex[i]; epy[i] = ey[i];
+                double drag = ember[i] ? 0.9 : 3.2;
+                evx[i] *= Math.Max(0, 1 - drag * dt); evy[i] *= Math.Max(0, 1 - drag * dt);
+                evy[i] += (ember[i] ? -14 : 40) * dt;              // embers float up, sparks fall a little
+                if (ember[i]) evx[i] += Math.Sin(time * 2 + eph[i]) * 18 * dt;
+                ex[i] += evx[i] * dt; ey[i] += evy[i] * dt;
+            }
+        }
+
+        static Color Mix(Color a, Color b, double t) => Color.FromRgb((byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
+
+        void DrawExplosion(DrawingContext dc)
+        {
+            if (expT < 0) return;
+            double t = expT;
+            // core flash
+            double fl = Math.Max(0, 1 - t / 0.5);
+            if (fl > 0)
+            {
+                double r = 40 + 260 * (1 - fl * fl);
+                dc.DrawEllipse(new RadialGradientBrush(Color.FromArgb((byte)(255 * fl), 255, 255, 255), Color.FromArgb(0, expA.R, expA.G, expA.B)), null, new Point(expX, expY), r, r);
+            }
+            // shock wave
+            if (t < 1.0)
+            {
+                double f = t / 1.0;
+                double r = f * Math.Max(ActualWidth, ActualHeight) * 0.7;
+                dc.DrawEllipse(null, new Pen(B(expB, 200 * (1 - f)), 10 * (1 - f) + 1), new Point(expX, expY), r, r);
+                dc.DrawEllipse(null, new Pen(B(Colors.White, 120 * (1 - f)), 2), new Point(expX, expY), r * 0.96, r * 0.96);
+            }
+            double fade = t > ExpLen - 1.0 ? Math.Max(0, (ExpLen - t) / 1.0) : 1;
+            for (int i = 0; i < EN; i++)
+            {
+                double age = t - edl[i];
+                if (age < 0) continue;
+                double life = ember[i] ? 1 : Math.Max(0, 1 - age / 1.9);
+                double a = life * fade;
+                if (a <= 0.02) continue;
+                // white-hot first, then cyan, then deep blue
+                double heat = Math.Min(1, age / 0.9);
+                var c = heat < 0.5 ? Mix(Colors.White, expB, heat * 2) : Mix(expB, expA, (heat - 0.5) * 2);
+                double tw = ember[i] ? 0.5 + 0.5 * Math.Sin(time * 5 + eph[i]) : 1;
+                double sp = Math.Sqrt(evx[i] * evx[i] + evy[i] * evy[i]);
+                if (!ember[i] && sp > 30)
+                {
+                    // light trail
+                    double k = Math.Min(0.06, 18 / Math.Max(1, sp));
+                    dc.DrawLine(new Pen(B(c, 210 * a), esz[i]) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round },
+                        new Point(ex[i] - evx[i] * k * 2.2, ey[i] - evy[i] * k * 2.2), new Point(ex[i], ey[i]));
+                }
+                dc.DrawEllipse(B(c, 90 * a * tw), null, new Point(ex[i], ey[i]), esz[i] * 3, esz[i] * 3);
+                dc.DrawEllipse(B(Colors.White, 255 * a * tw), null, new Point(ex[i], ey[i]), esz[i] * 0.6, esz[i] * 0.6);
+            }
+        }
+
+        /// <summary>"explosion", "frame", "glitter", "all" or "simple".</summary>
+        public string Style = "explosion";
 
         double FrameAlpha()
         {
@@ -244,8 +331,9 @@ namespace GenZ.Controls
         public void Celebrate(Point center, double coverSize)
         {
             love = true; bigX = center.X; bigY = center.Y; bigSize = Math.Max(160, coverSize); bigT = 0; rings = 0;
-            if (Style == "frame" || Style == "both") { BuildFrame(); frameT = 0; }
-            if (Style == "glitter" || Style == "both") { BuildGlitter(); glitT = 0; }
+            if (Style == "frame" || Style == "both" || Style == "all") { BuildFrame(); frameT = 0; }
+            if (Style == "glitter" || Style == "both" || Style == "all") { BuildGlitter(); glitT = 0; }
+            if (Style == "explosion" || Style == "all") { BuildExplosion(center); expT = 0; }
             Start();
         }
 
@@ -340,6 +428,7 @@ namespace GenZ.Controls
             }
             if (frameT >= 0) { frameT += dt; if (frameT > FrameLen) frameT = -1; }
             if (glitT >= 0) { glitT += dt; if (glitT > GlitLen) glitT = -1; }
+            if (expT >= 0) { expT += dt; StepExplosion(dt); if (expT > ExpLen) expT = -1; }
             for (int k = 0; k < rings; k++) ringT[k] += dt;
             if (rings > 0 && ringT[rings - 1] > 0.9) rings = 0;
             int idx = 0;
@@ -367,7 +456,7 @@ namespace GenZ.Controls
                 idx++;
             }
             InvalidateVisual();
-            if (bigT < 0 && count == 0 && rings == 0 && frameT < 0 && glitT < 0) { CompositionTarget.Rendering -= Frame; running = false; }
+            if (bigT < 0 && count == 0 && rings == 0 && frameT < 0 && glitT < 0 && expT < 0) { CompositionTarget.Rendering -= Frame; running = false; }
         }
 
         static Brush B(Color c, double a) { var b = new SolidColorBrush(Color.FromArgb((byte)Math.Max(0, Math.Min(255, a)), c.R, c.G, c.B)); b.Freeze(); return b; }
@@ -377,6 +466,7 @@ namespace GenZ.Controls
             double W = ActualWidth, H = ActualHeight;
             DrawFrame(dc);
             DrawGlitter(dc);
+            DrawExplosion(dc);
             // shock-wave rings
             for (int k = 0; k < rings; k++)
             {

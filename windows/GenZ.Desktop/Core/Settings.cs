@@ -33,7 +33,7 @@ namespace GenZ.Core
         public string NavEffect { get; set; } = "stars";           // sidebar click effect, see Controls.SpaceFx
         public bool NavStarField { get; set; } = true;             // drifting stars behind the sidebar
         public bool LiveVolume { get; set; } = true;
-        public string LikeEffect { get; set; } = "both";           // like celebration: frame, glitter, both, simple               // volume sliders pulse with the music
+        public string LikeEffect { get; set; } = "explosion";      // like celebration: explosion, frame, glitter, all, simple
         public string CoverEffect { get; set; } = "ripple";        // ripple, burst, none
         public bool Sparkles { get; set; } = true;
         public bool PlayMorph { get; set; } = true;
