@@ -116,14 +116,34 @@
             android:taskAffinity="com.jslw.genz.lockscreen"
             tools:targetApi="o_mr1" />
 
+        <!-- exported so Android Auto, Android Automotive and the system's media controls can browse and play;
+             MusicService.onGetRoot only shows the library to trusted callers -->
         <service
             android:name=".playback.MusicService"
-            android:exported="false"
+            android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
         </service>
+
+        <!-- album art for the car screen (read-only covers, nothing else) -->
+        <provider
+            android:name=".playback.ArtProvider"
+            android:authorities="${applicationId}.art"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider" />
+
+        <!-- Android Auto: GEN-Z is a media app -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="com.google.android.gms.car.notification.SmallIcon"
+            android:resource="@drawable/ic_stat_note" />
 
         <receiver
             android:name="androidx.media.session.MediaButtonReceiver"

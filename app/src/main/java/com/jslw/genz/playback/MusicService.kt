@@ -21,6 +21,9 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
+import android.os.Bundle
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -33,6 +36,7 @@ import androidx.core.app.ServiceCompat
 import androidx.media.AudioAttributesCompat
 import androidx.media.AudioFocusRequestCompat
 import androidx.media.AudioManagerCompat
+import androidx.media.MediaBrowserServiceCompat
 import androidx.media.session.MediaButtonReceiver
 import com.jslw.genz.R
 import com.jslw.genz.audio.AudioFx
@@ -56,7 +60,7 @@ import java.util.concurrent.Executors
  * headset & Bluetooth buttons, Android Auto-style controls), notification, sleep timer, shake-to-skip,
  * floating lyrics, effects and widget updates.
  */
-class MusicService : Service() {
+class MusicService : MediaBrowserServiceCompat() {
 
     inner class LocalBinder : Binder() {
         val service: MusicService get() = this@MusicService
@@ -118,7 +122,9 @@ class MusicService : Service() {
     private var sleepAt = 0L
     var sleepFinishSong = false; private set
 
-    override fun onBind(intent: Intent?): IBinder = binder
+    // the app binds with its own binder; Android Auto, Automotive and the system bind as media browsers
+    override fun onBind(intent: Intent?): IBinder? =
+        if (intent?.action == SERVICE_INTERFACE) super.onBind(intent) else binder
 
     // ================================================================ lifecycle
     override fun onCreate() {
@@ -142,6 +148,7 @@ class MusicService : Service() {
             setCallback(sessionCallback)
             setSessionActivity(openAppIntent())
         }
+        sessionToken = session.sessionToken
         shake = ShakeDetector(this) { handler.post { next(); toastShort("Shake → next") } }
         floating = FloatingLyrics(this)
         registerReceiver(headsetReceiver, IntentFilter(Intent.ACTION_HEADSET_PLUG))
@@ -292,6 +299,7 @@ class MusicService : Service() {
     }
 
     private fun queueChanged() {
+        publishQueue()
         dropPreparedNext()
         prepareNext()
         saveQueue()
@@ -314,6 +322,7 @@ class MusicService : Service() {
         }
         session.setShuffleMode(if (on) PlaybackStateCompat.SHUFFLE_MODE_ALL else PlaybackStateCompat.SHUFFLE_MODE_NONE)
         queueChanged()
+        updatePlaybackState()
     }
 
     fun cycleRepeat() {
@@ -818,7 +827,109 @@ class MusicService : Service() {
     }
 
     // ================================================================ media session
+    // ================================================================ Android Auto / media browser
+    override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?): BrowserRoot {
+        if (!AutoBrowse.trusted(this, clientPackageName, clientUid)) return BrowserRoot(AutoBrowse.EMPTY_ROOT, null)
+        // Android 11+ media resumption asks only for the last song
+        if (rootHints?.getBoolean(BrowserRoot.EXTRA_RECENT) == true) return BrowserRoot(AutoBrowse.RECENT_ROOT, Bundle().apply { putBoolean(BrowserRoot.EXTRA_RECENT, true) })
+        return BrowserRoot(AutoBrowse.ROOT, AutoBrowse.rootExtras())
+    }
+
+    override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
+        if (parentId == AutoBrowse.EMPTY_ROOT) { result.sendResult(ArrayList()); return }
+        result.detach()
+        whenLibraryReady {
+            exec.execute {
+                val items = try { AutoBrowse.children(this, parentId) } catch (_: Exception) { emptyList() }
+                handler.post { result.sendResult(items.toMutableList()) }
+            }
+        }
+    }
+
+    override fun onSearch(query: String, extras: Bundle?, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
+        result.detach()
+        whenLibraryReady {
+            exec.execute {
+                val items = try { AutoBrowse.search(this, query) } catch (_: Exception) { emptyList() }
+                handler.post { result.sendResult(items.toMutableList()) }
+            }
+        }
+    }
+
+    /** Runs [block] on the main thread once the music library has been scanned. */
+    private fun whenLibraryReady(block: () -> Unit) {
+        if (Library.loaded) { block(); return }
+        val once = object : () -> Unit {
+            override fun invoke() { Library.removeListener(this); block() }
+        }
+        Library.addListener(once)
+        Library.load(this)
+    }
+
+    private fun playFromMediaId(mediaId: String) {
+        whenLibraryReady {
+            exec.execute {
+                if (mediaId == AutoBrowse.SHUFFLE_ALL) {
+                    val all = Library.songs
+                    handler.post { playShuffled(all, "Shuffle all") }
+                    return@execute
+                }
+                val (container, songId) = AutoBrowse.split(mediaId)
+                val list = AutoBrowse.songsOf(container)
+                val label = AutoBrowse.label(container)
+                val start = songId?.let { id -> list.indexOfFirst { it.id == id } } ?: 0
+                handler.post {
+                    if (list.isNotEmpty()) playQueue(list, start.coerceAtLeast(0), label)
+                    else songId?.let { Library.song(it) }?.let { playQueue(listOf(it), 0, label) }
+                }
+            }
+        }
+    }
+
+    private fun playFromSearch(query: String?, extras: Bundle?) {
+        whenLibraryReady {
+            exec.execute {
+                val (songs, label) = AutoBrowse.voice(query, extras)
+                handler.post {
+                    if (songs.isNotEmpty()) playQueue(songs, 0, label)
+                    else if (_queue.isNotEmpty()) play()
+                    else toastShort("Nothing found for “${query.orEmpty()}”")
+                }
+            }
+        }
+    }
+
+    /** Up next on the car screen and in Android's media controls (a window around the current song). */
+    private fun publishQueue() {
+        if (_queue.isEmpty()) { session.setQueue(null); return }
+        val from = (index - 20).coerceAtLeast(0)
+        val to = (index + 80).coerceAtMost(_queue.lastIndex)
+        val items = (from..to).map { i ->
+            val s = _queue[i]
+            MediaSessionCompat.QueueItem(
+                MediaDescriptionCompat.Builder().setMediaId("q|${s.id}").setTitle(s.title).setSubtitle(s.artist)
+                    .setIconUri(AutoBrowse.artUri(s)).build(),
+                i.toLong()
+            )
+        }
+        session.setQueue(items)
+        session.setQueueTitle(contextLabel.ifBlank { "Up next" })
+    }
+
     private val sessionCallback = object : MediaSessionCompat.Callback() {
+        override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) { if (mediaId != null) playFromMediaId(mediaId) }
+        override fun onPlayFromSearch(query: String?, extras: Bundle?) = playFromSearch(query, extras)
+        override fun onPrepare() { if (_queue.isEmpty()) whenLibraryReady { restoreQueue() } }
+        override fun onCustomAction(action: String?, extras: Bundle?) {
+            val s = current ?: return
+            when (action) {
+                ACTION_FAV -> exec.execute {
+                    val fav = LibraryDb.toggleFavorite(s.id)
+                    handler.post { updatePlaybackState(); Player.dispatch(); toastShort(if (fav) "Added to Favourites" else "Removed from Favourites") }
+                }
+                ACTION_SHUFFLE -> setShuffleMode(!shuffle)
+            }
+        }
         override fun onPlay() = play()
         override fun onPause() = pause()
         override fun onSkipToNext() = next()
@@ -837,6 +948,8 @@ class MusicService : Service() {
         override fun onSkipToQueueItem(id: Long) = playAt(id.toInt())
     }
 
+    @Volatile private var curFav = false
+
     private fun updateMetadata() {
         val s = current ?: return
         val b = MediaMetadataCompat.Builder()
@@ -846,8 +959,13 @@ class MusicService : Service() {
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, s.albumArtist.ifBlank { s.artist })
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration())
             .putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, (s.track % 1000).toLong())
+            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, "q|${s.id}")
+            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, AutoBrowse.artUri(s).toString())
+            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, AutoBrowse.artUri(s).toString())
         art?.let { b.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) }
         session.setMetadata(b.build())
+        publishQueue()
+        exec.execute { val f = LibraryDb.isFavorite(s.id); handler.post { if (current === s && f != curFav) { curFav = f; updatePlaybackState() } } }
     }
 
     private fun updatePlaybackState() {
@@ -863,8 +981,17 @@ class MusicService : Service() {
                         PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
                         PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_SEEK_TO or
                         PlaybackStateCompat.ACTION_STOP or PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE or
-                        PlaybackStateCompat.ACTION_SET_REPEAT_MODE or PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM
+                        PlaybackStateCompat.ACTION_SET_REPEAT_MODE or PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM or
+                        PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH or
+                        PlaybackStateCompat.ACTION_PREPARE
                 )
+                .setActiveQueueItemId(index.toLong())
+                // heart and shuffle buttons on the car screen
+                .addCustomAction(PlaybackStateCompat.CustomAction.Builder(
+                    ACTION_FAV, if (curFav) "Remove from Favourites" else "Add to Favourites",
+                    if (curFav) R.drawable.ic_favorite else R.drawable.ic_favorite_border).build())
+                .addCustomAction(PlaybackStateCompat.CustomAction.Builder(
+                    ACTION_SHUFFLE, if (shuffle) "Shuffle off" else "Shuffle on", R.drawable.ic_shuffle).build())
                 .setState(state, position(), if (isPlaying) Prefs.speed else 0f)
                 .build()
         )
@@ -998,6 +1125,8 @@ class MusicService : Service() {
         const val REPEAT_ALL = 1
         const val REPEAT_ONE = 2
         const val ACTION_TOGGLE = "com.jslw.genz.TOGGLE"
+        const val ACTION_FAV = "com.jslw.genz.FAV"
+        const val ACTION_SHUFFLE = "com.jslw.genz.SHUFFLE"
         const val ACTION_NEXT = "com.jslw.genz.NEXT"
         const val ACTION_PREV = "com.jslw.genz.PREV"
         const val ACTION_CLOSE = "com.jslw.genz.CLOSE"
