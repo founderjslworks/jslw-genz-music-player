@@ -62,11 +62,11 @@ namespace GenZ
 
             DispatcherUnhandledException += OnError;
             Settings.Load();
-            bool tour = Array.IndexOf(e.Args, "--tour") >= 0;
+            bool touring = Array.IndexOf(e.Args, "--tour") >= 0;
             if (Array.IndexOf(e.Args, "--safe") >= 0) Settings.Current.SoftwareRendering = true;
-            if (Settings.Current.SoftwareRendering && !tour)
+            if (Settings.Current.SoftwareRendering && !touring)
                 try { System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly; } catch { }
-            Core.Perf.Decide(tour);
+            Core.Perf.Decide(touring);
             // WPF animations run at 60 fps by default – follow the monitor instead (120 / 144 / 165 / 240 Hz)
             try
             {

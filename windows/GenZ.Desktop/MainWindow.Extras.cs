@@ -52,7 +52,10 @@ namespace GenZ
             var fx = Core.Perf.Light ? "none" : Settings.Current.NavEffect;
             if (fx == "none") return;
             var layer = AdornerLayerCanvas();
-            SpaceFx.Play(layer, e.GetPosition(layer), fx);
+            var at = e.GetPosition(layer);
+            // start once the click's page change has been built and drawn – otherwise the first part of the
+            // effect plays while the new page is being made and the effect looks like it never happened
+            Dispatcher.BeginInvoke(new Action(() => SpaceFx.Play(layer, at, fx)), System.Windows.Threading.DispatcherPriority.ContextIdle);
         }
 
         // ================================================================ live volume: glow and speaker follow the music
@@ -60,9 +63,32 @@ namespace GenZ
         void VolumeTick()
         {
             double lvl = Settings.Current.LiveVolume && !Core.Perf.Light && Player.IsPlaying && !Settings.Current.ReduceMotion ? Player.Level * Math.Max(0.15, Player.Volume) : 0;
-            volPulse = Math.Max(lvl, volPulse * 0.8);
+            volPulse = Math.Max(Math.Min(1, lvl * 1.3), volPulse * 0.86);
             Live(NpVolume, NpVolGlow, NpVolIcon);
             if (BarVolumeBox.Visibility == Visibility.Visible) Live(BarVolume, BarVolGlow, BarVolIcon);
+        }
+
+        /// <summary>Changing the volume always answers with a glow along the bar and a speaker pop – playing or not.</summary>
+        void VolumeTouched()
+        {
+            if (!Settings.Current.LiveVolume || Settings.Current.ReduceMotion || Core.Perf.Light) return;
+            volPulse = Math.Max(volPulse, 0.55);
+            if (Player.IsPlaying) return;   // the per-frame tick takes it from here
+            volPulse = 0;
+            foreach (var (s, glow, icon) in new[] { (NpVolume, NpVolGlow, NpVolIcon), (BarVolume, BarVolGlow, BarVolIcon) })
+            {
+                if (!s.IsVisible) continue;
+                Live(s, glow, icon);
+                var dur = TimeSpan.FromMilliseconds(650);
+                glow.BeginAnimation(OpacityProperty, new DoubleAnimation(0.9, 0, dur) { FillBehavior = FillBehavior.Stop });
+                if (glow.RenderTransform is ScaleTransform gs)
+                    gs.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(2.2, 1, dur) { FillBehavior = FillBehavior.Stop, EasingFunction = new CubicEase() });
+                if (icon.RenderTransform is ScaleTransform st)
+                {
+                    var pop = new DoubleAnimation(1.3, 1, dur) { FillBehavior = FillBehavior.Stop, EasingFunction = new ElasticEase { Oscillations = 1, Springiness = 4 } };
+                    st.BeginAnimation(ScaleTransform.ScaleXProperty, pop); st.BeginAnimation(ScaleTransform.ScaleYProperty, pop);
+                }
+            }
         }
 
         void Live(Slider s, Border glow, Path icon)
@@ -70,10 +96,10 @@ namespace GenZ
             // only transforms change every frame – no layout work
             double frac = (s.Value - s.Minimum) / Math.Max(0.0001, s.Maximum - s.Minimum);
             if (Math.Abs(glow.Width - s.ActualWidth) > 0.5) glow.Width = Math.Max(0, s.ActualWidth);
-            if (!(glow.RenderTransform is ScaleTransform gs) || gs.IsFrozen) { gs = new ScaleTransform(1, 1, 0, 2); glow.RenderTransform = gs; }
+            if (!(glow.RenderTransform is ScaleTransform gs) || gs.IsFrozen) { gs = new ScaleTransform(1, 1, 0, 3.5); glow.RenderTransform = gs; }
             gs.ScaleX = Math.Max(0.001, frac);
-            gs.ScaleY = 1 + volPulse * 3;
-            glow.Opacity = volPulse > 0.01 ? 0.25 + volPulse * 0.75 : 0;
+            gs.ScaleY = 1 + volPulse * 2.4;
+            glow.Opacity = volPulse > 0.01 ? Math.Min(1, 0.4 + volPulse * 0.9) : 0;
             var st = (ScaleTransform)icon.RenderTransform;
             st.ScaleX = st.ScaleY = 1 + volPulse * 0.28;
         }

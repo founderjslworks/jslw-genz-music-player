@@ -489,6 +489,7 @@ namespace GenZ
             Player.Volume = e.NewValue;
             if (sender != NpVolume && Math.Abs(NpVolume.Value - e.NewValue) > 0.001) NpVolume.Value = e.NewValue;
             if (sender != BarVolume && Math.Abs(BarVolume.Value - e.NewValue) > 0.001) BarVolume.Value = e.NewValue;
+            VolumeTouched();
         }
 
         void OnFav(object sender, RoutedEventArgs e)
@@ -677,6 +678,7 @@ namespace GenZ
             if (fxLayer != null) return fxLayer;
             fxLayer = new Canvas { IsHitTestVisible = false };
             Grid.SetRowSpan(fxLayer, 4);
+            Panel.SetZIndex(fxLayer, 900);
             Root.Children.Add(fxLayer);
             return fxLayer;
         }

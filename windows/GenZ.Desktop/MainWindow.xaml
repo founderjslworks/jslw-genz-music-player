@@ -451,8 +451,8 @@
                                 <Path.RenderTransform><ScaleTransform /></Path.RenderTransform>
                             </Path>
                             <Grid Grid.Column="1" Margin="12,0,0,0">
-                                <Border x:Name="NpVolGlow" HorizontalAlignment="Left" VerticalAlignment="Center" Height="4" CornerRadius="4" Background="{DynamicResource ProgressBrush}" IsHitTestVisible="False" Opacity="0">
-                                    <Border.Effect><BlurEffect Radius="8" /></Border.Effect>
+                                <Border x:Name="NpVolGlow" HorizontalAlignment="Left" VerticalAlignment="Center" Height="7" CornerRadius="4" Background="{DynamicResource ProgressBrush}" IsHitTestVisible="False" Opacity="0">
+                                    <Border.Effect><BlurEffect Radius="6" /></Border.Effect>
                                 </Border>
                                 <Slider x:Name="NpVolume" Style="{StaticResource ThinSlider}" Minimum="0" Maximum="1" ValueChanged="OnVolume" />
                             </Grid>
@@ -496,8 +496,8 @@
                         <Path.RenderTransform><ScaleTransform /></Path.RenderTransform>
                     </Path>
                     <Grid Width="140" Margin="12,0,0,0">
-                        <Border x:Name="BarVolGlow" HorizontalAlignment="Left" VerticalAlignment="Center" Height="4" CornerRadius="4" Background="{DynamicResource ProgressBrush}" IsHitTestVisible="False" Opacity="0">
-                            <Border.Effect><BlurEffect Radius="8" /></Border.Effect>
+                        <Border x:Name="BarVolGlow" HorizontalAlignment="Left" VerticalAlignment="Center" Height="7" CornerRadius="4" Background="{DynamicResource ProgressBrush}" IsHitTestVisible="False" Opacity="0">
+                            <Border.Effect><BlurEffect Radius="6" /></Border.Effect>
                         </Border>
                         <Slider x:Name="BarVolume" Style="{StaticResource ThinSlider}" Minimum="0" Maximum="1" ValueChanged="OnVolume" />
                     </Grid>

@@ -58,6 +58,29 @@ namespace GenZ.Controls
         }
         static Brush Frozen(Brush b) { b.Freeze(); return b; }
 
+        // Fading is done with pre-built, frozen brush copies at 21 opacity levels – never with PushOpacity, which makes
+        // WPF render every particle into its own off-screen layer (that is what made the frame and glitter effects stall).
+        static readonly System.Collections.Generic.Dictionary<Brush, Brush[]> opCache = new System.Collections.Generic.Dictionary<Brush, Brush[]>();
+        static Brush Op(Brush b, double a)
+        {
+            int lv = (int)Math.Round(Math.Max(0, Math.Min(1, a)) * 20);
+            if (!opCache.TryGetValue(b, out var arr)) { arr = new Brush[21]; opCache[b] = arr; }
+            var r = arr[lv];
+            if (r == null) { r = b.Clone(); r.Opacity = lv / 20.0; r.Freeze(); arr[lv] = r; }
+            return r;
+        }
+        static readonly Brush Vignette = MakeVignette();
+        static Brush MakeVignette()
+        {
+            var v = new RadialGradientBrush { RadiusX = 0.75, RadiusY = 0.75 };
+            v.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 30, 70), 0.45));
+            v.GradientStops.Add(new GradientStop(Color.FromArgb(150, 200, 0, 40), 1));
+            v.Freeze(); return v;
+        }
+        static readonly Brush BokehBrush = Frozen(new RadialGradientBrush(Color.FromArgb(110, 255, 150, 180), Color.FromArgb(0, 255, 80, 120)));
+        static readonly Brush GlitBack = Frozen(new RadialGradientBrush(Color.FromArgb(110, 0x9B, 0x4D, 0xFF), Color.FromArgb(0, 0x40, 0x10, 0x80)));
+        static readonly Color[] GlitCol = { Color.FromRgb(0xFF, 0xFF, 0xFF), Color.FromRgb(0xE3, 0x9B, 0xFF), Color.FromRgb(0xFF, 0x7A, 0xD9), Color.FromRgb(0xB0, 0x7C, 0xFF) };
+
         void BuildFrame()
         {
             double W = Math.Max(400, ActualWidth), H = Math.Max(300, ActualHeight);
@@ -97,7 +120,7 @@ namespace GenZ.Controls
         // ---- magic glitter heart (sparkles fly in, form a big heart, shimmer, then dissolve)
         double glitT = -1;
         const double GlitLen = 4.0;
-        const int GN = 520;
+        const int GN = 380;
         readonly double[] gx0 = new double[GN], gy0 = new double[GN], gx = new double[GN], gy = new double[GN], gph = new double[GN], gsz = new double[GN], gdx = new double[GN], gdy = new double[GN];
         readonly int[] gcol = new int[GN];
         static readonly Brush[] GlitDot =
@@ -141,9 +164,8 @@ namespace GenZ.Controls
             double W = ActualWidth, H = ActualHeight, cx = W / 2, cy = H / 2;
             // a soft purple glow behind the heart
             double ga = Math.Min(1, t / 0.6) * (1 - outT);
-            var bg = new RadialGradientBrush(Color.FromArgb((byte)(110 * ga), 0x9B, 0x4D, 0xFF), Color.FromArgb(0, 0x40, 0x10, 0x80));
             double rr = Math.Min(W, H) * 0.42;
-            dc.DrawEllipse(bg, null, new Point(cx, cy), rr, rr);
+            dc.DrawEllipse(Op(GlitBack, ga), null, new Point(cx, cy), rr, rr);
             for (int i = 0; i < GN; i++)
             {
                 double px = gx0[i] + (gx[i] - gx0[i]) * gather, py = gy0[i] + (gy[i] - gy0[i]) * gather;
@@ -153,23 +175,22 @@ namespace GenZ.Controls
                 double a = Math.Min(1, t / 0.3) * (1 - outT) * tw;
                 if (a <= 0.02) continue;
                 double sz = gsz[i] * (0.8 + tw * 0.6);
-                dc.PushOpacity(a);
-                dc.DrawEllipse(GlitGlow[gcol[i]], null, new Point(px, py), sz * 3.2, sz * 3.2);
+                dc.DrawEllipse(Op(GlitGlow[gcol[i]], a), null, new Point(px, py), sz * 3.2, sz * 3.2);
                 if (i % 7 == 0)
                 {
                     // star glints
-                    dc.DrawRectangle(GlitDot[0], null, new Rect(px - sz * 0.25, py - sz * 2.6, sz * 0.5, sz * 5.2));
-                    dc.DrawRectangle(GlitDot[0], null, new Rect(px - sz * 2.6, py - sz * 0.25, sz * 5.2, sz * 0.5));
+                    var w = B(Colors.White, 255 * a);
+                    dc.DrawRectangle(w, null, new Rect(px - sz * 0.25, py - sz * 2.6, sz * 0.5, sz * 5.2));
+                    dc.DrawRectangle(w, null, new Rect(px - sz * 2.6, py - sz * 0.25, sz * 5.2, sz * 0.5));
                 }
-                else dc.DrawEllipse(GlitDot[gcol[i]], null, new Point(px, py), sz * 0.7, sz * 0.7);
-                dc.Pop();
+                else dc.DrawEllipse(B(GlitCol[gcol[i]], 255 * a), null, new Point(px, py), sz * 0.7, sz * 0.7);
             }
         }
 
         // ---- glowing particle explosion (a bright core flash, a shock wave, particles with light trails, floating embers)
         double expT = -1;
         const double ExpLen = 3.4;
-        const int EN = 720;
+        const int EN = 540;
         readonly double[] ex = new double[EN], ey = new double[EN], evx = new double[EN], evy = new double[EN], epx = new double[EN], epy = new double[EN], edl = new double[EN], esz = new double[EN], eph = new double[EN];
         readonly bool[] ember = new bool[EN];
         double expX, expY;
@@ -270,17 +291,13 @@ namespace GenZ.Controls
             if (fa <= 0) return;
             double W = ActualWidth, H = ActualHeight;
             // warm red glow around the window (vignette)
-            var vig = new RadialGradientBrush { RadiusX = 0.75, RadiusY = 0.75 };
-            vig.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 30, 70), 0.45));
-            vig.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(150 * fa), 200, 0, 40), 1));
-            dc.DrawRectangle(vig, null, new Rect(0, 0, W, H));
+            dc.DrawRectangle(Op(Vignette, fa), null, new Rect(0, 0, W, H));
             // bokeh lights drifting up
             foreach (var b in bk)
             {
                 double y2 = b.Y - b.Rise * frameT;
                 double tw = 0.6 + 0.4 * Math.Sin(time * 1.6 + b.Phase);
-                var rg = new RadialGradientBrush(Color.FromArgb((byte)(b.A * fa * tw), 255, 150, 180), Color.FromArgb(0, 255, 80, 120));
-                dc.DrawEllipse(rg, null, new Point(b.X, y2), b.R, b.R);
+                dc.DrawEllipse(Op(BokehBrush, b.A / 110.0 * fa * tw), null, new Point(b.X, y2), b.R, b.R);
             }
             // glossy 3D hearts turning in place
             foreach (var h in fh)
@@ -292,25 +309,23 @@ namespace GenZ.Controls
                 double sx = Math.Max(0.12, Math.Abs(turn)) * (turn >= 0 ? 1 : -1);
                 double sz = h.Size * h.Depth * pop * 0.5;
                 double bob = Math.Sin(time * 2 + h.Phase) * h.Bob;
-                dc.PushOpacity(fa * Math.Min(1, t / 0.25));
+                double ha = fa * Math.Min(1, t / 0.25);
                 // soft shadow
-                dc.PushTransform(new TranslateTransform(h.X + 3, h.Y + bob + 5));
-                dc.PushTransform(new ScaleTransform(sz * Math.Abs(sx), sz));
-                dc.DrawGeometry(Shade, null, Heart);
-                dc.Pop(); dc.Pop();
+                dc.PushTransform(new MatrixTransform(sz * Math.Abs(sx), 0, 0, sz, h.X + 3, h.Y + bob + 5));
+                dc.DrawGeometry(Op(Shade, ha), null, Heart);
+                dc.Pop();
                 // body (front is bright and glossy, the back is darker while it turns)
                 dc.PushTransform(new TranslateTransform(h.X, h.Y + bob));
                 dc.PushTransform(new RotateTransform(Math.Sin(time + h.Phase) * 10));
                 dc.PushTransform(new ScaleTransform(sz * Math.Abs(sx), sz));
-                dc.DrawGeometry(turn >= 0 ? GlossFront : GlossBack, null, Heart);
+                dc.DrawGeometry(Op(turn >= 0 ? GlossFront : GlossBack, ha), null, Heart);
                 if (turn > 0.2)
                 {
                     // specular highlights
-                    dc.DrawEllipse(B(Colors.White, 190 * turn), null, new Point(-0.42, -0.36), 0.17, 0.11);
-                    dc.DrawEllipse(B(Colors.White, 90 * turn), null, new Point(0.45, -0.38), 0.07, 0.05);
+                    dc.DrawEllipse(B(Colors.White, 190 * turn * ha), null, new Point(-0.42, -0.36), 0.17, 0.11);
+                    dc.DrawEllipse(B(Colors.White, 90 * turn * ha), null, new Point(0.45, -0.38), 0.07, 0.05);
                 }
                 dc.Pop(); dc.Pop(); dc.Pop();
-                dc.Pop();
             }
             // sparkles twinkling around the frame
             for (int k = 0; k < 40; k++)
