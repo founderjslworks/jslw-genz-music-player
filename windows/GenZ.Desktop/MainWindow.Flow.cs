@@ -307,8 +307,8 @@ namespace GenZ
             double aspect = flowVp.ActualWidth / flowVp.ActualHeight, k = 2 * Math.Tan(22.5 * Math.PI / 180);
             // the centre cover and its reflection fill most of the height, and at least three covers fit across
             // WPF's FieldOfView is horizontal: the visible width is dist·k, the height is that ÷ aspect
-            double dist = Math.Max(1.84 * aspect, 3.3) / k;
-            flowCam.Position = new Point3D(0, 0.29, dist);
+            double dist = Math.Max(1.6 * aspect, 3.6) / k;
+            flowCam.Position = new Point3D(0, 0.31, dist);
             FlowKnob();
         }
 
@@ -357,9 +357,9 @@ namespace GenZ
             {
                 if (!flowItems.TryGetValue(i, out var it)) it = FlowMake(i);
                 double d = i - flowPos, ad = Math.Abs(d), cl = Math.Max(-1, Math.Min(1, d));
-                double x = Math.Sign(d) * (ad <= 1 ? ad * 0.62 : 0.62 + (ad - 1) * 0.3);
+                double x = Math.Sign(d) * (ad <= 1 ? ad * 0.7 : 0.7 + (ad - 1) * 0.38);
                 double z = -Math.Min(ad, 1) * 0.55 - Math.Max(0, ad - 1) * 0.02;
-                double angle = cl * 62;
+                double angle = cl * 55;
                 if (i == center && flowFlipAngle > 0) angle -= flowFlipAngle;
                 it.Rot.Angle = angle;
                 it.Move.OffsetX = x; it.Move.OffsetZ = z;
