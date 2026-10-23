@@ -10,6 +10,8 @@ with no internet permission at all.
 
 **⬇️ [Download the latest APK and user guide](https://github.com/founderjslworks/jslw-genz-music-player/releases/latest)** · 🌐 [www.jslworks.in](https://www.jslworks.in/android-devlopment)
 
+🖥️ **On a PC?** GEN-Z Music for Windows (Windows 7 to 11) has its own home: [founderjslworks/jslw-genz-music-windows](https://github.com/founderjslworks/jslw-genz-music-windows).
+
 ## What's new in 1.7
 - **Turntable widgets**: pearl turntable design with your cover as the record label, a tonearm, round 3D buttons and a live duration (4×1, 4×2 and 2×2)
 - **Spinning vinyl** cover mode with a tonearm that lifts on pause
