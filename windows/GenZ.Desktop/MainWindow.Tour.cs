@@ -171,6 +171,7 @@ namespace GenZ
 
                 // ---- Album Flow: in the centre with the panel hidden, then with Now Playing, then a flipped cover
                 NavFlow.IsChecked = true; FlowShowPlaying(true); await Task.Delay(2200); Snap("album_flow_wide");
+                if (flowKnob.Parent is Canvas kc0) { FlowSetKnob((kc0.ActualWidth - flowKnob.Width) * 0.22, kc0.ActualWidth - flowKnob.Width); await Task.Delay(300); SnapElement("album_flow_slider", flowTrack); FlowSetKnob(0, kc0.ActualWidth - flowKnob.Width); }
                 FlowGo(flowTarget + 2); await Task.Delay(1500); Snap("album_flow_browse");
                 FlowShowPlaying(false); await Task.Delay(1500);
                 FlowFlip(true); await Task.Delay(1400); Snap("album_flow_tracks");

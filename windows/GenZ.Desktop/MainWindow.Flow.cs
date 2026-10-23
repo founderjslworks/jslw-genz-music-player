@@ -40,7 +40,7 @@ namespace GenZ
         TextBlock flowFlipTitle, flowFlipSub;
         List<AlbumInfo> flowAlbums = new List<AlbumInfo>();
         readonly Dictionary<int, FlowItem> flowItems = new Dictionary<int, FlowItem>();
-        double flowPos, flowTarget, flowFlipAngle, flowFlipGoal;
+        double flowPos, flowTarget, flowFlipAngle, flowFlipGoal, flowSpeed;
         int flowCenter = -1;
         bool flowHooked, flowDragging, flowFlipped, flowKnobDrag;
         Point flowDown; double flowDownPos, flowVel; DateTime flowLastMove;
@@ -188,57 +188,137 @@ namespace GenZ
             return flowFlip;
         }
 
-        /// <summary>"slide to browse albums" – a knob you drag along a rounded track, with shimmering text.</summary>
+        TextBlock flowSlideText;
+        double flowKnobX, flowKnobFrom, flowKnobBackT = -1, flowKnobBackLen;
+
+        static LinearGradientBrush Grad(double angle, params (string c, double o)[] stops)
+        {
+            var b = new LinearGradientBrush { StartPoint = new Point(0.5, 0), EndPoint = new Point(0.5, 1) };
+            if (angle != 90) { b.StartPoint = new Point(0, 0.5); b.EndPoint = new Point(1, 0.5); }
+            foreach (var (c, o) in stops) b.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString(c), o));
+            b.Freeze(); return b;
+        }
+
+        /// <summary>
+        /// "slide to album" in the style of the classic slide-to-unlock bar: a glossy black bezel, an inset well, a silver
+        /// knob with an arrow and shimmering text. Drag the knob to sweep through the albums; let go and it glides back.
+        /// </summary>
         FrameworkElement BuildFlowScrubber()
         {
-            flowTrack = new Border { Height = 52, CornerRadius = new CornerRadius(26), Margin = new Thickness(28, 4, 28, 0), MaxWidth = 560, Padding = new Thickness(6), BorderThickness = new Thickness(1) };
-            flowTrack.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
-            flowTrack.SetResourceReference(Border.BorderBrushProperty, "DividerBrush");
-            var g = new Grid();
-            var text = new TextBlock { Text = "slide to browse albums", FontSize = 19, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(90, 0, 10, 0), IsHitTestVisible = false };
-            text.Loaded += (s, e) => FlowShimmer(text);
-            g.Children.Add(text);
-            var canvas = new Canvas { Background = Brushes.Transparent, ClipToBounds = true };
-            flowKnob = new Border { Width = 92, Height = 38, CornerRadius = new CornerRadius(19), Cursor = Cursors.SizeWE };
-            flowKnob.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
-            var arrow = new Path { Data = Geometry.Parse("M4,11 H16 M11,5 L17,11 L11,17"), Width = 22, Height = 20, Stretch = Stretch.Uniform, StrokeThickness = 2.6, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            arrow.SetResourceReference(Shape.StrokeProperty, "OnAccentBrush");
-            flowKnob.Child = arrow;
+            // glossy black bezel
+            flowTrack = new Border
+            {
+                Height = 70, CornerRadius = new CornerRadius(20), Margin = new Thickness(28, 6, 28, 0), MaxWidth = 520, Padding = new Thickness(9),
+                BorderThickness = new Thickness(1), BorderBrush = new SolidColorBrush(Color.FromRgb(0, 0, 0)),
+                Background = Grad(90, ("#4A4A4A", 0), ("#1C1C1C", 0.5), ("#050505", 0.52), ("#000000", 1)),
+            };
+            var bezel = new Grid();
+            // the inset well
+            var well = new Border
+            {
+                CornerRadius = new CornerRadius(13), BorderThickness = new Thickness(1),
+                BorderBrush = Grad(90, ("#000000", 0), ("#000000", 0.6), ("#3A3A3A", 1)),
+                Background = Grad(90, ("#0A0A0A", 0), ("#161616", 0.35), ("#1F1F1F", 1)),
+            };
+            var g = new Grid { ClipToBounds = true };
+            flowSlideText = new TextBlock
+            {
+                Text = "slide to album", FontSize = 25, FontFamily = new FontFamily("Segoe UI Light, Segoe UI, Helvetica, Arial"), FontWeight = FontWeights.Light,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(96, 0, 12, 2), IsHitTestVisible = false,
+            };
+            flowSlideText.Loaded += (s, e) => FlowShimmer(flowSlideText);
+            g.Children.Add(flowSlideText);
+            var canvas = new Canvas { Background = Brushes.Transparent };
+            // the silver knob
+            flowKnob = new Border
+            {
+                Width = 86, CornerRadius = new CornerRadius(10), Cursor = Cursors.Hand, BorderThickness = new Thickness(1),
+                BorderBrush = Grad(90, ("#9A9A9A", 0), ("#5E5E5E", 1)),
+                Background = Grad(90, ("#FFFFFF", 0), ("#F1F1F1", 0.42), ("#D2D2D2", 0.5), ("#C4C4C4", 0.75), ("#DADADA", 1)),
+            };
+            var kg = new Grid();
+            kg.Children.Add(new Border { CornerRadius = new CornerRadius(9, 9, 30, 30), Margin = new Thickness(1, 1, 1, 0), VerticalAlignment = VerticalAlignment.Top, Height = 15,
+                Background = Grad(90, ("#B0FFFFFF", 0), ("#10FFFFFF", 1)), IsHitTestVisible = false });
+            var arrow = new Path
+            {
+                Data = Geometry.Parse("M0,7 H13 V1 L24,11 L13,21 V15 H0 Z"), Width = 30, Height = 25, Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                Fill = Grad(90, ("#A6A6A6", 0), ("#7C7C7C", 1)), Stroke = new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)), StrokeThickness = 0.6,
+            };
+            kg.Children.Add(arrow);
+            flowKnob.Child = kg;
             canvas.Children.Add(flowKnob);
             g.Children.Add(canvas);
-            flowTrack.Child = g;
-            double KnobRange() => Math.Max(1, canvas.ActualWidth - flowKnob.Width);
-            void Seek(Point p)
+            well.Child = g;
+            bezel.Children.Add(well);
+            flowTrack.Child = bezel;
+
+            double Range() => Math.Max(1, canvas.ActualWidth - flowKnob.Width);
+            double grabX = 0;
+            flowKnob.MouseLeftButtonDown += (s, e) =>
             {
                 if (flowAlbums.Count < 2) return;
-                double f = Math.Max(0, Math.Min(1, (p.X - flowKnob.Width / 2) / KnobRange()));
-                double idx = f * (flowAlbums.Count - 1);
-                flowTarget = Math.Round(idx); flowPos = flowPos + (idx - flowPos) * 0.6;
+                flowKnobDrag = true; grabX = e.GetPosition(flowKnob).X;
+                flowKnobBackT = -1;
+                flowKnob.CaptureMouse(); e.Handled = true;
                 if (flowFlipped) FlowFlip(false);
+            };
+            flowKnob.MouseMove += (s, e) =>
+            {
+                if (!flowKnobDrag) return;
+                double x = Math.Max(0, Math.Min(Range(), e.GetPosition(canvas).X - grabX));
+                FlowSetKnob(x, Range());
+                double idx = x / Range() * (flowAlbums.Count - 1);
+                flowTarget = Math.Round(idx);
+            };
+            void Release()
+            {
+                if (!flowKnobDrag) return;
+                flowKnobDrag = false;
+                if (flowKnob.IsMouseCaptured) flowKnob.ReleaseMouseCapture();
+                // glide back to the start, the text fading back in, just like the original
+                flowKnobFrom = flowKnobX; flowKnobBackT = 0;
+                flowKnobBackLen = Settings.Current.ReduceMotion ? 0.001 : 0.26 + 0.22 * flowKnobX / Range();
+                FlowHook();
             }
-            canvas.MouseLeftButtonDown += (s, e) => { flowKnobDrag = true; canvas.CaptureMouse(); Seek(e.GetPosition(canvas)); e.Handled = true; };
-            canvas.MouseMove += (s, e) => { if (flowKnobDrag) Seek(e.GetPosition(canvas)); };
-            canvas.MouseLeftButtonUp += (s, e) => { flowKnobDrag = false; canvas.ReleaseMouseCapture(); };
-            canvas.LostMouseCapture += (s, e) => flowKnobDrag = false;
-            canvas.SizeChanged += (s, e) => FlowKnob();
+            flowKnob.MouseLeftButtonUp += (s, e) => Release();
+            flowKnob.LostMouseCapture += (s, e) => Release();
+            canvas.SizeChanged += (s, e) => FlowSetKnob(flowKnobDrag ? flowKnobX : 0, Range());
             return flowTrack;
+        }
+
+        /// <summary>Moves the knob and fades the text as it passes, like slide-to-unlock.</summary>
+        void FlowSetKnob(double x, double range)
+        {
+            flowKnobX = x;
+            Canvas.SetLeft(flowKnob, x);
+            if (flowKnob.Parent is Canvas cv)
+            {
+                flowKnob.Height = Math.Max(20, cv.ActualHeight - 4);
+                Canvas.SetTop(flowKnob, 2);
+            }
+            flowSlideText.Opacity = Math.Max(0, 1 - x / Math.Max(1, range * 0.32));
         }
 
         void FlowShimmer(TextBlock t)
         {
-            var c = ((SolidColorBrush)FindResource("Text2Brush")).Color;
-            var hi = ((SolidColorBrush)FindResource("TextBrush")).Color;
-            var br = new LinearGradientBrush { StartPoint = new Point(0, 0.5), EndPoint = new Point(1, 0.5) };
-            br.GradientStops.Add(new GradientStop(Color.FromArgb(150, c.R, c.G, c.B), 0));
-            br.GradientStops.Add(new GradientStop(Color.FromArgb(150, c.R, c.G, c.B), 0.38));
-            br.GradientStops.Add(new GradientStop(hi, 0.5));
-            br.GradientStops.Add(new GradientStop(Color.FromArgb(150, c.R, c.G, c.B), 0.62));
-            br.GradientStops.Add(new GradientStop(Color.FromArgb(150, c.R, c.G, c.B), 1));
-            var tr = new TranslateTransform();
+            // grey text with a soft white glint sweeping through it
+            var gray = Color.FromRgb(0x77, 0x77, 0x77);
+            var br = new LinearGradientBrush { StartPoint = new Point(0, 0.5), EndPoint = new Point(1, 0.5), MappingMode = BrushMappingMode.RelativeToBoundingBox };
+            br.GradientStops.Add(new GradientStop(gray, 0));
+            br.GradientStops.Add(new GradientStop(gray, 0.4));
+            br.GradientStops.Add(new GradientStop(Color.FromRgb(0xF4, 0xF4, 0xF4), 0.5));
+            br.GradientStops.Add(new GradientStop(gray, 0.6));
+            br.GradientStops.Add(new GradientStop(gray, 1));
+            var tr = new TranslateTransform(-1, 0);
             br.RelativeTransform = tr;
             t.Foreground = br;
-            if (Settings.Current.ReduceMotion || Perf.Light) return;
-            tr.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-1, 1, TimeSpan.FromSeconds(2.4)) { RepeatBehavior = RepeatBehavior.Forever });
+            if (Settings.Current.ReduceMotion || Perf.Light) { tr.X = 0; br.GradientStops[2].Color = gray; return; }
+            var anim = new DoubleAnimationUsingKeyFrames { RepeatBehavior = RepeatBehavior.Forever, Duration = TimeSpan.FromSeconds(3.0) };
+            anim.KeyFrames.Add(new LinearDoubleKeyFrame(-1, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+            anim.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(2.1))));
+            anim.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(3.0))));
+            tr.BeginAnimation(TranslateTransform.XProperty, anim);
         }
 
         // ================================================================ showing it
@@ -283,7 +363,7 @@ namespace GenZ
             int i = FlowPlayingIndex();
             if (i < 0) return;
             if (flowFlipped) FlowFlip(false);
-            if (jump) flowPos = i;
+            if (jump) { flowPos = i; flowSpeed = 0; }
             FlowGo(i);
         }
 
@@ -307,7 +387,7 @@ namespace GenZ
             double aspect = flowVp.ActualWidth / flowVp.ActualHeight, k = 2 * Math.Tan(22.5 * Math.PI / 180);
             // the centre cover and its reflection fill most of the height, and at least three covers fit across
             // WPF's FieldOfView is horizontal: the visible width is dist·k, the height is that ÷ aspect
-            double dist = Math.Max(1.6 * aspect, 3.6) / k;
+            double dist = Math.Max(1.6 * aspect, 4.3) / k;
             flowCam.Position = new Point3D(0, 0.31, dist);
             FlowKnob();
         }
@@ -328,9 +408,20 @@ namespace GenZ
             bool moving = false;
             if (!flowDragging)
             {
-                double k = 1 - Math.Exp(-dt * (Settings.Current.ReduceMotion ? 60 : 9));
+                // a critically damped spring: eases in and out with no overshoot, at any frame rate
                 double d = flowTarget - flowPos;
-                if (Math.Abs(d) > 0.0005) { flowPos += d * k; moving = true; } else flowPos = flowTarget;
+                if (Math.Abs(d) > 0.0004 || Math.Abs(flowSpeed) > 0.002)
+                {
+                    double w = Settings.Current.ReduceMotion ? 40 : 11.5;
+                    int steps = (int)Math.Ceiling(dt / 0.004); double h = dt / steps;
+                    for (int n = 0; n < steps; n++)
+                    {
+                        double acc = w * w * (flowTarget - flowPos) - 2 * w * flowSpeed;
+                        flowSpeed += acc * h; flowPos += flowSpeed * h;
+                    }
+                    moving = true;
+                }
+                else { flowPos = flowTarget; flowSpeed = 0; }
             }
             if (Math.Abs(flowFlipGoal - flowFlipAngle) > 0.01)
             {
@@ -338,6 +429,13 @@ namespace GenZ
                 flowFlipAngle = flowFlipGoal > flowFlipAngle ? Math.Min(flowFlipGoal, flowFlipAngle + step) : Math.Max(flowFlipGoal, flowFlipAngle - step);
                 moving = true;
                 if (flowFlipAngle >= 90 && flowFlipped) FlowShowTracks();
+            }
+            if (flowKnobBackT >= 0 && flowKnob.Parent is Canvas kc)
+            {
+                flowKnobBackT += dt;
+                double p = Math.Min(1, flowKnobBackT / flowKnobBackLen), ease = 1 - Math.Pow(1 - p, 3);
+                FlowSetKnob(flowKnobFrom * (1 - ease), Math.Max(1, kc.ActualWidth - flowKnob.Width));
+                if (p >= 1) flowKnobBackT = -1;
             }
             if (moving || flowDragging) FlowUpdate();
             else if (!flowKnobDrag && flowFlipAngle == flowFlipGoal) { /* idle: nothing to redraw */ }
@@ -347,7 +445,7 @@ namespace GenZ
         void FlowUpdate()
         {
             if (flowAlbums.Count == 0) { flowTitle.Text = ""; flowArtist.Text = ""; return; }
-            int lo = Math.Max(0, (int)Math.Floor(flowPos) - 7), hi = Math.Min(flowAlbums.Count - 1, (int)Math.Ceiling(flowPos) + 7);
+            int lo = Math.Max(0, (int)Math.Floor(flowPos) - 12), hi = Math.Min(flowAlbums.Count - 1, (int)Math.Ceiling(flowPos) + 12);
             foreach (var key in flowItems.Keys.Where(k => k < lo || k > hi).ToList())
             {
                 var it = flowItems[key]; flowGroup.Children.Remove(it.Cover); flowGroup.Children.Remove(it.Refl); flowItems.Remove(key);
@@ -357,7 +455,8 @@ namespace GenZ
             {
                 if (!flowItems.TryGetValue(i, out var it)) it = FlowMake(i);
                 double d = i - flowPos, ad = Math.Abs(d), cl = Math.Max(-1, Math.Min(1, d));
-                double x = Math.Sign(d) * (ad <= 1 ? ad * 0.7 : 0.7 + (ad - 1) * 0.38);
+                // spaced so neighbouring covers never touch or cut through each other (that was the flicker)
+                double x = Math.Sign(d) * (ad <= 1 ? ad * 0.98 : 0.98 + (ad - 1) * 0.7);
                 double z = -Math.Min(ad, 1) * 0.55 - Math.Max(0, ad - 1) * 0.02;
                 double angle = cl * 55;
                 if (i == center && flowFlipAngle > 0) angle -= flowFlipAngle;
@@ -387,10 +486,7 @@ namespace GenZ
 
         void FlowKnob()
         {
-            if (flowKnob == null || !(flowKnob.Parent is Canvas cv)) return;
-            double f = flowAlbums.Count > 1 ? flowPos / (flowAlbums.Count - 1) : 0;
-            Canvas.SetLeft(flowKnob, Math.Max(0, cv.ActualWidth - flowKnob.Width) * Math.Max(0, Math.Min(1, f)));
-            Canvas.SetTop(flowKnob, Math.Max(0, (cv.ActualHeight - flowKnob.Height) / 2));
+            if (flowKnob?.Parent is Canvas cv && !flowKnobDrag && flowKnobX == 0) FlowSetKnob(0, Math.Max(1, cv.ActualWidth - flowKnob.Width));
         }
 
         FlowItem FlowMake(int i)
@@ -501,7 +597,7 @@ namespace GenZ
             bool was = flowDragging;
             flowDragging = false;
             if (el.IsMouseCaptured) el.ReleaseMouseCapture();
-            if (was) { FlowGo(flowPos + Math.Max(-6, Math.Min(6, flowVel * 0.18))); return; }
+            if (was) { flowSpeed = Math.Max(-25, Math.Min(25, flowVel)); FlowGo(flowPos + Math.Max(-6, Math.Min(6, flowVel * 0.16))); return; }
             // a click: the centre cover flips, a side cover comes to the centre
             int hit = FlowHit(e.GetPosition(flowVp));
             if (hit < 0) return;
