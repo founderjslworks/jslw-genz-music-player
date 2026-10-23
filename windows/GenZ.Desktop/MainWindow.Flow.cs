@@ -103,7 +103,7 @@ namespace GenZ
             flowVp.Children.Add(new ModelVisual3D { Content = flowGroup });
             var vpHost = new Grid { Background = Brushes.Transparent };
             vpHost.Children.Add(flowVp);
-            vpHost.SizeChanged += (s, e) => FitFlowCamera();
+            vpHost.SizeChanged += (s, e) => { FitFlowCamera(); FlowUpdate(); };
             vpHost.MouseWheel += (s, e) => { if (flowFlipped) return; FlowGo(flowTarget - Math.Sign(e.Delta)); e.Handled = true; };
             vpHost.MouseLeftButtonDown += FlowDown;
             vpHost.MouseMove += FlowMove;
@@ -306,8 +306,9 @@ namespace GenZ
             if (flowVp == null || flowVp.ActualHeight < 10) return;
             double aspect = flowVp.ActualWidth / flowVp.ActualHeight, k = 2 * Math.Tan(22.5 * Math.PI / 180);
             // the centre cover and its reflection fill most of the height, and at least three covers fit across
-            double dist = Math.Max(1.7 / k, 3.0 / (aspect * k));
-            flowCam.Position = new Point3D(0, 0.3, dist);
+            // WPF's FieldOfView is horizontal: the visible width is dist·k, the height is that ÷ aspect
+            double dist = Math.Max(1.84 * aspect, 3.3) / k;
+            flowCam.Position = new Point3D(0, 0.29, dist);
             FlowKnob();
         }
 
@@ -415,7 +416,7 @@ namespace GenZ
             var a = flowAlbums[i];
             if (a.First == null) { it.ReflMat.Brush = new ImageBrush(FlowReflection(((ImageBrush)it.CoverMat.Brush).ImageSource as BitmapSource)); return; }
             it.Loading = true;
-            int px = (int)Math.Max(160, Math.Min(Perf.Light ? 400 : 900, flowVp.ActualHeight * 0.62));
+            int px = (int)Math.Max(Perf.Light ? 320 : 512, Math.Min(Perf.Light ? 400 : 1024, flowVp.ActualHeight * 0.7));
             BitmapSource img = null;
             try { img = await Covers.LoadAsync(a.First, px); } catch { }
             it.Loading = false;
