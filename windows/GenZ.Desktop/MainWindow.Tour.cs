@@ -27,7 +27,9 @@ namespace GenZ
             var log = new List<string>();
             try
             {
+                AllowLargeWindow = true;
                 WindowState = WindowState.Normal; Left = 0; Top = 0; Width = 1440; Height = 900;
+                await Task.Delay(500); log.Add($"window={ActualWidth}x{ActualHeight}");
                 Settings.Current.ReduceMotion = false;
                 // wait for the library
                 for (int i = 0; i < 120 && (Library.Scanning || Library.Songs.Count == 0); i++) await Task.Delay(500);
@@ -257,7 +259,8 @@ namespace GenZ
             // through a VisualBrush, so the element's position in its window does not shift the picture (margins and shadows are kept)
             var dv = new DrawingVisual();
             using (var dc = dv.RenderOpen())
-                dc.DrawRectangle(new VisualBrush(el) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top },
+                dc.DrawRectangle(new VisualBrush(el) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top,
+                                                       ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, el.ActualWidth, el.ActualHeight) },
                     null, new Rect(el.Margin.Left, el.Margin.Top, el.ActualWidth, el.ActualHeight));
             rtb.Render(dv);
             return rtb;

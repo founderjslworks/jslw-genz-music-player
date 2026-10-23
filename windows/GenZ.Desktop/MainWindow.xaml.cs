@@ -793,6 +793,9 @@ namespace GenZ
         [DllImport("user32.dll", CharSet = CharSet.Auto)] static extern bool GetMonitorInfo(IntPtr hMonitor, [In, Out] MONITORINFO info);
 
         /// <summary>Maximized = exactly the screen's usable area (never under the taskbar), on any monitor.</summary>
+        /// <summary>Set by the screenshot tour: lets the window be larger than a small build-machine screen.</summary>
+        public static bool AllowLargeWindow;
+
         static void FitMaximized(IntPtr hwnd, IntPtr lParam)
         {
             var mmi = (MINMAXINFO)Marshal.PtrToStructure(lParam, typeof(MINMAXINFO));
@@ -808,6 +811,7 @@ namespace GenZ
                     mmi.ptMaxSize.x = Math.Abs(work.right - work.left);
                     mmi.ptMaxSize.y = Math.Abs(work.bottom - work.top);
                     mmi.ptMaxTrackSize = mmi.ptMaxSize;
+                    if (AllowLargeWindow) { mmi.ptMaxTrackSize.x = 4000; mmi.ptMaxTrackSize.y = 3000; }
                 }
             }
             Marshal.StructureToPtr(mmi, lParam, true);

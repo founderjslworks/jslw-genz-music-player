@@ -329,7 +329,8 @@ namespace GenZ.Controls
                 // draw through a VisualBrush: rendering the element directly would include its offset in the window and shift the picture
                 var dv = new DrawingVisual();
                 using (var ctx = dv.RenderOpen())
-                    ctx.DrawRectangle(new VisualBrush(area) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top },
+                    ctx.DrawRectangle(new VisualBrush(area) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top,
+                                                             ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, area.ActualWidth, area.ActualHeight) },
                         null, new Rect(0, 0, area.ActualWidth, area.ActualHeight));
                 bmp.Render(dv);
                 bmp.Freeze();
