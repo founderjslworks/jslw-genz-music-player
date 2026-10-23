@@ -455,6 +455,7 @@
                                     <Border.Effect><BlurEffect Radius="6" /></Border.Effect>
                                 </Border>
                                 <Slider x:Name="NpVolume" Style="{StaticResource ThinSlider}" Minimum="0" Maximum="1" ValueChanged="OnVolume" />
+                                <c:VolumeSparks x:Name="NpVolSparks" Margin="6,0,6,0" />
                             </Grid>
                         </Grid>
                     </StackPanel>
@@ -500,6 +501,7 @@
                             <Border.Effect><BlurEffect Radius="6" /></Border.Effect>
                         </Border>
                         <Slider x:Name="BarVolume" Style="{StaticResource ThinSlider}" Minimum="0" Maximum="1" ValueChanged="OnVolume" />
+                        <c:VolumeSparks x:Name="BarVolSparks" Margin="6,0,6,0" />
                     </Grid>
                 </StackPanel>
             </Grid>

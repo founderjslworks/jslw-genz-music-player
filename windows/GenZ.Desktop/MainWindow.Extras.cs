@@ -44,6 +44,7 @@ namespace GenZ
             BuildNavPlaylists();
             if (shownSong != null) LoadLyrics(shownSong);
             lastPlaying = null; OnPlayerState();
+            sparkAccent = null; SparkColors();
         }
 
         // ================================================================ sidebar: space click effects
@@ -65,7 +66,13 @@ namespace GenZ
             double lvl = Settings.Current.LiveVolume && !Core.Perf.Light && Player.IsPlaying && !Settings.Current.ReduceMotion ? Player.Level * Math.Max(0.15, Player.Volume) : 0;
             volPulse = Math.Max(Math.Min(1, lvl * 1.3), volPulse * 0.86);
             Live(NpVolume, NpVolGlow, NpVolIcon);
-            if (BarVolumeBox.Visibility == Visibility.Visible) Live(BarVolume, BarVolGlow, BarVolIcon);
+            if (lvl > 0) SparkColors();
+            if (lvl > 0 && NpVolume.IsVisible) NpVolSparks.Pulse(lvl, Frac(NpVolume));
+            if (BarVolumeBox.Visibility == Visibility.Visible)
+            {
+                Live(BarVolume, BarVolGlow, BarVolIcon);
+                if (lvl > 0 && BarVolume.IsVisible) BarVolSparks.Pulse(lvl, Frac(BarVolume));
+            }
         }
 
         /// <summary>Changing the volume always answers with a glow along the bar and a speaker pop – playing or not.</summary>
@@ -73,6 +80,14 @@ namespace GenZ
         {
             if (!Settings.Current.LiveVolume || Settings.Current.ReduceMotion || Core.Perf.Light) return;
             volPulse = Math.Max(volPulse, 0.55);
+            SparkColors();
+            var nowB = DateTime.UtcNow;
+            if ((nowB - lastBurst).TotalMilliseconds >= 80)
+            {
+                lastBurst = nowB;
+                if (NpVolume.IsVisible) NpVolSparks.Burst(Frac(NpVolume));
+                if (BarVolume.IsVisible) BarVolSparks.Burst(Frac(BarVolume));
+            }
             if (Player.IsPlaying) return;   // the per-frame tick takes it from here
             volPulse = 0;
             foreach (var (s, glow, icon) in new[] { (NpVolume, NpVolGlow, NpVolIcon), (BarVolume, BarVolGlow, BarVolIcon) })
@@ -89,6 +104,18 @@ namespace GenZ
                     st.BeginAnimation(ScaleTransform.ScaleXProperty, pop); st.BeginAnimation(ScaleTransform.ScaleYProperty, pop);
                 }
             }
+        }
+
+        DateTime lastBurst;
+        static double Frac(Slider s) => (s.Value - s.Minimum) / Math.Max(0.0001, s.Maximum - s.Minimum);
+
+        Color? sparkAccent;
+        void SparkColors()
+        {
+            if (!(Application.Current.Resources["AccentColor"] is Color a) || sparkAccent == a) return;
+            sparkAccent = a;
+            var second = TryFindResource("ProgressBrush") is LinearGradientBrush lg && lg.GradientStops.Count > 1 ? lg.GradientStops[lg.GradientStops.Count - 1].Color : a;
+            NpVolSparks.SetColors(a, second); BarVolSparks.SetColors(a, second);
         }
 
         void Live(Slider s, Border glow, Path icon)
