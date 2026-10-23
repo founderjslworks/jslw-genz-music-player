@@ -278,6 +278,7 @@ namespace GenZ
                 var favs = Settings.Current.Favourites;
                 foreach (var s in list) { if (allFav) favs.Remove(s.Path); else if (!favs.Contains(s.Path)) favs.Add(s.Path); }
                 Settings.Save(); UpdateFav(Player.Current ?? shownSong);
+                if (!allFav) Celebrate(true);
                 ShowToast(allFav ? "Removed from Favourites" : "Added to Favourites ♥");
                 if (view == View.Favourites) ShowView(View.Favourites, true);
             }));
@@ -297,6 +298,8 @@ namespace GenZ
                 m.Items.Add(Item("Show in folder", "IcFolder", () => ShowInFolder(s.Path)));
                 m.Items.Add(Item("Song info & tags…", "IcEdit", () => EditSong(s), "Ctrl+I"));
             }
+            m.Items.Add(new Separator());
+            m.Items.Add(Item(one ? "Find cover art & lyrics online" : "Find covers & lyrics online (" + list.Count + ")", "IcCloud", () => FetchOnline(list)));
             return m;
         }
 
@@ -607,9 +610,25 @@ namespace GenZ
             {
                 LyricsPanel.Children.Add(new TextBlock
                 {
-                    Text = message ?? "No lyrics for this song yet.\n\nPut a .lrc file with the same name next to the song, or paste the lyrics in Song info (right-click the cover › Song info & tags).",
-                    Foreground = Brushes.White, Opacity = 0.8, FontSize = 13.5, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, Margin = new Thickness(6, 40, 6, 0), LineHeight = 21
+                    Text = message ?? "No lyrics for this song yet.\n\nPut a .lrc file with the same name next to the song, paste the lyrics in Song info, or search online.",
+                    Foreground = Brushes.White, Opacity = 0.8, FontSize = 13.5, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, Margin = new Thickness(6, 30, 6, 0), LineHeight = 21
                 });
+                if (message == null)
+                {
+                    var song = Player.Current ?? shownSong;
+                    var find = new Button { Style = (Style)FindResource("PillButton"), Content = "Search lyrics online", HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 16, 0, 0) };
+                    find.Click += async (o, e) =>
+                    {
+                        e.Handled = true;
+                        if (song == null) return;
+                        find.IsEnabled = false; find.Content = "Searching…";
+                        string text = null;
+                        try { text = await Online.FetchLyrics(song); } catch { }
+                        if (text != null) LoadLyrics(song);
+                        else { find.Content = "No lyrics found"; }
+                    };
+                    LyricsPanel.Children.Add(find);
+                }
                 return;
             }
             LyricsPanel.Children.Add(new TextBlock

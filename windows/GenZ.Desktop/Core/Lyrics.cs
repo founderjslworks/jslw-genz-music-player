@@ -55,6 +55,12 @@ namespace GenZ.Core
             catch { }
             try
             {
+                var online = Online.LyricsFile(s);
+                if (File.Exists(online)) { var d = Parse(File.ReadAllText(online)); d.Source = "LRCLIB (online)"; if (!d.Empty) return d; }
+            }
+            catch { }
+            try
+            {
                 using (var f = TagLib.File.Create(s.Path))
                 {
                     var text = f.Tag.Lyrics;

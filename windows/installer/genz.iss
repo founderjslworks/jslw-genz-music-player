@@ -74,6 +74,9 @@ Root: HKA; Subkey: "Software\Classes\.wav\OpenWithList\{#AppExe}"; ValueType: no
 Root: HKA; Subkey: "Software\Classes\.m4a\OpenWithList\{#AppExe}"; ValueType: none; Flags: uninsdeletekey; Tasks: openwith
 
 [Run]
+; pre-compile GEN-Z for this PC (native images) so it opens faster – only possible when installing for all users
+Filename: "{dotnet4064}\ngen.exe"; Parameters: "install ""{app}\{#AppExe}"" /nologo"; StatusMsg: "Optimising GEN-Z Music for this PC..."; Flags: runhidden waituntilterminated; Check: IsWin64 and IsAdminInstallMode
+Filename: "{dotnet40}\ngen.exe"; Parameters: "install ""{app}\{#AppExe}"" /nologo"; StatusMsg: "Optimising GEN-Z Music for this PC..."; Flags: runhidden waituntilterminated; Check: (not IsWin64) and IsAdminInstallMode
 Filename: "{app}\{#AppExe}"; Description: "Start {#AppName} now"; Flags: nowait postinstall skipifsilent
 
 [Messages]
@@ -85,6 +88,10 @@ LicenseNotAccepted=I &do not accept
 WizardInfoBefore=Licence information
 InfoBeforeLabel=GEN-Z Music is built with these open-source components, used under their own licences.
 InfoBeforeClickLabel=When you are ready to install, click Next.
+
+[UninstallRun]
+Filename: "{dotnet4064}\ngen.exe"; Parameters: "uninstall ""{app}\{#AppExe}"" /nologo"; Flags: runhidden; RunOnceId: "NgenUninstall64"; Check: IsWin64 and IsAdminInstallMode
+Filename: "{dotnet40}\ngen.exe"; Parameters: "uninstall ""{app}\{#AppExe}"" /nologo"; Flags: runhidden; RunOnceId: "NgenUninstall32"; Check: (not IsWin64) and IsAdminInstallMode
 
 [Code]
 // .NET Framework 4.8 is built into Windows 10 / 11; Windows 7 and 8.1 may need it.

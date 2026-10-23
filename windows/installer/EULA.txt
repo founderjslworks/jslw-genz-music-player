@@ -28,12 +28,23 @@ JSL WORKS PVT LTD and is protected by copyright and other intellectual-property 
 agreement does not transfer ownership to you. All rights not expressly granted are reserved.
 
 4. YOUR MUSIC AND YOUR PRIVACY
-GEN-Z Music works fully offline. It reads the audio files on your computer only to play them and
+GEN-Z Music works offline. It reads the audio files on your computer only to play them and
 to show their titles, artists and covers. It does not collect, store or send any personal data,
 usage statistics or files to JSL WORKS or anyone else, and it shows no advertising. Your library,
 playlists and settings are stored only on your computer (in your user profile) and are removed
 when you delete them. Links in the Software (for example to www.jslworks.in) open in your web
 browser only when you click them.
+
+Optional online features. Cover-art, lyrics and track-information look-ups are switched OFF by
+default. Only if you switch them on in Settings, or choose "Find online" yourself, the Software sends
+the song's title, artist, album and length (nothing else) to third-party services – Apple iTunes
+Search, MusicBrainz / Cover Art Archive and LRCLIB – and stores the results on your computer.
+Those services have their own terms and privacy policies. Downloaded artwork and lyrics remain the
+property of their owners and are for your personal, private use only.
+
+Sound effects. "GEN-Z Home Theater" is JSL WORKS' own audio processing. It works only inside the
+Software, installs nothing into Windows and stops when you close the Software. It is not affiliated
+with, or endorsed by, Dolby Laboratories or any other company.
 
 5. THIRD-PARTY COMPONENTS
 The Software includes open-source components (listed on the next page and in the "licenses"

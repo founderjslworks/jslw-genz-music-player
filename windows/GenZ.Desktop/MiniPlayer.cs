@@ -35,7 +35,7 @@ namespace GenZ
             main = owner;
             WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = Brushes.Transparent;
             Topmost = true; ShowInTaskbar = false; ResizeMode = ResizeMode.NoResize;
-            Title = "GEN-Z Mini Player"; FontFamily = (FontFamily)Application.Current.Resources["BodyFont"];
+            Title = "GEN-Z Mini Player"; SetResourceReference(FontFamilyProperty, "BodyFont");
             SizeToContent = SizeToContent.Height;
 
             // ---- layout
@@ -53,6 +53,14 @@ namespace GenZ
             root.Children.Add(coverBg);
             root.Children.Add(new Border { CornerRadius = new CornerRadius(20), Background = new LinearGradientBrush(Color.FromArgb(90, 0, 0, 0), Color.FromArgb(200, 0, 0, 0), 90) });
             var content = new Grid { Margin = new Thickness(12) };
+            // crisp text on the transparent window
+            RenderOptions.SetClearTypeHint(content, ClearTypeHint.Enabled);
+            TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
+            // the cover glows and gently pulses with the music
+            cover.RenderTransformOrigin = new Point(0.5, 0.5);
+            var cg = new TransformGroup(); cg.Children.Add(coverScale); cg.Children.Add(flipScale);
+            cover.RenderTransform = cg;
+            cover.Effect = coverGlow;
             root.Children.Add(content);
             card.Child = root;
             Content = card;
@@ -60,6 +68,11 @@ namespace GenZ
             cover.CornerRadius = new CornerRadius(14);
             cover.Background = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255));
             title.FontSize = 14; title.FontWeight = FontWeights.Bold; title.Foreground = Brushes.White;
+            title.TextTrimming = TextTrimming.CharacterEllipsis; artist.TextTrimming = TextTrimming.CharacterEllipsis;
+            // same theme fonts as the main window: heading font for the title, body font for the artist
+            title.SetResourceReference(TextBlock.FontFamilyProperty, "DisplayFont");
+            artist.SetResourceReference(TextBlock.FontFamilyProperty, "BodyFont");
+            foreach (var t in new[] { title, artist }) t.Effect = new DropShadowEffect { BlurRadius = 6, ShadowDepth = 1, Opacity = 0.55, Color = Colors.Black };
             artist.FontSize = 12; artist.Foreground = new SolidColorBrush(Color.FromArgb(210, 255, 255, 255)); artist.Margin = new Thickness(0, 2, 0, 0);
 
             Button Icon(string key, double size, RoutedEventHandler click, string tip)
@@ -79,16 +92,37 @@ namespace GenZ
             Button prev = null, next = null;
             prev = Icon("IcPrev", 36, (s, e) => { Fx.Pop(prev, -1); Player.Prev(); }, "Previous");
             next = Icon("IcNext", 36, (s, e) => { Fx.Pop(next, 1); Player.Next(); }, "Next");
-            var mode = Icon("IcPanel", 28, (s, e) => { Settings.Current.PipMode = Settings.Current.PipMode == "cover" ? "compact" : "cover"; Layout(content); }, "Switch look");
-            var expand = Icon("IcExpand", 28, (s, e) => main.ExitPip(), "Back to full window");
-            var close = Icon("IcClose", 28, (s, e) => main.ExitPip(), "Close mini player");
+            // small, rounded corner buttons in a frosted pill
+            Button Mini(string key, RoutedEventHandler click, string tip, bool danger)
+            {
+                var b = new Button { Width = 24, Height = 24, Cursor = Cursors.Hand, Focusable = false, ToolTip = tip, Tag = Application.Current.Resources[key] };
+                b.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse(
+                    "<ControlTemplate TargetType='Button' xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" +
+                    "<Border x:Name='bg' CornerRadius='12' Background='Transparent' xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'>" +
+                    "<Path x:Name='ic' Data='{TemplateBinding Tag}' Fill='#F2FFFFFF' Width='11' Height='11' Stretch='Uniform' RenderTransformOrigin='0.5,0.5'>" +
+                    "<Path.RenderTransform><ScaleTransform/></Path.RenderTransform></Path></Border>" +
+                    "<ControlTemplate.Triggers>" +
+                    "<Trigger Property='IsMouseOver' Value='True'><Setter TargetName='bg' Property='Background' Value='" + (danger ? "#E81123" : "#40FFFFFF") + "'/></Trigger>" +
+                    "<Trigger Property='IsPressed' Value='True'><Setter TargetName='ic' Property='RenderTransform'><Setter.Value><ScaleTransform ScaleX='0.82' ScaleY='0.82'/></Setter.Value></Setter></Trigger>" +
+                    "</ControlTemplate.Triggers></ControlTemplate>");
+                b.Click += click;
+                b.Margin = new Thickness(1, 0, 1, 0);
+                return b;
+            }
+            var mode = Mini("IcPanel", (s, e) => { Settings.Current.PipMode = Settings.Current.PipMode == "cover" ? "compact" : "cover"; Layout(content); }, "Switch look", false);
+            var expand = Mini("IcExpand", (s, e) => main.ExitPip(), "Back to full window", false);
+            var close = Mini("IcClose", (s, e) => main.ExitPip(), "Close mini player", true);
 
             var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
             row.Children.Add(prev); play.Margin = new Thickness(8, 0, 8, 0); row.Children.Add(play); row.Children.Add(next);
             controls.Children.Add(row);
-            var corner = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top };
+            var corner = new StackPanel { Orientation = Orientation.Horizontal };
             corner.Children.Add(mode); corner.Children.Add(expand); corner.Children.Add(close);
-            cornerButtons = corner;
+            cornerButtons = new Border
+            {
+                Child = corner, CornerRadius = new CornerRadius(14), Padding = new Thickness(3), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+                Background = new SolidColorBrush(Color.FromArgb(70, 0, 0, 0)), BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)), BorderThickness = new Thickness(1)
+            };
 
             bar.Seek += f => Player.Position = TimeSpan.FromMilliseconds(f * Player.Duration.TotalMilliseconds);
             Layout(content);
@@ -103,6 +137,7 @@ namespace GenZ
             {
                 var d = Player.Duration.TotalMilliseconds;
                 bar.Value = d > 0 ? Player.Position.TotalMilliseconds / d : 0;
+                Pulse();
             };
             timer.Start();
             KeyDown += (s, e) => { if (e.Key == Key.Space) Player.Toggle(); else if (e.Key == Key.Escape) main.ExitPip(); };
@@ -119,7 +154,7 @@ namespace GenZ
             };
         }
 
-        readonly StackPanel cornerButtons;
+        readonly Border cornerButtons;
 
         void Layout(Grid content)
         {
@@ -157,7 +192,7 @@ namespace GenZ
                 right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 right.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 right.RowDefinitions.Add(new RowDefinition());
-                var texts = new StackPanel { Margin = new Thickness(0, 2, 84, 0) };
+                var texts = new StackPanel { Margin = new Thickness(0, 2, 92, 0) };
                 title.HorizontalAlignment = HorizontalAlignment.Left; artist.HorizontalAlignment = HorizontalAlignment.Left;
                 texts.Children.Add(title); texts.Children.Add(artist);
                 right.Children.Add(texts);
@@ -166,7 +201,7 @@ namespace GenZ
                 Grid.SetColumn(right, 1); content.Children.Add(right);
             }
             Grid.SetColumnSpan(cornerButtons, 2); Grid.SetRowSpan(cornerButtons, 4);
-            cornerButtons.Margin = new Thickness(0, -6, -6, 0);
+            cornerButtons.Margin = new Thickness(0, -4, -4, 0);
             content.Children.Add(cornerButtons);
             if (Settings.Current.PipLeft < 0 || Settings.Current.PipLeft > work.Right - 60 || Settings.Current.PipTop > work.Bottom - 60)
             {
@@ -178,6 +213,54 @@ namespace GenZ
         }
 
         System.Windows.Media.Imaging.BitmapSource art;
+        readonly ScaleTransform coverScale = new ScaleTransform(1, 1);
+        readonly ScaleTransform flipScale = new ScaleTransform(1, 1);
+        readonly DropShadowEffect coverGlow = new DropShadowEffect { BlurRadius = 14, ShadowDepth = 0, Opacity = 0.0, Color = Colors.White };
+        double pulse;
+        ScaleTransform kenScale;
+        TranslateTransform kenMove;
+
+        /// <summary>Cover pulse and glow follow the live music level.</summary>
+        void Pulse()
+        {
+            double lvl = Player.IsPlaying && !Settings.Current.ReduceMotion ? Player.Level : 0;
+            pulse = Math.Max(lvl, pulse * 0.82);
+            double s = 1 + pulse * 0.045;
+            coverScale.ScaleX = coverScale.ScaleY = s;
+            coverGlow.Opacity = 0.15 + pulse * 0.75;
+            coverGlow.BlurRadius = 10 + pulse * 26;
+            if (Application.Current.Resources["AccentColor"] is Color c) coverGlow.Color = c;
+        }
+
+        /// <summary>Slow "Ken Burns" pan and zoom inside the cover while music plays.</summary>
+        void KenBurns(bool playing)
+        {
+            if (kenScale == null) return;
+            if (!playing || Settings.Current.ReduceMotion)
+            {
+                kenScale.BeginAnimation(ScaleTransform.ScaleXProperty, null); kenScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                kenMove.BeginAnimation(TranslateTransform.XProperty, null); kenMove.BeginAnimation(TranslateTransform.YProperty, null);
+                return;
+            }
+            var z = new DoubleAnimation(1.0, 1.16, TimeSpan.FromSeconds(11)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } };
+            kenScale.BeginAnimation(ScaleTransform.ScaleXProperty, z); kenScale.BeginAnimation(ScaleTransform.ScaleYProperty, z);
+            kenMove.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-0.05, 0.05, TimeSpan.FromSeconds(13)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
+            kenMove.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0.04, -0.04, TimeSpan.FromSeconds(17)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
+        }
+
+        /// <summary>The new cover flips in like a turned card.</summary>
+        void FlipIn()
+        {
+            if (Settings.Current.ReduceMotion) { ApplyCover(); return; }
+            var flip = flipScale;
+            var close = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150)) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
+            close.Completed += (o, e) =>
+            {
+                ApplyCover();
+                flip.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(380)) { EasingFunction = new BackEase { Amplitude = 0.4, EasingMode = EasingMode.EaseOut } });
+            };
+            flip.BeginAnimation(ScaleTransform.ScaleXProperty, close);
+        }
 
         async void Refresh()
         {
@@ -192,13 +275,17 @@ namespace GenZ
                 Fx.Pop(play);
             }
             bar.Playing = playing && Settings.Current.Sparkles;
+            if (playing != wasPlaying) { wasPlaying = playing; KenBurns(playing); }
             if (s != shown)
             {
+                bool first = shown == null;
                 shown = s;
                 art = s == null ? null : await Covers.LoadAsync(s, 640);
-                if (s == shown) ApplyCover();
+                if (s == shown) { if (first) ApplyCover(); else FlipIn(); }
             }
         }
+
+        bool wasPlaying;
 
         void ApplyCover()
         {
@@ -210,8 +297,13 @@ namespace GenZ
                 return;
             }
             cover.Child = null;
-            cover.Background = Covers.Brush(art);
+            var brush = Covers.Brush(art);
+            kenScale = new ScaleTransform(1, 1, 0.5, 0.5); kenMove = new TranslateTransform();
+            var kg = new TransformGroup(); kg.Children.Add(kenScale); kg.Children.Add(kenMove);
+            brush.RelativeTransform = kg;
+            cover.Background = brush;
             coverBg.Background = Covers.Brush(art);
+            KenBurns(Player.IsPlaying);
         }
     }
 }

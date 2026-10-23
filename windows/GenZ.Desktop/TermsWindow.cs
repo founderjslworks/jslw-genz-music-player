@@ -55,6 +55,7 @@ namespace GenZ
             Width = 760; Height = 620; MinWidth = 480; MinHeight = 360;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             SetResourceReference(BackgroundProperty, "BgBrush");
+            SetResourceReference(FontFamilyProperty, "BodyFont");
             try { Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/genz.png")); } catch { }
 
             var root = new Grid { Margin = new Thickness(22) };

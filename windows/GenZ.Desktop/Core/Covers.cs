@@ -15,6 +15,32 @@ namespace GenZ.Core
         static readonly LinkedList<string> order = new LinkedList<string>();
         const int Max = 400;
 
+        /// <summary>Forget cached pictures of this song's album (after a new cover was downloaded or saved).</summary>
+        public static void Forget(Song s)
+        {
+            lock (cache)
+            {
+                var prefix = s.AlbumKey + "|";
+                foreach (var k in cache.Keys.Where(k => k.StartsWith(prefix)).ToList()) { cache.Remove(k); order.Remove(k); }
+            }
+        }
+
+        /// <summary>Pixel width of the song's own (embedded or folder) cover, 0 if none.</summary>
+        public static int EmbeddedWidth(Song s)
+        {
+            try
+            {
+                using (var f = TagLib.File.Create(s.Path))
+                {
+                    var pic = f.Tag.Pictures?.FirstOrDefault();
+                    if (pic == null) return 0;
+                    var dec = BitmapDecoder.Create(new MemoryStream(pic.Data.Data), BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+                    return dec.Frames[0].PixelWidth;
+                }
+            }
+            catch { return 0; }
+        }
+
         public static BitmapSource Load(Song s, int size)
         {
             if (s == null) return null;
@@ -24,6 +50,9 @@ namespace GenZ.Core
             try
             {
                 byte[] data = null;
+                // a high-quality cover downloaded online (only when the user turned that on) wins
+                try { var online = Online.CoverFile(s); if (File.Exists(online)) data = File.ReadAllBytes(online); } catch { }
+                if (data == null)
                 using (var f = TagLib.File.Create(s.Path))
                 {
                     var pic = f.Tag.Pictures?.FirstOrDefault(p => p.Type == TagLib.PictureType.FrontCover) ?? f.Tag.Pictures?.FirstOrDefault();

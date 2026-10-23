@@ -426,3 +426,49 @@ namespace GenZ.Controls
         }
     }
 }
+
+namespace GenZ.Controls
+{
+    /// <summary>
+    /// Scroll animations for pages that are not lists (Animations, Settings &amp; About, Equalizer, album and theme grids):
+    /// every section, row, pill or tile animates in with the chosen scroll style as it scrolls onto the screen.
+    /// </summary>
+    public static class ScrollReveal
+    {
+        public static void Attach(ScrollViewer sv, Func<IEnumerable<FrameworkElement>> items)
+        {
+            var visible = new HashSet<FrameworkElement>();
+            sv.ScrollChanged += (s, e) =>
+            {
+                var cur = Settings.Current;
+                bool animate = e.VerticalChange != 0 && e.ExtentHeightChange == 0 && !cur.ReduceMotion && cur.ScrollAnim > 0;
+                bool down = e.VerticalChange >= 0;
+                var now = new HashSet<FrameworkElement>();
+                foreach (var it in items())
+                {
+                    if (it == null || !it.IsVisible || it.ActualHeight <= 0) continue;
+                    Rect r;
+                    try { r = it.TransformToAncestor(sv).TransformBounds(new Rect(0, 0, it.ActualWidth, it.ActualHeight)); }
+                    catch { continue; }
+                    if (r.Bottom < 0 || r.Top > sv.ViewportHeight) continue;
+                    now.Add(it);
+                    if (animate && !visible.Contains(it)) ListAnim.Animate(it, down, cur.ScrollAnim, cur.ScrollDuration, cur.ScrollInterp);
+                }
+                visible.Clear();
+                foreach (var x in now) visible.Add(x);
+            };
+        }
+
+        /// <summary>The rows, pills and cards of a form page, in the order they appear.</summary>
+        public static IEnumerable<FrameworkElement> Leaves(Panel panel)
+        {
+            foreach (UIElement el in panel.Children)
+            {
+                if (!(el is FrameworkElement v) || v.Visibility != Visibility.Visible) continue;
+                if (v is StackPanel sp && sp.Orientation == Orientation.Vertical && sp.Children.Count > 1) { foreach (var c in Leaves(sp)) yield return c; continue; }
+                if (v is WrapPanel wp) { foreach (UIElement c in wp.Children) if (c is FrameworkElement f) yield return f; continue; }
+                yield return v;
+            }
+        }
+    }
+}

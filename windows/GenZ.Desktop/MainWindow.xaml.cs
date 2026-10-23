@@ -74,19 +74,28 @@ namespace GenZ
             SetThumbIcons();
             Library.LoadCache();
             InitFeatures();
+            InitExtras();
             NavSongs.IsChecked = true;
             ShowView(View.Songs);
             UpdateScanText();
-            Library.ScanAsync();
-            UpdateScanText();
-
-            // restore the last session (queue, song and position, paused) so pressing play continues where you left off
-            if (!RestoreSession())
-            {
-                var last = Library.Songs.FirstOrDefault(x => x.Path == Settings.Current.LastSong);
-                if (last != null) { ShowSong(last); LoadLyrics(last); }
-            }
             UpdateToggles();
+            // the window appears first; opening the audio device and re-scanning the folders happen right after
+            ContentRendered += (s, e) =>
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    // restore the last session (queue, song and position, paused) so pressing play continues where you left off
+                    if (!RestoreSession())
+                    {
+                        var last = Library.Songs.FirstOrDefault(x => x.Path == Settings.Current.LastSong);
+                        if (last != null) { ShowSong(last); LoadLyrics(last); }
+                    }
+                    UpdateToggles();
+                }), DispatcherPriority.ApplicationIdle);
+                var later = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
+                later.Tick += (o, a) => { later.Stop(); Library.ScanAsync(); UpdateScanText(); };
+                later.Start();
+            };
         }
 
         // ================================================================ library & navigation
@@ -485,10 +494,8 @@ namespace GenZ
             if (on) favs.Add(s.Path); else favs.Remove(s.Path);
             Settings.Save();
             UpdateFav(s);
-            var st = new ScaleTransform(1, 1); NpFav.RenderTransformOrigin = new Point(0.5, 0.5); NpFav.RenderTransform = st;
-            var a = new DoubleAnimation(1.5, 1, TimeSpan.FromMilliseconds(520)) { EasingFunction = new ElasticEase { Oscillations = 2, Springiness = 4 } };
-            st.BeginAnimation(ScaleTransform.ScaleXProperty, a); st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
-            if (on) Burst(NpFav, 18);
+            HeartPop(NpFav, on);
+            Celebrate(on);
             if (view == View.Favourites) ShowView(View.Favourites);
         }
 
@@ -508,7 +515,7 @@ namespace GenZ
             bool changed = s != shownSong;
             lastShownIndex = Player.Index;
             ShowSong(s);
-            if (changed) { AnimateBar(forward); LoadLyrics(s); }
+            if (changed) { AnimateBar(forward); LoadLyrics(s); AutoOnline(s); }
             if (view == View.Queue) ShowView(View.Queue, true);
             SaveSession();
         }
@@ -671,6 +678,7 @@ namespace GenZ
         void Tick()
         {
             SleepTick();
+            VolumeTick();
             var cur = Player.Current;
             if (cur == null) return;
             LyricsTick();
@@ -976,7 +984,12 @@ namespace GenZ
             AnimPanel.Children.Add(Choices(new[] { ("ripple", "Water ripple"), ("burst", "Sparkle burst"), ("none", "None") },
                 cur.CoverEffect, v => cur.CoverEffect = v));
 
+            Section(AnimPanel, "SIDEBAR CLICK EFFECT", "What happens when you click in the left panel.");
+            AnimPanel.Children.Add(Choices(Controls.SpaceFx.Effects, cur.NavEffect, v => { cur.NavEffect = v; }));
+            AnimPanel.Children.Add(Toggle("Moving stars behind the sidebar", "A slow, twinkling star field drifts behind the menu", cur.NavStarField, v => { cur.NavStarField = v; Controls.SpaceFx.StarField(NavStars, v); }));
+
             Section(AnimPanel, "EFFECTS", null);
+            AnimPanel.Children.Add(Toggle("Live volume sliders", "The volume bar glows and the speaker pulses with the music", cur.LiveVolume, v => cur.LiveVolume = v));
             AnimPanel.Children.Add(Toggle("Sparkling progress bar", "Stars drift off the progress bar while music plays", cur.Sparkles, v => { cur.Sparkles = v; OnPlayerState(); }));
             AnimPanel.Children.Add(Toggle("Play / pause morph", "The icon spins, the button beats and a ring bursts", cur.PlayMorph, v => cur.PlayMorph = v));
             AnimPanel.Children.Add(Toggle("Cover breathes", "The cover shrinks a little while paused", cur.CoverBreathe, v => { cur.CoverBreathe = v; lastPlaying = null; OnPlayerState(); }));
@@ -1116,6 +1129,7 @@ namespace GenZ
             Section(PrefsPanel, "PLAYBACK", null);
             PrefsPanel.Children.Add(Toggle("Soft fade on play and pause", "The music fades in and out instead of stopping abruptly", cur.FadePlayPause, v => cur.FadePlayPause = v));
             PrefsPanel.Children.Add(Toggle("Continue where you left off", "Remember Up next, the song and its position when GEN-Z closes", cur.RememberQueue, v => cur.RememberQueue = v));
+            OnlinePrefs(PrefsPanel);
             Section(PrefsPanel, "MINI PLAYER (PICTURE IN PICTURE)", "A small always-on-top player. Open it with the button in the title bar or Ctrl+P.");
             PrefsPanel.Children.Add(Toggle("Open the mini player when minimized", "While music plays, minimizing GEN-Z shows the mini player", cur.AutoPip, v => cur.AutoPip = v));
             var b = new Button { Style = (Style)FindResource("PillButton"), Content = "Open mini player now", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0) };

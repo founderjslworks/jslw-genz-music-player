@@ -37,6 +37,10 @@ namespace GenZ.Core
         static ISoundOut output;
         static IWaveSource source;
         static Equalizer eq;
+        static Theater theater;
+
+        /// <summary>Live peak level of the music (0..1) for animations.</summary>
+        public static double Level => theater?.Level ?? 0;
         static bool stopping;
 
         public static List<Song> Queue { get; private set; } = new List<Song>();
@@ -316,7 +320,7 @@ namespace GenZ.Core
             try { output?.Stop(); } catch { }
             try { output?.Dispose(); } catch { }
             try { source?.Dispose(); } catch { }
-            output = null; source = null; eq = null;
+            output = null; source = null; eq = null; theater = null;
             stopping = false;
         }
 
@@ -337,7 +341,9 @@ namespace GenZ.Core
                 eq = Equalizer.Create10BandEqualizer(samples);
                 ApplyEq();
                 // 32-bit float all the way to the device; the EQ keeps automatic headroom so boosts never clip.
-                var wave = eq.ToWaveSource();
+                theater = new Theater(eq);
+                ApplyTheater();
+                var wave = theater.ToWaveSource();
                 output = CreateOutput();
                 output.Initialize(wave);
                 ApplyVolume();
@@ -376,6 +382,17 @@ namespace GenZ.Core
                 }
                 Next(auto: true);
             }));
+        }
+
+        /// <summary>Applies the Home Theater profile (only inside GEN-Z – nothing changes in Windows).</summary>
+        public static void ApplyTheater()
+        {
+            var t = theater;
+            if (t == null) return;
+            var c = Settings.Current;
+            var p = Theater.Profiles.Find(x => x.Id == c.TheaterProfile) ?? Theater.Profiles[1];
+            if (p.Id == "custom") p = c.TheaterCustom ?? p;
+            t.Set(p, c.TheaterOn, c.TheaterHeadphones);
         }
 
         public static void ApplyEq()

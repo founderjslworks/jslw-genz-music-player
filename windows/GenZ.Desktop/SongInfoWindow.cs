@@ -11,6 +11,43 @@ namespace GenZ
     public class SongInfoWindow : Window
     {
         readonly Song song;
+        readonly Border coverBox;
+        byte[] newCover;
+
+        async System.Threading.Tasks.Task FindOnline(Button b, Border cover)
+        {
+            b.IsEnabled = false; b.Content = "Searching…";
+            try
+            {
+                var t = await Online.FindTrack(song);
+                if (t != null)
+                {
+                    title.Text = t.Title; artist.Text = t.Artist; album.Text = t.Album;
+                    if (!string.IsNullOrEmpty(t.Genre)) genre.Text = t.Genre;
+                    if (t.Year > 0) year.Text = t.Year.ToString();
+                    if (t.Track > 0) track.Text = t.Track.ToString();
+                    if (t.CoverUrl != null)
+                    {
+                        try
+                        {
+                            using (var http = new System.Net.Http.HttpClient()) newCover = await http.GetByteArrayAsync(t.CoverUrl);
+                            var bi = new System.Windows.Media.Imaging.BitmapImage();
+                            bi.BeginInit(); bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad; bi.DecodePixelWidth = 440; bi.StreamSource = new MemoryStream(newCover); bi.EndInit(); bi.Freeze();
+                            cover.Background = Covers.Brush(bi);
+                        }
+                        catch { newCover = null; }
+                    }
+                }
+                if (string.IsNullOrWhiteSpace(lyrics.Text))
+                {
+                    var text = await Online.FetchLyrics(song);
+                    if (text != null) lyrics.Text = text;
+                }
+                b.Content = t == null ? "Not found – lyrics checked" : "Found ✓ – review and Save";
+            }
+            catch (Exception ex) { b.Content = "Offline?"; b.ToolTip = ex.Message; }
+            b.IsEnabled = true;
+        }
         readonly TextBox title, artist, album, albumArtist, genre, year, track, lyrics;
         public bool Saved { get; private set; }
 
@@ -34,6 +71,7 @@ namespace GenZ
             head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             head.ColumnDefinitions.Add(new ColumnDefinition());
             var cover = new Border { Width = 110, Height = 110, CornerRadius = new CornerRadius(14) };
+            coverBox = cover;
             cover.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
             head.Children.Add(cover);
             LoadCover(cover);
@@ -74,7 +112,11 @@ namespace GenZ
             var folder = new Button { Content = "Show in folder", HorizontalAlignment = HorizontalAlignment.Left };
             folder.SetResourceReference(StyleProperty, "GhostPill");
             folder.Click += (o, e) => MainWindow.ShowInFolder(s.Path);
+            var online = new Button { Content = "Find online", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(130, 0, 0, 0), ToolTip = "Track info, lyrics and a high-quality cover from iTunes, MusicBrainz and LRCLIB" };
+            online.SetResourceReference(StyleProperty, "GhostPill");
+            online.Click += async (o, e) => await FindOnline(online, coverBox);
             bar.Children.Add(folder);
+            bar.Children.Add(online);
             var right = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
             var cancel = new Button { Content = "Cancel", IsCancel = true, Margin = new Thickness(0, 0, 10, 0) };
             cancel.SetResourceReference(StyleProperty, "GhostPill");
@@ -144,6 +186,8 @@ namespace GenZ
                         t.Genres = Arr(genre.Text);
                         t.Year = y; t.Track = tr;
                         t.Lyrics = string.IsNullOrWhiteSpace(lyrics.Text) ? null : lyrics.Text;
+                        if (newCover != null)
+                            t.Pictures = new TagLib.IPicture[] { new TagLib.Picture(new TagLib.ByteVector(newCover)) { Type = TagLib.PictureType.FrontCover, MimeType = "image/jpeg", Description = "Cover" } };
                         f.Save();
                     }
                 });
@@ -157,6 +201,7 @@ namespace GenZ
             song.Title = fresh.Title; song.Artist = fresh.Artist; song.Album = fresh.Album; song.AlbumArtist = fresh.AlbumArtist;
             song.Genre = fresh.Genre; song.Year = fresh.Year; song.Track = fresh.Track;
             try { song.Modified = File.GetLastWriteTimeUtc(song.Path).Ticks; } catch { }
+            if (newCover != null) Covers.Forget(song);
             Saved = true;
             DialogResult = true;
         }

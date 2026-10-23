@@ -182,7 +182,9 @@
             </Grid.ColumnDefinitions>
 
             <!-- navigation -->
-            <Border Background="{DynamicResource SurfaceBrush}">
+            <Border x:Name="NavHost" Background="{DynamicResource SurfaceBrush}" PreviewMouseLeftButtonDown="OnNavClickFx">
+                <Grid>
+                <Canvas x:Name="NavStars" ClipToBounds="True" IsHitTestVisible="False" />
                 <DockPanel Margin="0,14,0,10">
                     <StackPanel DockPanel.Dock="Bottom" Margin="20,0,20,6">
                         <Button Style="{StaticResource GhostPill}" Content="+  Add music folder" Click="OnAddFolder" HorizontalAlignment="Stretch" />
@@ -218,6 +220,7 @@
                     </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
+                </Grid>
             </Border>
 
             <!-- pages -->
@@ -288,8 +291,8 @@
                     <StackPanel Margin="28,22,28,20">
                         <Grid>
                             <StackPanel>
-                                <TextBlock Text="Equalizer" FontSize="30" FontWeight="Bold" FontFamily="{DynamicResource DisplayFont}" />
-                                <TextBlock Text="10-band graphic equalizer with automatic headroom – boosts never clip." Margin="0,2,0,0" FontSize="13" Foreground="{DynamicResource Text2Brush}" />
+                                <TextBlock Text="Equalizer &amp; Sound" FontSize="30" FontWeight="Bold" FontFamily="{DynamicResource DisplayFont}" />
+                                <TextBlock Text="GEN-Z Home Theater sound profiles and a 10-band equalizer – they work only inside GEN-Z." Margin="0,2,0,0" FontSize="13" Foreground="{DynamicResource Text2Brush}" />
                             </StackPanel>
                             <CheckBox x:Name="EqOn" HorizontalAlignment="Right" VerticalAlignment="Center" Checked="OnEqToggle" Unchecked="OnEqToggle" Cursor="Hand">
                                 <CheckBox.Template>
@@ -307,7 +310,9 @@
                                 </CheckBox.Template>
                             </CheckBox>
                         </Grid>
-                        <WrapPanel x:Name="EqPresets" Margin="0,18,0,8" />
+                        <StackPanel x:Name="TheaterPanel" Margin="0,18,0,6" />
+                        <TextBlock Text="10-BAND EQUALIZER" Margin="0,22,0,0" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                        <WrapPanel x:Name="EqPresets" Margin="0,10,0,8" />
                         <Border CornerRadius="18" Background="{DynamicResource SurfaceBrush}" Padding="20,18" Margin="0,8,0,0">
                             <Grid x:Name="EqBands" Height="300" />
                         </Border>
@@ -342,7 +347,7 @@
                                     <TextBlock x:Name="AboutTitle" Text="GEN-Z Music for Windows" FontSize="20" FontWeight="Bold" FontFamily="{DynamicResource DisplayFont}" />
                                     <TextBlock Text="Designed &amp; developed by Partho Ghosh · JSL WORKS PVT LTD" Margin="0,4,0,0" FontSize="13" Foreground="{DynamicResource Text2Brush}" />
                                     <TextBlock Text="© 2026 JSL WORKS PVT LTD. All rights reserved." Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource Text2Brush}" />
-                                    <TextBlock Text="100% offline · no internet needed · Windows 7 to Windows 11" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource Text2Brush}" />
+                                    <TextBlock Text="Works offline · online covers &amp; lyrics are optional · Windows 7 to Windows 11" Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource Text2Brush}" />
                                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                                         <Button Style="{StaticResource PillButton}" Content="www.jslworks.in" Click="OnWebsite" Margin="0,0,10,0" />
                                         <Button Style="{StaticResource GhostPill}" Content="Updates &amp; downloads" Click="OnUpdates" Margin="0,0,10,0" />
@@ -441,8 +446,15 @@
                         </Grid>
                         <Grid Margin="6,16,6,0">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition /></Grid.ColumnDefinitions>
-                            <Path Data="{StaticResource IcVolume}" Fill="{DynamicResource NpText2Brush}" Width="18" Height="18" Stretch="Uniform" />
-                            <Slider x:Name="NpVolume" Grid.Column="1" Style="{StaticResource ThinSlider}" Minimum="0" Maximum="1" Margin="12,0,0,0" ValueChanged="OnVolume" />
+                            <Path x:Name="NpVolIcon" Data="{StaticResource IcVolume}" Fill="{DynamicResource NpText2Brush}" Width="18" Height="18" Stretch="Uniform" RenderTransformOrigin="0.3,0.5">
+                                <Path.RenderTransform><ScaleTransform /></Path.RenderTransform>
+                            </Path>
+                            <Grid Grid.Column="1" Margin="12,0,0,0">
+                                <Border x:Name="NpVolGlow" HorizontalAlignment="Left" VerticalAlignment="Center" Height="4" CornerRadius="4" Background="{DynamicResource ProgressBrush}" IsHitTestVisible="False" Opacity="0">
+                                    <Border.Effect><BlurEffect Radius="8" /></Border.Effect>
+                                </Border>
+                                <Slider x:Name="NpVolume" Style="{StaticResource ThinSlider}" Minimum="0" Maximum="1" ValueChanged="OnVolume" />
+                            </Grid>
                         </Grid>
                     </StackPanel>
                 </Grid>
@@ -479,8 +491,15 @@
                 </StackPanel>
                 <StackPanel x:Name="BarVolumeBox" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button x:Name="BarNpBtn" Style="{StaticResource IconButton}" Tag="{StaticResource IcPanel}" Click="OnTogglePanel" ToolTip="Show Now Playing" Margin="0,0,10,0" />
-                    <Path Data="{StaticResource IcVolume}" Fill="{DynamicResource Text2Brush}" Width="18" Height="18" Stretch="Uniform" />
-                    <Slider x:Name="BarVolume" Style="{StaticResource ThinSlider}" Width="140" Minimum="0" Maximum="1" Margin="12,0,0,0" ValueChanged="OnVolume" />
+                    <Path x:Name="BarVolIcon" Data="{StaticResource IcVolume}" Fill="{DynamicResource Text2Brush}" Width="18" Height="18" Stretch="Uniform" RenderTransformOrigin="0.3,0.5">
+                        <Path.RenderTransform><ScaleTransform /></Path.RenderTransform>
+                    </Path>
+                    <Grid Width="140" Margin="12,0,0,0">
+                        <Border x:Name="BarVolGlow" HorizontalAlignment="Left" VerticalAlignment="Center" Height="4" CornerRadius="4" Background="{DynamicResource ProgressBrush}" IsHitTestVisible="False" Opacity="0">
+                            <Border.Effect><BlurEffect Radius="8" /></Border.Effect>
+                        </Border>
+                        <Slider x:Name="BarVolume" Style="{StaticResource ThinSlider}" Minimum="0" Maximum="1" ValueChanged="OnVolume" />
+                    </Grid>
                 </StackPanel>
             </Grid>
         </Border>
@@ -515,7 +534,7 @@
                         </EventTrigger>
                     </TextBlock.Triggers>
                 </TextBlock>
-                <TextBlock Text="  ·  © 2026 JSL WORKS PVT LTD · www.jslworks.in" FontSize="11" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center" />
+                <TextBlock Text="  ·  © 2026 JSL WORKS PVT LTD · Partho Ghosh" FontSize="11" Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center" />
             </StackPanel>
         </Border>
         <!-- toast -->

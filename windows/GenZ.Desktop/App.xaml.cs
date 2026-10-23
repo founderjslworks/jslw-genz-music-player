@@ -36,6 +36,8 @@ namespace GenZ
             }
 
             DispatcherUnhandledException += OnError;
+            // multicore JIT: the second and later starts compile the startup code in parallel
+            try { System.Runtime.ProfileOptimization.SetProfileRoot(Settings.Dir); System.Runtime.ProfileOptimization.StartProfile("startup.jitprofile"); } catch { }
             Settings.Load();
             ThemeManager.Load();
             var theme = ThemeManager.All.Find(t => t.Id == Settings.Current.ThemeId) ?? ThemeManager.All.Find(t => t.Id == "vivid_genz");

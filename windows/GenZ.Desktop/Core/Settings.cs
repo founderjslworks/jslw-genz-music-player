@@ -30,6 +30,9 @@ namespace GenZ.Core
         public int ScrollDuration { get; set; } = 380;
         public string Transition { get; set; } = "genz";           // screen transition, see Controls.Transitions
         public int AnimVersion { get; set; } = 0;
+        public string NavEffect { get; set; } = "stars";           // sidebar click effect, see Controls.SpaceFx
+        public bool NavStarField { get; set; } = true;             // drifting stars behind the sidebar
+        public bool LiveVolume { get; set; } = true;               // volume sliders pulse with the music
         public string CoverEffect { get; set; } = "ripple";        // ripple, burst, none
         public bool Sparkles { get; set; } = true;
         public bool PlayMorph { get; set; } = true;
@@ -54,6 +57,17 @@ namespace GenZ.Core
         public Dictionary<string, string> SortModes { get; set; } = new Dictionary<string, string>();
         public string Mode(string page, string def) => ViewModes != null && ViewModes.TryGetValue(page, out var v) ? v : def;
         public string Sort(string page, string def) => SortModes != null && SortModes.TryGetValue(page, out var v) ? v : def;
+
+        // GEN-Z Home Theater (in-app sound engine)
+        public bool TheaterOn { get; set; } = false;
+        public string TheaterProfile { get; set; } = "music";
+        public bool TheaterHeadphones { get; set; } = true;
+        public TheaterProfile TheaterCustom { get; set; }
+
+        // optional online features (off unless the user switches them on)
+        public bool OnlineCovers { get; set; } = false;
+        public bool OnlineLyrics { get; set; } = false;
+        public bool OnlineHiResCovers { get; set; } = false;
 
         // listening history
         public Dictionary<string, int> PlayCounts { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
