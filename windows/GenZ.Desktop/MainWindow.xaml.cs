@@ -984,6 +984,10 @@ namespace GenZ
             AnimPanel.Children.Add(Choices(new[] { ("ripple", "Water ripple"), ("burst", "Sparkle burst"), ("none", "None") },
                 cur.CoverEffect, v => cur.CoverEffect = v));
 
+            Section(AnimPanel, "LIKE CELEBRATION", "When you love a song: a heart bursts with confetti and firecrackers, plus…");
+            AnimPanel.Children.Add(Choices(new[] { ("both", "3D frame + glitter heart"), ("frame", "3D heart frame"), ("glitter", "Magic glitter heart"), ("simple", "Simple burst") },
+                cur.LikeEffect, v => { cur.LikeEffect = v; Celebrate(true); }));
+
             Section(AnimPanel, "SIDEBAR CLICK EFFECT", "What happens when you click in the left panel.");
             AnimPanel.Children.Add(Choices(Controls.SpaceFx.Effects, cur.NavEffect, v => { cur.NavEffect = v; }));
             AnimPanel.Children.Add(Toggle("Moving stars behind the sidebar", "A slow, twinkling star field drifts behind the menu", cur.NavStarField, v => { cur.NavStarField = v; Controls.SpaceFx.StarField(NavStars, v); }));

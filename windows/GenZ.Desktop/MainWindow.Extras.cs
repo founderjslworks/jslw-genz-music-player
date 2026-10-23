@@ -73,6 +73,7 @@ namespace GenZ
             FrameworkElement at = NpColumn.Width.Value > 0 && NpCoverHost.IsVisible ? (FrameworkElement)NpCoverHost : BarCover;
             var p = at.TranslatePoint(new Point(at.ActualWidth / 2, at.ActualHeight / 2), celebration);
             double size = Math.Max(at.ActualWidth, 160);
+            celebration.Style = Settings.Current.LikeEffect;
             if (on) celebration.Celebrate(p, size); else celebration.Unlove(p, size);
         }
 

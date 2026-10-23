@@ -39,12 +39,213 @@ namespace GenZ.Controls
 
         public Celebration() { IsHitTestVisible = false; }
 
+        // ---- romantic 3D heart frame (glossy hearts around the edges, bokeh, sparkles, warm glow)
+        double frameT = -1;
+        const double FrameLen = 3.8;
+        struct FHeart { public double X, Y, Size, Phase, Spin, Appear, Bob, Depth; }
+        struct Bokeh { public double X, Y, R, Phase, Rise; public byte A; }
+        FHeart[] fh = new FHeart[0];
+        Bokeh[] bk = new Bokeh[0];
+        static readonly Brush GlossFront = MakeGloss(Color.FromRgb(0xFF, 0x9A, 0xAE), Color.FromRgb(0xE8, 0x12, 0x3A), Color.FromRgb(0x7A, 0x00, 0x16));
+        static readonly Brush GlossBack = MakeGloss(Color.FromRgb(0xC9, 0x2B, 0x4B), Color.FromRgb(0x9A, 0x06, 0x25), Color.FromRgb(0x4A, 0x00, 0x0C));
+        static readonly Brush Shade = Frozen(new SolidColorBrush(Color.FromArgb(70, 60, 0, 10)));
+
+        static Brush MakeGloss(Color hi, Color mid, Color lo)
+        {
+            var b = new RadialGradientBrush { GradientOrigin = new Point(0.32, 0.28), Center = new Point(0.42, 0.4), RadiusX = 0.75, RadiusY = 0.75 };
+            b.GradientStops.Add(new GradientStop(hi, 0)); b.GradientStops.Add(new GradientStop(mid, 0.45)); b.GradientStops.Add(new GradientStop(lo, 1));
+            b.Freeze(); return b;
+        }
+        static Brush Frozen(Brush b) { b.Freeze(); return b; }
+
+        void BuildFrame()
+        {
+            double W = Math.Max(400, ActualWidth), H = Math.Max(300, ActualHeight);
+            var list = new System.Collections.Generic.List<FHeart>();
+            double edge = Math.Min(W, H) * 0.12;
+            // hearts along the four edges, bigger in the corners, like a frame
+            int perW = (int)(W / 70), perH = (int)(H / 70);
+            void Add2(double px, double py, double sz)
+                => list.Add(new FHeart { X = px, Y = py, Size = sz, Phase = R(0, 6.28), Spin = R(1.2, 2.6) * (rnd.Next(2) == 0 ? 1 : -1), Appear = R(0, 0.5), Bob = R(4, 12), Depth = R(0.75, 1.15) });
+            for (int i = 0; i <= perW; i++)
+            {
+                double px = i / (double)perW * W;
+                Add2(px + R(-20, 20), R(-10, edge), R(18, 46));
+                Add2(px + R(-20, 20), H - R(-10, edge), R(18, 46));
+            }
+            for (int i = 1; i < perH; i++)
+            {
+                double py = i / (double)perH * H;
+                Add2(R(-10, edge), py + R(-20, 20), R(18, 46));
+                Add2(W - R(-10, edge), py + R(-20, 20), R(18, 46));
+            }
+            foreach (var c in new[] { new Point(0, 0), new Point(W, 0), new Point(0, H), new Point(W, H) })
+                for (int k = 0; k < 3; k++) Add2(c.X + R(-edge, edge) * (c.X == 0 ? -0.2 : 1) * 0.6, c.Y + R(-edge, edge) * 0.6, R(50, 84));
+            // draw the small (far) hearts first
+            list.Sort((a, b) => (a.Size * a.Depth).CompareTo(b.Size * b.Depth));
+            fh = list.ToArray();
+            var bl = new System.Collections.Generic.List<Bokeh>();
+            for (int i = 0; i < 46; i++)
+            {
+                bool nearEdge = i % 3 != 0;
+                double bx = nearEdge ? (rnd.Next(2) == 0 ? R(0, W * 0.22) : R(W * 0.78, W)) : R(0, W);
+                bl.Add(new Bokeh { X = bx, Y = R(0, H), R = R(8, 46), Phase = R(0, 6.28), Rise = R(10, 40), A = (byte)R(40, 110) });
+            }
+            bk = bl.ToArray();
+        }
+
+        // ---- magic glitter heart (sparkles fly in, form a big heart, shimmer, then dissolve)
+        double glitT = -1;
+        const double GlitLen = 4.0;
+        const int GN = 520;
+        readonly double[] gx0 = new double[GN], gy0 = new double[GN], gx = new double[GN], gy = new double[GN], gph = new double[GN], gsz = new double[GN], gdx = new double[GN], gdy = new double[GN];
+        readonly int[] gcol = new int[GN];
+        static readonly Brush[] GlitDot =
+        {
+            Frozen(new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF))), Frozen(new SolidColorBrush(Color.FromRgb(0xE3, 0x9B, 0xFF))),
+            Frozen(new SolidColorBrush(Color.FromRgb(0xFF, 0x7A, 0xD9))), Frozen(new SolidColorBrush(Color.FromRgb(0xB0, 0x7C, 0xFF))),
+        };
+        static readonly Brush[] GlitGlow =
+        {
+            Frozen(new RadialGradientBrush(Color.FromArgb(140, 255, 255, 255), Color.FromArgb(0, 255, 255, 255))),
+            Frozen(new RadialGradientBrush(Color.FromArgb(140, 0xC0, 0x6B, 0xFF), Color.FromArgb(0, 0xC0, 0x6B, 0xFF))),
+            Frozen(new RadialGradientBrush(Color.FromArgb(140, 0xFF, 0x4F, 0xC8), Color.FromArgb(0, 0xFF, 0x4F, 0xC8))),
+            Frozen(new RadialGradientBrush(Color.FromArgb(140, 0x8A, 0x5C, 0xFF), Color.FromArgb(0, 0x8A, 0x5C, 0xFF))),
+        };
+
+        void BuildGlitter()
+        {
+            double W = Math.Max(400, ActualWidth), H = Math.Max(300, ActualHeight);
+            double cx = W / 2, cy = H / 2 - H * 0.03, sc = Math.Min(W, H) * 0.021;
+            for (int i = 0; i < GN; i++)
+            {
+                // most on the outline (the classic heart curve), the rest scattered inside
+                double t = R(0, Math.PI * 2);
+                double hx = 16 * Math.Pow(Math.Sin(t), 3), hy = -(13 * Math.Cos(t) - 5 * Math.Cos(2 * t) - 2 * Math.Cos(3 * t) - Math.Cos(4 * t));
+                double k = i % 4 == 0 ? Math.Sqrt(R(0, 0.85)) : R(0.96, 1.04);
+                gx[i] = cx + hx * sc * k; gy[i] = cy + hy * sc * k;
+                gx0[i] = R(-0.1, 1.1) * W; gy0[i] = R(-0.1, 1.1) * H;
+                gph[i] = R(0, 6.28); gsz[i] = i % 4 == 0 ? R(0.8, 1.8) : R(1.2, 3.2);
+                gdx[i] = R(-60, 60); gdy[i] = R(-160, -40);
+                gcol[i] = rnd.Next(GlitDot.Length);
+            }
+        }
+
+        void DrawGlitter(DrawingContext dc)
+        {
+            if (glitT < 0) return;
+            double t = glitT;
+            double inT = Math.Min(1, t / 1.0), outT = Math.Max(0, (t - (GlitLen - 1.1)) / 1.1);
+            double gather = 1 - Math.Pow(1 - inT, 3);
+            double beat = 1 + 0.045 * Math.Sin(t * 7) * (1 - outT);
+            double W = ActualWidth, H = ActualHeight, cx = W / 2, cy = H / 2;
+            // a soft purple glow behind the heart
+            double ga = Math.Min(1, t / 0.6) * (1 - outT);
+            var bg = new RadialGradientBrush(Color.FromArgb((byte)(110 * ga), 0x9B, 0x4D, 0xFF), Color.FromArgb(0, 0x40, 0x10, 0x80));
+            double rr = Math.Min(W, H) * 0.42;
+            dc.DrawEllipse(bg, null, new Point(cx, cy), rr, rr);
+            for (int i = 0; i < GN; i++)
+            {
+                double px = gx0[i] + (gx[i] - gx0[i]) * gather, py = gy0[i] + (gy[i] - gy0[i]) * gather;
+                px = cx + (px - cx) * beat; py = cy + (py - cy) * beat;
+                px += gdx[i] * outT * 1.5; py += gdy[i] * outT * 1.5;
+                double tw = 0.35 + 0.65 * Math.Max(0, Math.Sin(time * 9 + gph[i]));
+                double a = Math.Min(1, t / 0.3) * (1 - outT) * tw;
+                if (a <= 0.02) continue;
+                double sz = gsz[i] * (0.8 + tw * 0.6);
+                dc.PushOpacity(a);
+                dc.DrawEllipse(GlitGlow[gcol[i]], null, new Point(px, py), sz * 3.2, sz * 3.2);
+                if (i % 7 == 0)
+                {
+                    // star glints
+                    dc.DrawRectangle(GlitDot[0], null, new Rect(px - sz * 0.25, py - sz * 2.6, sz * 0.5, sz * 5.2));
+                    dc.DrawRectangle(GlitDot[0], null, new Rect(px - sz * 2.6, py - sz * 0.25, sz * 5.2, sz * 0.5));
+                }
+                else dc.DrawEllipse(GlitDot[gcol[i]], null, new Point(px, py), sz * 0.7, sz * 0.7);
+                dc.Pop();
+            }
+        }
+
+        /// <summary>"frame", "glitter", "both" or "simple".</summary>
+        public string Style = "both";
+
+        double FrameAlpha()
+        {
+            if (frameT < 0) return 0;
+            if (frameT < 0.45) return frameT / 0.45;
+            if (frameT > FrameLen - 0.9) return Math.Max(0, (FrameLen - frameT) / 0.9);
+            return 1;
+        }
+
+        void DrawFrame(DrawingContext dc)
+        {
+            double fa = FrameAlpha();
+            if (fa <= 0) return;
+            double W = ActualWidth, H = ActualHeight;
+            // warm red glow around the window (vignette)
+            var vig = new RadialGradientBrush { RadiusX = 0.75, RadiusY = 0.75 };
+            vig.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 30, 70), 0.45));
+            vig.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(150 * fa), 200, 0, 40), 1));
+            dc.DrawRectangle(vig, null, new Rect(0, 0, W, H));
+            // bokeh lights drifting up
+            foreach (var b in bk)
+            {
+                double y2 = b.Y - b.Rise * frameT;
+                double tw = 0.6 + 0.4 * Math.Sin(time * 1.6 + b.Phase);
+                var rg = new RadialGradientBrush(Color.FromArgb((byte)(b.A * fa * tw), 255, 150, 180), Color.FromArgb(0, 255, 80, 120));
+                dc.DrawEllipse(rg, null, new Point(b.X, y2), b.R, b.R);
+            }
+            // glossy 3D hearts turning in place
+            foreach (var h in fh)
+            {
+                double t = frameT - h.Appear;
+                if (t <= 0) continue;
+                double pop = Overshoot(Math.Min(1, t / 0.45));
+                double turn = Math.Cos(time * h.Spin + h.Phase);           // fake rotation around the vertical axis
+                double sx = Math.Max(0.12, Math.Abs(turn)) * (turn >= 0 ? 1 : -1);
+                double sz = h.Size * h.Depth * pop * 0.5;
+                double bob = Math.Sin(time * 2 + h.Phase) * h.Bob;
+                dc.PushOpacity(fa * Math.Min(1, t / 0.25));
+                // soft shadow
+                dc.PushTransform(new TranslateTransform(h.X + 3, h.Y + bob + 5));
+                dc.PushTransform(new ScaleTransform(sz * Math.Abs(sx), sz));
+                dc.DrawGeometry(Shade, null, Heart);
+                dc.Pop(); dc.Pop();
+                // body (front is bright and glossy, the back is darker while it turns)
+                dc.PushTransform(new TranslateTransform(h.X, h.Y + bob));
+                dc.PushTransform(new RotateTransform(Math.Sin(time + h.Phase) * 10));
+                dc.PushTransform(new ScaleTransform(sz * Math.Abs(sx), sz));
+                dc.DrawGeometry(turn >= 0 ? GlossFront : GlossBack, null, Heart);
+                if (turn > 0.2)
+                {
+                    // specular highlights
+                    dc.DrawEllipse(B(Colors.White, 190 * turn), null, new Point(-0.42, -0.36), 0.17, 0.11);
+                    dc.DrawEllipse(B(Colors.White, 90 * turn), null, new Point(0.45, -0.38), 0.07, 0.05);
+                }
+                dc.Pop(); dc.Pop(); dc.Pop();
+                dc.Pop();
+            }
+            // sparkles twinkling around the frame
+            for (int k = 0; k < 40; k++)
+            {
+                double px = (k * 97.13 % 1) * W, py = (k * 53.71 % 1) * H;
+                if (k % 2 == 0) py = k % 4 == 0 ? (k * 13 % 60) : H - (k * 17 % 60); else px = k % 3 == 0 ? (k * 11 % 60) : W - (k * 19 % 60);
+                double tw = Math.Max(0, Math.Sin(time * 6 + k * 1.7));
+                var br = B(Colors.White, 255 * fa * tw);
+                double ssz = 3 + (k % 4) * 1.5;
+                dc.DrawRectangle(br, null, new Rect(px - ssz * 0.15, py - ssz, ssz * 0.3, ssz * 2));
+                dc.DrawRectangle(br, null, new Rect(px - ssz, py - ssz * 0.15, ssz * 2, ssz * 0.3));
+            }
+        }
+
         public void SetColors(Color accent, Color second) =>
             colors = new[] { C(0xFF2D55), accent, second, C(0xFFC93C), C(0xFF5C8A), C(0xB388FF), Colors.White };
 
         public void Celebrate(Point center, double coverSize)
         {
             love = true; bigX = center.X; bigY = center.Y; bigSize = Math.Max(160, coverSize); bigT = 0; rings = 0;
+            if (Style == "frame" || Style == "both") { BuildFrame(); frameT = 0; }
+            if (Style == "glitter" || Style == "both") { BuildGlitter(); glitT = 0; }
             Start();
         }
 
@@ -137,6 +338,8 @@ namespace GenZ.Controls
                 if (love && before < 0.32 && bigT >= 0.32) Burst();
                 if (bigT > (love ? 1.1 : 0.55)) bigT = -1;
             }
+            if (frameT >= 0) { frameT += dt; if (frameT > FrameLen) frameT = -1; }
+            if (glitT >= 0) { glitT += dt; if (glitT > GlitLen) glitT = -1; }
             for (int k = 0; k < rings; k++) ringT[k] += dt;
             if (rings > 0 && ringT[rings - 1] > 0.9) rings = 0;
             int idx = 0;
@@ -164,7 +367,7 @@ namespace GenZ.Controls
                 idx++;
             }
             InvalidateVisual();
-            if (bigT < 0 && count == 0 && rings == 0) { CompositionTarget.Rendering -= Frame; running = false; }
+            if (bigT < 0 && count == 0 && rings == 0 && frameT < 0 && glitT < 0) { CompositionTarget.Rendering -= Frame; running = false; }
         }
 
         static Brush B(Color c, double a) { var b = new SolidColorBrush(Color.FromArgb((byte)Math.Max(0, Math.Min(255, a)), c.R, c.G, c.B)); b.Freeze(); return b; }
@@ -172,6 +375,8 @@ namespace GenZ.Controls
         protected override void OnRender(DrawingContext dc)
         {
             double W = ActualWidth, H = ActualHeight;
+            DrawFrame(dc);
+            DrawGlitter(dc);
             // shock-wave rings
             for (int k = 0; k < rings; k++)
             {
