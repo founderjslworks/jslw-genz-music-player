@@ -89,7 +89,9 @@ namespace GenZ
             MainWindow = main;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             main.Show();
-            if (e.Args.Length > 0) main.OpenFiles(e.Args);
+            int tour = Array.IndexOf(e.Args, "--tour");
+            if (tour >= 0 && tour + 1 < e.Args.Length) { var dir = e.Args[tour + 1]; main.ContentRendered += (s2, a2) => main.RunTour(dir); }
+            else if (e.Args.Length > 0) main.OpenFiles(e.Args);
             Listen();
         }
 

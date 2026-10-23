@@ -1,0 +1,102 @@
+name: Windows guide screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (Release)
+        shell: pwsh
+        run: dotnet build windows/GenZ.Desktop/GenZ.Desktop.csproj -c Release
+
+      - name: Demo library (invented songs, art and lyrics)
+        shell: pwsh
+        run: |
+          python -m pip install --quiet numpy soundfile mutagen pillow
+          python windows/tools/demo_library.py "$env:USERPROFILE\Music\GEN-Z Demo"
+
+      - name: Screen resolution
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.Screen]::PrimaryScreen.Bounds | Out-String | Write-Host
+
+      - name: Tour of every screen
+        shell: pwsh
+        run: |
+          $dir = "$env:APPDATA\GEN-Z Music"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $music = ("$env:USERPROFILE\Music\GEN-Z Demo").Replace('\','\\')
+          "{`"TermsAccepted`":true,`"ThemeId`":`"vivid_genz`",`"Folders`":[`"$music`"],`"NowPlayingOpen`":true,`"UiScale`":1.0}" | Out-File -Encoding utf8 "$dir\settings.json"
+          $out = "$PWD\shots"
+          $exe = (Resolve-Path "windows/GenZ.Desktop/bin/Release/net48/GEN-Z Music.exe").Path
+          $p = Start-Process -FilePath $exe -ArgumentList "--tour", "`"$out`"" -PassThru
+          $p.WaitForExit(900000) | Out-Null
+          if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          Get-Content "$out\tour.log" -ErrorAction SilentlyContinue
+          Get-Content "$dir\crash.log" -ErrorAction SilentlyContinue
+          Get-ChildItem $out | Measure-Object | Select-Object -ExpandProperty Count
+
+      - name: Installer pages
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          choco install innosetup --no-progress -y | Out-Null
+          $v = (Select-String -Path windows/GenZ.Desktop/GenZ.Desktop.csproj -Pattern '<Version>(.+)</Version>').Matches[0].Groups[1].Value
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$v" windows/installer/genz.iss | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Add-Type @"
+          using System; using System.Runtime.InteropServices;
+          public static class W {
+            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+            [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+            [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+            [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+          }
+          "@
+          [W]::SetProcessDPIAware() | Out-Null
+          $setup = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
+          $p = Start-Process -FilePath $setup -PassThru
+          function Shot($name) {
+            Start-Sleep -Milliseconds 1800
+            $procs = Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and $_.ProcessName -like "GEN-Z*" -or $_.ProcessName -like "*.tmp" -or $_.ProcessName -like "is-*" }
+            $h = ($procs | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -Last 1).MainWindowHandle
+            if (-not $h) { $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $L=0;$T=0;$Wd=$b.Width;$Ht=$b.Height }
+            else { [W]::SetForegroundWindow($h) | Out-Null; $r = New-Object W+RECT; [W]::GetWindowRect($h, [ref]$r) | Out-Null; $L=$r.L;$T=$r.T;$Wd=$r.R-$r.L;$Ht=$r.B-$r.T }
+            $bmp = New-Object System.Drawing.Bitmap $Wd, $Ht
+            $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($L, $T, 0, 0, $bmp.Size)
+            $bmp.Save("$PWD\shots\$name.png", [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()
+          }
+          function Key($k) { [System.Windows.Forms.SendKeys]::SendWait($k) }
+          Start-Sleep 4
+          Shot "setup_0_mode"; Key "{ENTER}"
+          Shot "setup_1_welcome"; Key "{ENTER}"
+          Shot "setup_2_terms"; Key "%a"; Start-Sleep 1; Shot "setup_2b_terms_accepted"; Key "{ENTER}"
+          Shot "setup_3_licences"; Key "{ENTER}"
+          Shot "setup_4_folder"; Key "{ENTER}"
+          Shot "setup_5_tasks"; Key "{ENTER}"
+          Shot "setup_6_ready"; Key "{ENTER}"
+          Start-Sleep 8; Shot "setup_7_finished"
+          Get-Process | Where-Object { $_.ProcessName -like "GEN-Z*" -or $_.ProcessName -like "is-*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+
+      - name: Publish to guide-shots branch
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p /tmp/out && cp -r shots/. /tmp/out/ 2>/dev/null || true
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan guide-shots
+          git rm -rfq .
+          git clean -fdxq
+          cp -r /tmp/out/. .
+          git add -A
+          git commit -qm "Guide screenshots ${GITHUB_SHA}"
+          git push -f origin guide-shots
