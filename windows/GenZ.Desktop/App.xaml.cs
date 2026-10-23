@@ -16,6 +16,31 @@ namespace GenZ
         static Mutex single;
         MainWindow main;
 
+        /// <summary>Writes unexpected errors to %APPDATA%\GEN-Z Music\crash.log so problems can be found and fixed.</summary>
+        public static void Log(Exception ex, string where)
+        {
+            try
+            {
+                var dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GEN-Z Music");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(System.IO.Path.Combine(dir, "crash.log"), DateTime.Now.ToString("u") + " [" + where + "] " + ex + Environment.NewLine + Environment.NewLine);
+            }
+            catch { }
+        }
+
+        public App()
+        {
+            AppDomain.CurrentDomain.UnhandledException += (s, a) =>
+            {
+                if (a.ExceptionObject is Exception ex)
+                {
+                    Log(ex, "fatal");
+                    try { MessageBox.Show("GEN-Z Music hit a problem and has to close:\n\n" + ex.GetBaseException().Message + "\n\nDetails were saved to crash.log in %APPDATA%\\GEN-Z Music.", "GEN-Z Music", MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
+                }
+            };
+            TaskScheduler.UnobservedTaskException += (s, a) => { Log(a.Exception, "task"); a.SetObserved(); };
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             // one GEN-Z at a time: a second launch (e.g. "Open with") hands its file to the running window
@@ -46,7 +71,13 @@ namespace GenZ
             // terms of use: accepted in Setup, or here on the first run of a portable copy
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             if (!TermsWindow.EnsureAccepted()) { Shutdown(); return; }
-            main = new MainWindow();
+            try { main = new MainWindow(); }
+            catch (Exception ex)
+            {
+                Log(ex, "startup");
+                MessageBox.Show("GEN-Z Music could not start:\n\n" + ex.GetBaseException().Message + "\n\nDetails were saved to crash.log in %APPDATA%\\GEN-Z Music.", "GEN-Z Music", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown(); return;
+            }
             MainWindow = main;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             main.Show();
@@ -86,6 +117,7 @@ namespace GenZ
         {
             // Never crash on a bad file or a missing device: show what happened and keep going.
             e.Handled = true;
+            Log(e.Exception, "ui");
             try { MessageBox.Show(e.Exception.Message, "GEN-Z Music", MessageBoxButton.OK, MessageBoxImage.Warning); } catch { }
         }
     }

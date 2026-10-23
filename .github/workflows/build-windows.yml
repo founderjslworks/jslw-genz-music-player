@@ -21,6 +21,25 @@ jobs:
           dotnet build windows/GenZ.Desktop/GenZ.Desktop.csproj -c Release 2>&1 | Tee-Object -FilePath build.log
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
+      - name: Smoke test (start the app and read any crash)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $dir = "$env:APPDATA\GEN-Z Music"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          '{"TermsAccepted":true}' | Out-File -Encoding utf8 "$dir\settings.json"
+          $exe = (Resolve-Path "windows/GenZ.Desktop/bin/Release/net48/GEN-Z Music.exe").Path
+          $start = Get-Date
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep 20
+          "alive=" + (-not $p.HasExited) + " exit=" + $(if ($p.HasExited) { $p.ExitCode } else { "-" }) | Out-File smoke.log
+          if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=$start} -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProviderName -in '.NET Runtime','Application Error','Windows Error Reporting' } |
+            ForEach-Object { "---- " + $_.ProviderName; $_.Message } | Out-File -Append -Width 500 smoke.log
+          Get-Content "$dir\crash.log" -ErrorAction SilentlyContinue | Out-File -Append smoke.log
+          Get-Content smoke.log
+
       - name: Package portable zip
         shell: pwsh
         run: |
@@ -54,6 +73,7 @@ jobs:
           cp build.log /tmp/out/ 2>/dev/null || echo "no log" > /tmp/out/build.log
           cp GEN-Z-Music-Windows.zip /tmp/out/ 2>/dev/null || true
           cp installer.log /tmp/out/ 2>/dev/null || true
+          cp smoke.log /tmp/out/ 2>/dev/null || true
           cp dist/*.exe /tmp/out/ 2>/dev/null || true
           git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
           git checkout --orphan ci-windows
