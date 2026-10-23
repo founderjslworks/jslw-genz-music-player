@@ -19,7 +19,7 @@ namespace GenZ
 {
     public partial class MainWindow : Window
     {
-        enum View { Songs, Albums, Artists, Favourites, Queue, Themes, Anim, Eq, About, Search, Detail, Genres, Folders, Recent, Most, Playlist }
+        enum View { Songs, Albums, Artists, Favourites, Queue, Themes, Anim, Eq, About, Search, Detail, Genres, Folders, Recent, Most, Playlist, Flow }
 
         View view = View.Songs;
         List<Song> listed = new List<Song>();
@@ -122,6 +122,7 @@ namespace GenZ
             if (!IsInitialized) return;
             if (sender == NavSongs) ShowView(View.Songs);
             else if (sender == NavAlbums) ShowView(View.Albums);
+            else if (sender == NavFlow) { ShowView(View.Flow); FlowShowPlaying(true); }
             else if (sender == NavArtists) ShowView(View.Artists);
             else if (sender == NavFav) ShowView(View.Favourites);
             else if (sender == NavGenres) ShowView(View.Genres);
@@ -180,6 +181,7 @@ namespace GenZ
                         ShowList("Most played", most.Count == 0 ? "Your favourite songs, counted as you listen" : "Your top " + Songs(most.Count), most, null); break;
                     case View.Playlist: ShowPlaylist(openPlaylist); break;
                     case View.Albums: ShowAlbums(); break;
+                    case View.Flow: ShowFlow(); break;
                     case View.Artists: ShowArtists(); break;
                     case View.Genres: ShowGroups("Genres", Library.Genres, false); break;
                     case View.Folders: ShowGroups("Folders", Library.Folders, true); break;
@@ -750,6 +752,7 @@ namespace GenZ
         void OnKeys(object sender, KeyEventArgs e)
         {
             bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
+            if (FlowKeys(e)) { e.Handled = true; return; }
             if (e.Key == Key.F && ctrl) { SearchBox.Focus(); SearchBox.SelectAll(); e.Handled = true; }
             else if (e.Key == Key.P && ctrl) { OnPip(this, null); e.Handled = true; }
             else if ((e.Key == Key.Left && (Keyboard.Modifiers & ModifierKeys.Alt) != 0) || (e.SystemKey == Key.Left && (Keyboard.Modifiers & ModifierKeys.Alt) != 0)) { OnBack(this, null); e.Handled = true; }

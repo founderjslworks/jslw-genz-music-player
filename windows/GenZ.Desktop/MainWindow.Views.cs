@@ -576,6 +576,8 @@ namespace GenZ
             bool open = NpColumn.Width.Value > 0;
             Settings.Current.NowPlayingOpen = !open;
             SlidePanel(!open);
+            // hiding the player brings Album Flow to the centre, on the album that is playing
+            if (open && Player.Current != null && view != View.Flow) { NavFlow.IsChecked = true; FlowShowPlaying(true); }
         }
 
         void OnBarSongClick(object sender, MouseButtonEventArgs e)

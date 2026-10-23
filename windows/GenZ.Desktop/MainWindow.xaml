@@ -195,6 +195,7 @@
                         <TextBlock Text="LIBRARY" Margin="26,6,0,6" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Text2Brush}" />
                         <RadioButton x:Name="NavSongs" Style="{StaticResource NavItem}" Content="Songs" Tag="{StaticResource IcNote}" Checked="OnNav" />
                         <RadioButton x:Name="NavAlbums" Style="{StaticResource NavItem}" Content="Albums" Tag="{StaticResource IcAlbum}" Checked="OnNav" />
+                        <RadioButton x:Name="NavFlow" Style="{StaticResource NavItem}" Content="Album Flow" Tag="{StaticResource IcFlow}" Checked="OnNav" />
                         <RadioButton x:Name="NavArtists" Style="{StaticResource NavItem}" Content="Artists" Tag="{StaticResource IcPerson}" Checked="OnNav" />
                         <RadioButton x:Name="NavGenres" Style="{StaticResource NavItem}" Content="Genres" Tag="{StaticResource IcGenre}" Checked="OnNav" />
                         <RadioButton x:Name="NavFolders" Style="{StaticResource NavItem}" Content="Folders" Tag="{StaticResource IcFolder}" Checked="OnNav" />

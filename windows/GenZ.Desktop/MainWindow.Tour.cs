@@ -166,7 +166,17 @@ namespace GenZ
                 }
 
                 // ---- Now Playing panel hidden, and 4K-style large window
-                SlidePanel(false); await Task.Delay(900); Snap("panel_hidden"); SlidePanel(true); await Task.Delay(900);
+                ShowView(View.Songs, true); NavSongs.IsChecked = true; await Task.Delay(600);
+                SlidePanel(false); await Task.Delay(900); Snap("panel_hidden");
+
+                // ---- Album Flow: in the centre with the panel hidden, then with Now Playing, then a flipped cover
+                NavFlow.IsChecked = true; FlowShowPlaying(true); await Task.Delay(2200); Snap("album_flow_wide");
+                FlowGo(flowTarget + 2); await Task.Delay(1500); Snap("album_flow_browse");
+                FlowShowPlaying(false); await Task.Delay(1500);
+                FlowFlip(true); await Task.Delay(1400); Snap("album_flow_tracks");
+                FlowFlip(false); await Task.Delay(900);
+                SlidePanel(true); await Task.Delay(1200); Snap("album_flow");
+                NavSongs.IsChecked = true; await Task.Delay(900);
 
                 // ---- mini player (both looks)
                 foreach (var look in new[] { "compact", "cover" })
