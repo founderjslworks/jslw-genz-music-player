@@ -1,0 +1,18 @@
+  Determining projects to restore...
+  Restored D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\GenZ.Desktop.csproj (in 1.18 sec).
+D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\Controls\Celebration.cs(278,23): warning CS0108: 'Celebration.Style' hides inherited member 'FrameworkElement.Style'. Use the new keyword if hiding was intended. [D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\GenZ.Desktop_txfexez2_wpftmp.csproj]
+D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\MainWindow.Extras.cs(176,14): warning CS0649: Field 'MainWindow.theaterUpdating' is never assigned to, and will always have its default value false [D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\GenZ.Desktop_txfexez2_wpftmp.csproj]
+D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\Controls\Celebration.cs(278,23): warning CS0108: 'Celebration.Style' hides inherited member 'FrameworkElement.Style'. Use the new keyword if hiding was intended. [D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\GenZ.Desktop.csproj]
+D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\MainWindow.Extras.cs(176,14): warning CS0649: Field 'MainWindow.theaterUpdating' is never assigned to, and will always have its default value false [D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\GenZ.Desktop.csproj]
+  GenZ.Desktop -> D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\bin\Release\net48\GEN-Z Music.exe
+
+Build succeeded.
+
+D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\Controls\Celebration.cs(278,23): warning CS0108: 'Celebration.Style' hides inherited member 'FrameworkElement.Style'. Use the new keyword if hiding was intended. [D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\GenZ.Desktop_txfexez2_wpftmp.csproj]
+D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\MainWindow.Extras.cs(176,14): warning CS0649: Field 'MainWindow.theaterUpdating' is never assigned to, and will always have its default value false [D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\GenZ.Desktop_txfexez2_wpftmp.csproj]
+D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\Controls\Celebration.cs(278,23): warning CS0108: 'Celebration.Style' hides inherited member 'FrameworkElement.Style'. Use the new keyword if hiding was intended. [D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\GenZ.Desktop.csproj]
+D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\MainWindow.Extras.cs(176,14): warning CS0649: Field 'MainWindow.theaterUpdating' is never assigned to, and will always have its default value false [D:\a\jslw-genz-music-player\jslw-genz-music-player\windows\GenZ.Desktop\GenZ.Desktop.csproj]
+    4 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:14.75
