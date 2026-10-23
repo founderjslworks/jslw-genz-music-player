@@ -61,17 +61,23 @@ namespace GenZ
             }
 
             DispatcherUnhandledException += OnError;
+            Settings.Load();
+            bool tour = Array.IndexOf(e.Args, "--tour") >= 0;
+            if (Array.IndexOf(e.Args, "--safe") >= 0) Settings.Current.SoftwareRendering = true;
+            if (Settings.Current.SoftwareRendering && !tour)
+                try { System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly; } catch { }
+            Core.Perf.Decide(tour);
             // WPF animations run at 60 fps by default – follow the monitor instead (120 / 144 / 165 / 240 Hz)
             try
             {
                 int hz = Core.Display.RefreshRate();
+                if (Core.Perf.Light) hz = Math.Min(hz, Settings.Current.SoftwareRendering ? 30 : 60);
                 System.Windows.Media.Animation.Timeline.DesiredFrameRateProperty.OverrideMetadata(
                     typeof(System.Windows.Media.Animation.Timeline), new FrameworkPropertyMetadata { DefaultValue = hz });
             }
             catch { }
             // multicore JIT: the second and later starts compile the startup code in parallel
             try { System.Runtime.ProfileOptimization.SetProfileRoot(Settings.Dir); System.Runtime.ProfileOptimization.StartProfile("startup.jitprofile"); } catch { }
-            Settings.Load();
             ThemeManager.Load();
             var theme = ThemeManager.All.Find(t => t.Id == Settings.Current.ThemeId) ?? ThemeManager.All.Find(t => t.Id == "vivid_genz");
             if (theme != null) ThemeManager.Apply(theme);

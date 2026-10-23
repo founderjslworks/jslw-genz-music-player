@@ -135,7 +135,7 @@ namespace GenZ.Controls
                 {
                     int first = (int)sv.VerticalOffset, count = (int)Math.Ceiling(sv.ViewportHeight) + 1;
                     var cur = Settings.Current;
-                    if (a.ExtentHeightChange != 0 || a.VerticalChange == 0 || cur.ReduceMotion || cur.ScrollAnim == 0)
+                    if (a.ExtentHeightChange != 0 || a.VerticalChange == 0 || cur.ReduceMotion || cur.ScrollAnim == 0 || Core.Perf.Light)
                     {
                         seen.Clear(); for (int i = first; i < first + count; i++) seen.Add(i);
                         lastFirst = first; return;
@@ -350,6 +350,7 @@ namespace GenZ.Controls
         {
             page.BeginAnimation(UIElement.OpacityProperty, null); page.Opacity = 1; page.RenderTransform = Transform.Identity;
             if (Settings.Current.ReduceMotion || style == "none") { Remove(old, overlayHost); return; }
+            if (Core.Perf.Light) style = "fade";
             if (style == "random") style = Styles[rnd.Next(Styles.Length - 1)].id;
             double w = Math.Max(1, clipArea.ActualWidth), h = Math.Max(1, clipArea.ActualHeight);
             if (old != null) old.Clip = new RectangleGeometry(new Rect(0, 0, w, h));
@@ -477,7 +478,7 @@ namespace GenZ.Controls
             sv.ScrollChanged += (s, e) =>
             {
                 var cur = Settings.Current;
-                bool animate = e.VerticalChange != 0 && e.ExtentHeightChange == 0 && !cur.ReduceMotion && cur.ScrollAnim > 0;
+                bool animate = e.VerticalChange != 0 && e.ExtentHeightChange == 0 && !cur.ReduceMotion && cur.ScrollAnim > 0 && !Core.Perf.Light;
                 bool down = e.VerticalChange >= 0;
                 var now = new HashSet<FrameworkElement>();
                 foreach (var it in items())

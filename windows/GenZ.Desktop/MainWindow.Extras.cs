@@ -49,7 +49,7 @@ namespace GenZ
         // ================================================================ sidebar: space click effects
         void OnNavClickFx(object sender, MouseButtonEventArgs e)
         {
-            var fx = Settings.Current.NavEffect;
+            var fx = Core.Perf.Light ? "none" : Settings.Current.NavEffect;
             if (fx == "none") return;
             var layer = AdornerLayerCanvas();
             SpaceFx.Play(layer, e.GetPosition(layer), fx);
@@ -59,7 +59,7 @@ namespace GenZ
         double volPulse;
         void VolumeTick()
         {
-            double lvl = Settings.Current.LiveVolume && Player.IsPlaying && !Settings.Current.ReduceMotion ? Player.Level * Math.Max(0.15, Player.Volume) : 0;
+            double lvl = Settings.Current.LiveVolume && !Core.Perf.Light && Player.IsPlaying && !Settings.Current.ReduceMotion ? Player.Level * Math.Max(0.15, Player.Volume) : 0;
             volPulse = Math.Max(lvl, volPulse * 0.8);
             Live(NpVolume, NpVolGlow, NpVolIcon);
             if (BarVolumeBox.Visibility == Visibility.Visible) Live(BarVolume, BarVolGlow, BarVolIcon);
@@ -95,7 +95,7 @@ namespace GenZ
             FrameworkElement at = NpColumn.Width.Value > 0 && NpCoverHost.IsVisible ? (FrameworkElement)NpCoverHost : BarCover;
             var p = at.TranslatePoint(new Point(at.ActualWidth / 2, at.ActualHeight / 2), celebration);
             double size = Math.Max(at.ActualWidth, 160);
-            celebration.Style = Settings.Current.LikeEffect;
+            celebration.Style = Core.Perf.Light ? "simple" : Settings.Current.LikeEffect;
             if (on) celebration.Celebrate(p, size); else celebration.Unlove(p, size);
         }
 

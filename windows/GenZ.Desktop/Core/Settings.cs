@@ -40,6 +40,8 @@ namespace GenZ.Core
         public bool CoverBreathe { get; set; } = true;
         public double AnimSpeed { get; set; } = 1.0;               // 0.5 = slower, 2 = faster
         public bool ReduceMotion { get; set; } = false;
+        public string Performance { get; set; } = "auto";          // auto, best, light (older PCs) – see Core.Perf
+        public bool SoftwareRendering { get; set; } = false;       // safe mode for old or faulty graphics drivers
 
         // picture-in-picture mini player
         public bool AutoPip { get; set; } = false;

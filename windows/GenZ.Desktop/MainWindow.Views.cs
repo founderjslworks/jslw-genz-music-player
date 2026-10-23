@@ -533,16 +533,17 @@ namespace GenZ
             var row = new Border { CornerRadius = new CornerRadius(14), Padding = new Thickness(10, 8, 16, 8), Margin = new Thickness(0, 2, 0, 2), Cursor = Cursors.Hand, Background = Brushes.Transparent, BorderThickness = new Thickness(current ? 2 : 0) };
             if (current) row.SetResourceReference(Border.BorderBrushProperty, "AccentBrush");
             var g = new Grid();
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-            g.ColumnDefinitions.Add(new ColumnDefinition());
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-            var chip = new Border { Height = 40, CornerRadius = new CornerRadius(10), Background = new LinearGradientBrush(t.Header, t.HeaderEnd, 0), Margin = new Thickness(0, 0, 16, 0) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { MinWidth = 60 });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var barCol = new ColumnDefinition { Width = new GridLength(130) };
+            g.ColumnDefinitions.Add(barCol);
+            var chip = new Border { Width = 112, Height = 40, CornerRadius = new CornerRadius(10), Background = new LinearGradientBrush(t.Header, t.HeaderEnd, 0), Margin = new Thickness(0, 0, 16, 0) };
             chip.Child = new TextBlock { Text = "Aa", FontFamily = ThemeManager.Font(t.DisplayFont), FontSize = 18, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(t.C("headerText", Colors.White)), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
             g.Children.Add(chip);
             var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            name.Children.Add(new TextBlock { Text = t.Name + (current ? "  ✓" : ""), FontFamily = ThemeManager.Font(t.DisplayFont), FontSize = 16, FontWeight = FontWeights.Bold });
-            var sub = new TextBlock { Text = (t.Dark ? "Dark" : "Light") + " · " + Cap(t.ProgressStyle) + " bar", FontSize = 12 };
+            name.Children.Add(new TextBlock { Text = t.Name + (current ? "  ✓" : ""), FontFamily = ThemeManager.Font(t.DisplayFont), FontSize = 16, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
+            var sub = new TextBlock { Text = (t.Dark ? "Dark" : "Light") + " · " + Cap(t.ProgressStyle) + " bar", FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis };
             sub.SetResourceReference(TextBlock.ForegroundProperty, "Text2Brush");
             name.Children.Add(sub);
             Grid.SetColumn(name, 1); g.Children.Add(name);
@@ -550,6 +551,14 @@ namespace GenZ
             Grid.SetColumn(sw, 2); g.Children.Add(sw);
             var bar = new Border { Height = 6, CornerRadius = new CornerRadius(3), Background = ProgressBrush(t), VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(bar, 3); g.Children.Add(bar);
+            // narrow windows: the name always wins – the bar, then the swatches step aside
+            g.SizeChanged += (s, e) =>
+            {
+                double w = e.NewSize.Width;
+                bar.Visibility = w < 620 ? Visibility.Collapsed : Visibility.Visible;
+                barCol.Width = new GridLength(w < 620 ? 0 : 130);
+                sw.Visibility = w < 420 ? Visibility.Collapsed : Visibility.Visible;
+            };
             row.Child = g;
             row.MouseEnter += (s, e) => row.SetResourceReference(Border.BackgroundProperty, "HoverBrush");
             row.MouseLeave += (s, e) => row.Background = Brushes.Transparent;

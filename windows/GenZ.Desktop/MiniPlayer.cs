@@ -238,7 +238,7 @@ namespace GenZ
         void KenBurns(bool playing)
         {
             if (kenScale == null) return;
-            if (!playing || Settings.Current.ReduceMotion)
+            if (!playing || Settings.Current.ReduceMotion || Core.Perf.Light)
             {
                 kenScale.BeginAnimation(ScaleTransform.ScaleXProperty, null); kenScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
                 kenMove.BeginAnimation(TranslateTransform.XProperty, null); kenMove.BeginAnimation(TranslateTransform.YProperty, null);
@@ -276,7 +276,7 @@ namespace GenZ
                 playIcon.Data = geo;
                 Fx.Pop(play);
             }
-            bar.Playing = playing && Settings.Current.Sparkles;
+            bar.Playing = playing && Settings.Current.Sparkles && !Core.Perf.Light;
             if (playing != wasPlaying) { wasPlaying = playing; KenBurns(playing); }
             if (s != shown)
             {

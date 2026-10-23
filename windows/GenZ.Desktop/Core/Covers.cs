@@ -94,7 +94,7 @@ namespace GenZ.Core
         public static ImageBrush Brush(ImageSource img)
         {
             var b = new ImageBrush(img) { Stretch = Stretch.UniformToFill };
-            System.Windows.Media.RenderOptions.SetBitmapScalingMode(b, BitmapScalingMode.HighQuality);
+            System.Windows.Media.RenderOptions.SetBitmapScalingMode(b, Perf.Scaling);
             return b;
         }
 
@@ -104,7 +104,7 @@ namespace GenZ.Core
         /// <summary>Loads a cover <paramref name="size"/> layout pixels wide, decoded at the screen's real pixel size.</summary>
         public static Task<BitmapSource> LoadAsync(Song s, int size)
         {
-            int px = (int)Math.Min(2048, Math.Ceiling(size * Math.Max(1, PixelScale) / 64.0) * 64);
+            int px = (int)Math.Min(Perf.Light ? 768 : 2048, Math.Ceiling(size * Math.Max(1, PixelScale) / 64.0) * 64);
             return Task.Run(() => Load(s, px));
         }
 

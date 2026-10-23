@@ -271,11 +271,12 @@
                 <!-- album / artist / theme grids -->
                 <DockPanel x:Name="PageGrid" Visibility="Collapsed">
                     <Grid DockPanel.Dock="Top" Margin="28,22,28,12">
-                        <StackPanel>
-                            <TextBlock x:Name="GridTitle" Text="Albums" FontSize="30" FontWeight="Bold" FontFamily="{DynamicResource DisplayFont}" />
-                            <TextBlock x:Name="GridSub" Margin="0,2,0,0" FontSize="13" Foreground="{DynamicResource Text2Brush}" />
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" MinWidth="90" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,14,0">
+                            <TextBlock x:Name="GridTitle" Text="Albums" FontSize="30" FontWeight="Bold" FontFamily="{DynamicResource DisplayFont}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="GridSub" Margin="0,2,0,0" FontSize="13" Foreground="{DynamicResource Text2Brush}" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
-                        <StackPanel x:Name="GridTools" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        <StackPanel x:Name="GridTools" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" />
                     </Grid>
                     <Grid x:Name="GridHeader" DockPanel.Dock="Top" Margin="40,0,36,4" Visibility="Collapsed" />
                     <ScrollViewer x:Name="GridScroll" VerticalScrollBarVisibility="Auto" Margin="18,0,8,0">

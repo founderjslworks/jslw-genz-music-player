@@ -584,7 +584,7 @@ namespace GenZ
                 var a = new DoubleAnimation(playing || !Settings.Current.CoverBreathe ? 1 : 0.93, Settings.Ms(420)) { EasingFunction = new BackEase { Amplitude = 0.3, EasingMode = EasingMode.EaseOut } };
                 st.BeginAnimation(ScaleTransform.ScaleXProperty, a); st.BeginAnimation(ScaleTransform.ScaleYProperty, a);
             }
-            NpBar.Playing = playing && Settings.Current.Sparkles && !Settings.Current.ReduceMotion;
+            NpBar.Playing = playing && Settings.Current.Sparkles && !Settings.Current.ReduceMotion && !Core.Perf.Light;
             BarBar.Playing = NpBar.Playing;
             UpdateToggles();
         }
@@ -1173,6 +1173,7 @@ namespace GenZ
                 cur.UiScale = double.Parse(v, System.Globalization.CultureInfo.InvariantCulture);
                 scale = -1; ApplyScale();
             }));
+            PerformancePrefs(cur);
             Section(PrefsPanel, "PLAYBACK", null);
             PrefsPanel.Children.Add(Toggle("Soft fade on play and pause", "The music fades in and out instead of stopping abruptly", cur.FadePlayPause, v => cur.FadePlayPause = v));
             PrefsPanel.Children.Add(Toggle("Continue where you left off", "Remember Up next, the song and its position when GEN-Z closes", cur.RememberQueue, v => cur.RememberQueue = v));
@@ -1182,6 +1183,23 @@ namespace GenZ
             var b = new Button { Style = (Style)FindResource("PillButton"), Content = "Open mini player now", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0) };
             b.Click += (s, e) => OnPip(this, null);
             PrefsPanel.Children.Add(b);
+        }
+
+        /// <summary>Old-hardware support: Automatic / Best looks / Light, and software drawing (safe mode).</summary>
+        void PerformancePrefs(Settings cur)
+        {
+            string state = Core.Perf.Light ? "Light mode is on" + (Core.Perf.Reason.Length > 0 ? " (" + Core.Perf.Reason + ")" : "") : "Full effects are on";
+            Section(PrefsPanel, "PERFORMANCE & OLDER PCs", Core.Perf.Summary() + " " + state + ". Light mode keeps GEN-Z smooth on older PCs: "
+                + "no star field, sidebar or scroll effects, simple fades, a simpler like animation and lighter cover scaling.");
+            var opts = new[] { ("auto", "Automatic"), ("best", "Best looks"), ("light", "Light (older PCs)") };
+            PrefsPanel.Children.Add(Choices(opts, cur.Performance ?? "auto", v =>
+            {
+                cur.Performance = v; Core.Perf.Decide();
+                Controls.SpaceFx.StarField(NavStars, cur.NavStarField); OnPlayerState();
+                ShowToast(Core.Perf.Light ? "Light mode on – smoother on older PCs" : "Full effects on");
+            }));
+            PrefsPanel.Children.Add(Toggle("Software drawing (safe mode)", "For old or faulty graphics drivers – draws without the graphics card. Takes effect after a restart.",
+                cur.SoftwareRendering, v => { cur.SoftwareRendering = v; ShowToast("Restart GEN-Z Music to apply"); }));
         }
 
         // ================================================================ files from Explorer ("Open with GEN-Z Music")

@@ -173,7 +173,7 @@ namespace GenZ.Controls
         public static void StarField(Canvas field, bool on)
         {
             field.Children.Clear();
-            if (!on || Settings.Current.ReduceMotion) return;
+            if (!on || Settings.Current.ReduceMotion || Core.Perf.Light) return;
             void Fill()
             {
                 field.Children.Clear();

@@ -26,6 +26,32 @@ jobs:
         shell: pwsh
         continue-on-error: true
         run: |
+          Add-Type @"
+          using System; using System.Runtime.InteropServices;
+          public static class Res {
+            [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+            public struct DEVMODE {
+              [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmDeviceName;
+              public short dmSpecVersion, dmDriverVersion, dmSize, dmDriverExtra; public int dmFields;
+              public int dmPositionX, dmPositionY, dmDisplayOrientation, dmDisplayFixedOutput;
+              public short dmColor, dmDuplex, dmYResolution, dmTTOption, dmCollate;
+              [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmFormName;
+              public short dmLogPixels; public int dmBitsPerPel, dmPelsWidth, dmPelsHeight, dmDisplayFlags, dmDisplayFrequency;
+              public int dmICMMethod, dmICMIntent, dmMediaType, dmDitherType, dmReserved1, dmReserved2, dmPanningWidth, dmPanningHeight;
+            }
+            [DllImport("user32.dll")] public static extern bool EnumDisplaySettings(string d, int i, ref DEVMODE m);
+            [DllImport("user32.dll")] public static extern int ChangeDisplaySettings(ref DEVMODE m, int f);
+            public static string Set(int w, int h) {
+              var m = new DEVMODE(); m.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+              string modes = "";
+              for (int i = 0; EnumDisplaySettings(null, i, ref m); i++) modes += m.dmPelsWidth + "x" + m.dmPelsHeight + " ";
+              EnumDisplaySettings(null, -1, ref m);
+              m.dmPelsWidth = w; m.dmPelsHeight = h; m.dmFields = 0x80000 | 0x100000;
+              return "modes: " + modes + " | change=" + ChangeDisplaySettings(ref m, 0);
+            }
+          }
+          "@
+          foreach ($r in @(@(1920,1080), @(1680,1050), @(1600,1200), @(1600,900))) { $o = [Res]::Set($r[0], $r[1]); Write-Host $o; if ($o.EndsWith("change=0")) { break } }
           Add-Type -AssemblyName System.Windows.Forms
           [System.Windows.Forms.Screen]::PrimaryScreen.Bounds | Out-String | Write-Host
 
