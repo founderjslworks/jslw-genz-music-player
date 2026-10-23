@@ -12,6 +12,9 @@ with no internet permission at all.
 
 🖥️ **On a PC?** GEN-Z Music for Windows (Windows 7 to 11) has its own home: [founderjslworks/jslw-genz-music-windows](https://github.com/founderjslworks/jslw-genz-music-windows).
 
+![GEN-Z Music on Android](docs/screenshots/hero.jpg)
+
+
 ## What's new in 1.7
 - **Turntable widgets**: pearl turntable design with your cover as the record label, a tonearm, round 3D buttons and a live duration (4×1, 4×2 and 2×2)
 - **Spinning vinyl** cover mode with a tonearm that lifts on pause
@@ -59,6 +62,18 @@ with no internet permission at all.
   See [docs/privacy-policy.html](docs/privacy-policy.html).
 
 ---
+
+## Screenshots
+
+| Home | Now Playing | Albums | Equalizer |
+|:-:|:-:|:-:|:-:|
+| <img src="docs/screenshots/01_home.jpg" width="200"> | <img src="docs/screenshots/03_now_playing.jpg" width="200"> | <img src="docs/screenshots/11_albums.jpg" width="200"> | <img src="docs/screenshots/06_equalizer.jpg" width="200"> |
+| **Themes** | **Theme editor** | **Love it!** | **Lock screen** |
+| <img src="docs/screenshots/07_themes.jpg" width="200"> | <img src="docs/screenshots/08_theme_editor.jpg" width="200"> | <img src="docs/screenshots/15_favourite_celebration.jpg" width="200"> | <img src="docs/screenshots/14_lock_screen.jpg" width="200"> |
+| **Bollywood Nights** | **Synthwave '84** | **Retro Clickwheel** | **Cassette '84** |
+| <img src="docs/screenshots/theme_bollywood_nights_np.jpg" width="200"> | <img src="docs/screenshots/theme_synthwave_84_np.jpg" width="200"> | <img src="docs/screenshots/theme_retro_clickwheel_np.jpg" width="200"> | <img src="docs/screenshots/theme_cassette_84_np.jpg" width="200"> |
+
+<sub>Screenshots use original demo songs and covers made for the user guide.</sub>
 
 ## Download
 
