@@ -23,6 +23,14 @@ android {
     //   GENZ_KEYSTORE=/path/upload.jks  GENZ_KEYSTORE_PASSWORD=…  GENZ_KEY_ALIAS=…  GENZ_KEY_PASSWORD=…
     val ks = System.getenv("GENZ_KEYSTORE")
     signingConfigs {
+        // A fixed key for the APKs shared on GitHub, so every new version installs over the old one
+        // (CI machines otherwise make a new random debug key each build, forcing an uninstall).
+        getByName("debug") {
+            storeFile = file("genz-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (ks != null && file(ks).exists()) {
             create("upload") {
                 storeFile = file(ks)

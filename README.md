@@ -6,7 +6,7 @@ A fully offline music player for Android, built for music lovers who want a play
 feels like their music. It runs on **Android 4.4 KitKat through Android 16**, on phones and tablets,
 with no internet permission at all.
 
-> Package `com.jslw.genz` · Version 1.7 · 🇮🇳 Made in India with ♥
+> Package `com.jslw.genz` · Version 1.8 · 🇮🇳 Made in India with ♥
 
 **⬇️ [Download the latest APK and user guide](https://github.com/founderjslworks/jslw-genz-music-player/releases/latest)** · 🌐 [www.jslworks.in](https://www.jslworks.in/android-devlopment)
 
@@ -14,6 +14,14 @@ with no internet permission at all.
 
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
+
+## What's new in 1.8
+
+- **Android Auto**: GEN-Z appears on your car's screen with its own icon. Browse Recently played, Favourites, Playlists, Albums (as cover grid), Artists, Genres and All songs, tap to play, see Up next, use the heart and shuffle buttons, and ask the Assistant: *"Play Arijit Singh on GEN-Z Music"*.
+- Every new APK now installs over the previous one – no uninstall needed (from 1.8 on).
+
+> **Android Auto with the APK from GitHub:** Android Auto only lists Play Store apps until you allow others once.
+> On the phone open **Android Auto settings**, tap **Version** 10 times to unlock developer mode, then **⋮ › Developer settings › Unknown sources** ✓, and reconnect to the car.
 
 ## What's new in 1.7
 - **Turntable widgets**: pearl turntable design with your cover as the record label, a tonearm, round 3D buttons and a live duration (4×1, 4×2 and 2×2)
