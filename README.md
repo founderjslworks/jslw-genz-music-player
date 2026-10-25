@@ -1,5 +1,12 @@
 # GEN-Z Music
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23637904.svg)](https://doi.org/10.5281/zenodo.23637904)
+
+**Official Zenodo DOI:** [10.5281/zenodo.23637904](https://doi.org/10.5281/zenodo.23637904)  
+**Developer:** Partho Ghosh  
+**Organization:** JSL WORKS PVT LTD  
+**ORCID:** [0009-0000-0061-2451](https://orcid.org/0009-0000-0061-2451)
+
 **Project JSLW "GEN-Z" Music Player** · by Partho Ghosh · © 2026 JSL WORKS PVT LTD
 
 A fully offline music player for Android, built for music lovers who want a player that looks and
