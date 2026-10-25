@@ -120,3 +120,6 @@ app/src/main/res/font/       bundled Google Fonts
 **All rights reserved.** This code is public so it can be viewed. It is not open source. See
 [LICENSE](LICENSE). Third-party components keep their own licences (Apache 2.0, SIL OFL 1.1); see
 `app/src/main/assets/licenses/`.
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23637904.svg)](https://doi.org/10.5281/zenodo.23637904)
+  
