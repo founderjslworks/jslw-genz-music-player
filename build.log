@@ -1,0 +1,133 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:checkDebugDuplicateClasses
+> Task :app:desugarDebugFileDependencies
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:processDebugManifestForPackage
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:mergeReleaseShaders
+> Task :app:compileReleaseShaders NO-SOURCE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets
+> Task :app:buildKotlinToolingMetadata
+> Task :app:generateReleaseBuildConfig
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:generateReleaseResValues
+> Task :app:checkReleaseAarMetadata
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources
+> Task :app:processDebugResources
+> Task :app:packageReleaseResources
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease
+> Task :app:parseReleaseLocalResources
+> Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
+> Task :app:javaPreCompileRelease
+> Task :app:processReleaseManifestForPackage
+> Task :app:mergeReleaseArtProfile
+> Task :app:extractProguardFiles
+> Task :app:mergeReleaseStartupProfile
+> Task :app:mergeReleaseJniLibFolders
+> Task :app:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:stripReleaseDebugSymbols NO-SOURCE
+> Task :app:writeReleaseAppMetadata
+> Task :app:collectReleaseDependencies
+> Task :app:configureReleaseDependencies
+> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeReleaseResources
+> Task :app:parseReleaseIntegrityConfig
+> Task :app:processReleaseResources
+
+> Task :app:compileReleaseKotlin
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:8:8 'class Virtualizer : AudioEffect' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:24:23 'class Virtualizer : AudioEffect' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:47:22 'constructor(p0: Int, p1: Int): Virtualizer' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:91:24 'val strengthSupported: Boolean' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:91:46 'fun setStrength(p0: Short): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/LibraryScreens.kt:102:31 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/LockScreenActivity.kt:136:23 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/MainActivity.kt:223:9 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/NowPlayingActivity.kt:148:38 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/NowPlayingActivity.kt:633:68 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/OpenAudioActivity.kt:23:9 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/ThemeEditorActivity.kt:245:13 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/ThemesActivity.kt:86:9 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/views/HardwareControls.kt:187:102 'field scaledDensity: Float' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/util/Motion.kt:130:46 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/util/Motion.kt:133:47 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+
+> Task :app:compileDebugKotlin
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:8:8 'class Virtualizer : AudioEffect' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:24:23 'class Virtualizer : AudioEffect' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:47:22 'constructor(p0: Int, p1: Int): Virtualizer' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:91:24 'val strengthSupported: Boolean' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/audio/AudioFx.kt:91:46 'fun setStrength(p0: Short): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/LibraryScreens.kt:102:31 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/LockScreenActivity.kt:136:23 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/MainActivity.kt:223:9 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/NowPlayingActivity.kt:148:38 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/NowPlayingActivity.kt:633:68 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/OpenAudioActivity.kt:23:9 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/ThemeEditorActivity.kt:245:13 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/ThemesActivity.kt:86:9 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/ui/views/HardwareControls.kt:187:102 'field scaledDensity: Float' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/util/Motion.kt:130:46 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+w: file:///home/runner/work/jslw-genz-music-player/jslw-genz-music-player/app/src/main/java/com/jslw/genz/util/Motion.kt:133:47 'fun overridePendingTransition(p0: Int, p1: Int): Unit' is deprecated. Deprecated in Java.
+
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:mergeDebugJavaResource
+> Task :app:dexBuilderDebug
+> Task :app:mergeReleaseGeneratedProguardFiles
+> Task :app:processReleaseJavaRes
+> Task :app:expandReleaseArtProfileWildcards
+> Task :app:generateReleaseLintVitalReportModel
+> Task :app:mergeReleaseJavaResource
+> Task :app:mergeDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+> Task :app:lintVitalAnalyzeRelease
+> Task :app:minifyReleaseWithR8
+> Task :app:buildReleasePreBundle
+> Task :app:compileReleaseArtProfile
+> Task :app:lintVitalReportRelease
+> Task :app:lintVitalRelease
+> Task :app:packageReleaseBundle
+> Task :app:signReleaseBundle
+> Task :app:produceReleaseBundleIdeListingFile
+> Task :app:createReleaseBundleListingFileRedirect
+> Task :app:bundleRelease
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1793387853808.json
+
+BUILD SUCCESSFUL in 1m 51s
+77 actionable tasks: 77 executed
