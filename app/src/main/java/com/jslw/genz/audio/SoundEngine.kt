@@ -71,6 +71,16 @@ object SoundEngine {
         }
     }
 
+    /** The connected Bluetooth / HDMI device's own name (e.g. a soundbar's model), if Android reports it. */
+    fun deviceName(ctx: Context): String? {
+        if (Build.VERSION.SDK_INT < 23) return null
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return null
+        val outs = try { am.getDevices(AudioManager.GET_DEVICES_OUTPUTS) } catch (_: Throwable) { return null }
+        return outs.firstOrNull {
+            it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == AudioDeviceInfo.TYPE_HDMI || it.type == AudioDeviceInfo.TYPE_HDMI_ARC
+        }?.productName?.toString()?.takeIf { it.isNotBlank() && it != Build.MODEL }
+    }
+
     /** The output the engine tunes for: the user's choice, or what is connected. */
     fun output(ctx: Context): Output = when (Prefs.seOutput) {
         "headphones" -> Output.HEADPHONES

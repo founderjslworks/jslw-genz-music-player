@@ -54,6 +54,7 @@ class SoundTuning(private val a: Activity, private val changed: () -> Unit) {
         val outs = ChipGroup(a).apply { isSingleLine = true; isSingleSelection = true }
         for ((id, name) in listOf("auto" to "Auto-detect", "headphones" to "Headphones", "speaker" to "Speaker", "soundbar" to "Soundbar mode")) {
             val c = chip(name, outs)
+            if (id == "soundbar") { c.setChipIconResource(R.drawable.ic_soundbar); c.isChipIconVisible = true }
             c.isChecked = Prefs.seOutput == id
             c.setOnClickListener { Prefs.seOutput = id; showOutput(); changed() }
         }
@@ -80,7 +81,9 @@ class SoundTuning(private val a: Activity, private val changed: () -> Unit) {
     fun showOutput() {
         if (!::outputLine.isInitialized) return
         val d = SoundEngine.detect(a)
-        outputLine.text = if (Prefs.seOutput == "auto") "Listening on: ${d.label}" else "Listening on: ${d.label} · tuned for ${SoundEngine.output(a).label.lowercase()}"
+        // show the connected device by its own name, e.g. the soundbar's model
+        val name = SoundEngine.deviceName(a)?.let { "$it (${d.label.lowercase()})" } ?: d.label
+        outputLine.text = if (Prefs.seOutput == "auto") "Listening on: $name" else "Listening on: $name · tuned for ${SoundEngine.output(a).label.lowercase()}"
     }
 
     fun setEnabled(on: Boolean) {
