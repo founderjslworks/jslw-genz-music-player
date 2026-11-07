@@ -63,7 +63,7 @@ object ListAnim {
         rv.addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
             override fun onChildViewAttachedToWindow(view: View) {
                 val scrolling = rv.scrollState != RecyclerView.SCROLL_STATE_IDLE || SystemClock.uptimeMillis() - lastScroll < 250
-                if (scrolling && Prefs.listAnim != 0) animate(view, down, Prefs.listAnim)
+                if (scrolling && Prefs.listAnim != 0 && !Perf.light) animate(view, down, Prefs.listAnim)
             }
             override fun onChildViewDetachedFromWindow(view: View) { view.clearAnimation() }
         })

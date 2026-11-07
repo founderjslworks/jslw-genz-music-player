@@ -17,6 +17,14 @@ import com.jslw.genz.util.SystemBars
 
 /** Applies the active theme file, edge-to-edge insets and the classic header to every screen. */
 abstract class BaseActivity : AppCompatActivity() {
+
+    @Deprecated("forwarded for system prompts started outside an ActivityResult contract")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        SongDelete.onResult(this, requestCode, resultCode)
+    }
+
     protected val skin: Skin get() = SkinManager.current
     private var appliedSkin = ""
 

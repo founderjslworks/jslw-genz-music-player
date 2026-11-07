@@ -69,6 +69,16 @@ class MusicService : MediaBrowserServiceCompat() {
     private val binder = LocalBinder()
     private val handler = Handler(Looper.getMainLooper())
     private val exec = Executors.newSingleThreadExecutor()
+    /**
+     * Opening, probing and releasing audio files. Never on the main thread: a slow card, a damaged file or a
+     * decoder that hangs (seen with some Opus files on Android 9) used to freeze the whole app. A pool, so one
+     * stuck file can't hold up the next.
+     */
+    private val engineExec = Executors.newCachedThreadPool { r -> Thread(r, "genz-engine").apply { isDaemon = true } }
+    private var loadGen = 0
+    private var loading = false
+    private var loadPlay = false
+    private var loadWatchdog: Runnable? = null
 
     // ---------------------------------------------------------------- queue state
     private val _queue = ArrayList<Song>()
@@ -134,7 +144,9 @@ class MusicService : MediaBrowserServiceCompat() {
             // KitKat: reserve a session by keeping one idle MediaPlayer around.
             MediaPlayer().also { sessionHolder = it }.audioSessionId
         }
-        fx = AudioFx(audioSessionId)
+        fx = AudioFx(audioSessionId, this)
+        // re-tune the JSLW Sound Engine when headphones / Bluetooth / speaker change
+        if (Build.VERSION.SDK_INT >= 23) try { am.registerAudioDeviceCallback(routeCallback as android.media.AudioDeviceCallback, handler) } catch (_: Throwable) {}
         sendBroadcast(Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
             putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
             putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
@@ -202,6 +214,7 @@ class MusicService : MediaBrowserServiceCompat() {
         try { unregisterReceiver(headsetReceiver) } catch (_: Exception) {}
         shake.setActive(false)
         floating.hide()
+        if (Build.VERSION.SDK_INT >= 23) try { am.unregisterAudioDeviceCallback(routeCallback as android.media.AudioDeviceCallback) } catch (_: Throwable) {}
         fx.release()
         sessionHolder?.release()
         sendBroadcast(Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION).apply {
@@ -211,6 +224,7 @@ class MusicService : MediaBrowserServiceCompat() {
         session.isActive = false
         session.release()
         exec.shutdown()
+        engineExec.shutdown()
         super.onDestroy()
     }
 
@@ -285,6 +299,16 @@ class MusicService : MediaBrowserServiceCompat() {
         queueChanged()
     }
 
+    /** A song's file was deleted: take it out of the queue (skipping ahead if it was playing). */
+    fun removeSong(s: Song) {
+        original.removeAll { it.id == s.id }
+        while (true) {
+            val i = _queue.indexOfFirst { it.id == s.id }
+            if (i < 0) break
+            removeAt(i)
+        }
+    }
+
     fun move(from: Int, to: Int) {
         if (from !in _queue.indices || to !in _queue.indices || from == to) return
         val s = _queue.removeAt(from)
@@ -343,6 +367,7 @@ class MusicService : MediaBrowserServiceCompat() {
     fun toggle() = if (isPlaying) pause() else play()
 
     fun play() {
+        if (loading) { loadPlay = true; Player.dispatch(); return }
         if (cur == null) {
             if (_queue.isEmpty()) {
                 // nothing queued: shuffle the whole library
@@ -356,6 +381,7 @@ class MusicService : MediaBrowserServiceCompat() {
     }
 
     fun pause(fade: Boolean = Prefs.fadeOutOnPause) {
+        if (loading) { loadPlay = false; Player.dispatch() }
         val e = cur ?: return
         if (xfade != null) finishCrossfade()
         if (!isPlaying) return
@@ -373,14 +399,14 @@ class MusicService : MediaBrowserServiceCompat() {
     fun next() {
         if (_queue.isEmpty()) return
         val ni = if (index + 1 < _queue.size) index + 1 else 0
-        loadIndex(ni, isPlaying || cur == null)
+        loadIndex(ni, isPlaying || (loading && loadPlay) || cur == null)
     }
 
     fun prev() {
         if (_queue.isEmpty()) return
         if (position() > 3000) { seekTo(0); return }
         val pi = if (index - 1 >= 0) index - 1 else _queue.lastIndex
-        loadIndex(pi, isPlaying || cur == null)
+        loadIndex(pi, isPlaying || (loading && loadPlay) || cur == null)
     }
 
     fun seekTo(ms: Long) {
@@ -398,28 +424,45 @@ class MusicService : MediaBrowserServiceCompat() {
         releaseEngines()
         index = i
         val s = current ?: return
-        var e: Engine = Engine.create(this, s, audioSessionId)
-        var ok = e.prepare(this, s)
-        if (!ok && s.ext == "wav" && e is MediaPlayerEngine) {
-            // e.g. 32-bit float or 24-bit WAV on an old phone: use our own decoder
-            e.release()
-            e = PcmEngine(this, audioSessionId)
-            ok = e.prepare(this, s)
-        }
-        if (!ok) {
-            e.release()
-            errorsInRow++
-            toastShort(
-                if (s.ext == "wma" || s.ext == "ape") "${s.ext.uppercase()} isn't supported by Android – skipping \"${s.title}\""
-                else "Can't play \"${s.title}\" – skipping"
-            )
-            if (errorsInRow < _queue.size && _queue.size > 1) {
-                handler.post { loadIndex((i + 1) % _queue.size, play) }
-            } else {
-                errorsInRow = 0; isPlaying = false; afterStateChange()
+        val gen = ++loadGen
+        loading = true
+        loadPlay = play
+        Player.dispatch()
+        val sid = audioSessionId
+        loadWatchdog?.let { handler.removeCallbacks(it) }
+        // a file that takes more than 12 s to open is skipped instead of leaving the player stuck
+        loadWatchdog = Runnable {
+            if (loading && gen == loadGen) {
+                loadGen++
+                loading = false
+                engineFailed(i, s, loadPlay)
             }
-            return
+        }.also { handler.postDelayed(it, 12_000) }
+        engineExec.execute {
+            var e: Engine? = null
+            var ok = false
+            try {
+                e = Engine.create(this, s, sid)
+                ok = e.prepare(this, s)
+                if (!ok && s.ext == "wav" && e is MediaPlayerEngine) {
+                    // e.g. 32-bit float or 24-bit WAV on an old phone: use our own decoder
+                    e.release()
+                    e = PcmEngine(this, sid)
+                    ok = e.prepare(this, s)
+                }
+            } catch (_: Throwable) { ok = false }
+            if (!ok) { try { e?.release() } catch (_: Throwable) {}; e = null }
+            val ready = e
+            handler.post { onEngineLoaded(gen, i, s, ready, seekMs) }
         }
+    }
+
+    private fun onEngineLoaded(gen: Int, i: Int, s: Song, e: Engine?, seekMs: Long) {
+        if (gen != loadGen || index != i || current !== s) { releaseAsync(e); return }
+        loading = false
+        loadWatchdog?.let { handler.removeCallbacks(it) }; loadWatchdog = null
+        val play = loadPlay
+        if (e == null) { engineFailed(i, s, play); return }
         errorsInRow = 0
         cur = e
         wire(e)
@@ -432,11 +475,33 @@ class MusicService : MediaBrowserServiceCompat() {
         prepareNext()
     }
 
+    private fun engineFailed(i: Int, s: Song, play: Boolean) {
+        errorsInRow++
+        toastShort(
+            if (s.ext == "wma" || s.ext == "ape") "${s.ext.uppercase()} isn't supported by Android – skipping \"${s.title}\""
+            else "Can't play \"${s.title}\" – skipping"
+        )
+        if (errorsInRow < _queue.size && _queue.size > 1) {
+            handler.post { loadIndex((i + 1) % _queue.size, play) }
+        } else {
+            errorsInRow = 0; isPlaying = false; afterStateChange()
+        }
+    }
+
+    /** MediaPlayer.release() can block for seconds on some phones: never do it on the main thread. */
+    private fun releaseAsync(e: Engine?) {
+        if (e == null) return
+        // silence it now (cheap), free it in the background
+        try { e.setVolume(0f); e.pause() } catch (_: Throwable) {}
+        engineExec.execute { try { e.release() } catch (_: Throwable) {} }
+    }
+
     private fun wire(e: Engine) {
         e.onCompletion = { onEngineCompleted(e) }
         e.onError = { msg -> handler.post { if (e === cur) { toastShort(msg); onEngineCompleted(e) } } }
         e.setSpeedPitch(Prefs.speed, Prefs.pitch)
-        if (fx.reverbEffectId != 0 && Prefs.eqEnabled && Prefs.reverb > 0) e.attachAux(fx.reverbEffectId, 1f)
+        val send = fx.reverbSend()
+        if (fx.reverbEffectId != 0 && send > 0f) e.attachAux(fx.reverbEffectId, send)
     }
 
     private fun startPlayback() {
@@ -480,7 +545,7 @@ class MusicService : MediaBrowserServiceCompat() {
             // true gapless hand-off already happened inside MediaPlayer
             cur = n; next = null
             index = nextIndex; nextIndex = -1
-            e.release()
+            releaseAsync(e)
             onTrackChanged()
             prepareNext()
             return
@@ -510,30 +575,30 @@ class MusicService : MediaBrowserServiceCompat() {
         val s = _queue[ni]
         if (s.needsPcmEngine) return
         val token = c
-        exec.execute {
+        engineExec.execute {
             val n = MediaPlayerEngine(this, audioSessionId)
             val ok = n.prepare(this, s)
             handler.post {
                 if (!ok || cur !== token || next != null || autoNextIndex() != ni || _queue.getOrNull(ni) !== s) {
-                    n.release(); return@post
+                    releaseAsync(n); return@post
                 }
                 wire(n)
-                if (c.setNext(n)) { next = n; nextIndex = ni } else n.release()
+                if (c.setNext(n)) { next = n; nextIndex = ni } else releaseAsync(n)
             }
         }
     }
 
     private fun dropPreparedNext() {
         cur?.setNext(null)
-        next?.release()
+        releaseAsync(next)
         next = null; nextIndex = -1
     }
 
     private fun releaseEngines() {
         xfadeAnim?.cancel(); xfadeAnim = null
-        xfade?.release(); xfade = null
+        releaseAsync(xfade); xfade = null
         dropPreparedNext()
-        cur?.release(); cur = null
+        releaseAsync(cur); cur = null
     }
 
     // ---------------------------------------------------------------- crossfade
@@ -545,10 +610,33 @@ class MusicService : MediaBrowserServiceCompat() {
         val rem = dur - c.position()
         if (dur < cf * 3 || rem > cf || rem <= 200) return
         val ni = autoNextIndex()
-        if (ni < 0) return
+        if (ni < 0 || xfadePreparing) return
         val s = _queue[ni]
-        val e = Engine.create(this, s, audioSessionId)
-        if (!e.prepare(this, s)) { e.release(); return }
+        if (s === xfadeFailed) return   // couldn't open it: let the normal track change handle it
+        xfadePreparing = true
+        val token = c
+        val sid = audioSessionId
+        engineExec.execute {
+            val e = try {
+                val x = Engine.create(this, s, sid)
+                if (x.prepare(this, s)) x else { try { x.release() } catch (_: Throwable) {}; null }
+            } catch (_: Throwable) { null }
+            handler.post {
+                xfadePreparing = false
+                val left = if (cur === token) token.duration() - token.position() else 0L
+                if (e == null) xfadeFailed = s
+                if (e == null || cur !== token || !isPlaying || xfade != null || _queue.getOrNull(ni) !== s || left <= 200) {
+                    releaseAsync(e); return@post
+                }
+                beginCrossfade(e, ni, left)
+            }
+        }
+    }
+
+    private var xfadePreparing = false
+    private var xfadeFailed: Song? = null
+
+    private fun beginCrossfade(e: Engine, ni: Int, rem: Long) {
         wire(e)
         e.setVolume(0f)
         e.start()
@@ -572,7 +660,7 @@ class MusicService : MediaBrowserServiceCompat() {
         dropPreparedNext()
         cur = n; xfade = null
         index = xfadeIndex
-        old?.release()
+        releaseAsync(old)
         fadeLevel = 1f
         applyVolume()
         if (!isPlaying) n.pause()
@@ -735,10 +823,16 @@ class MusicService : MediaBrowserServiceCompat() {
         fx.applyAll()
         applyVolume()
         val id = fx.reverbEffectId
-        val on = Prefs.eqEnabled && Prefs.reverb > 0 && id != 0
-        cur?.attachAux(if (on) id else 0, if (on) 1f else 0f)
-        next?.attachAux(if (on) id else 0, if (on) 1f else 0f)
+        val send = fx.reverbSend()
+        val on = send > 0f && id != 0
+        cur?.attachAux(if (on) id else 0, if (on) send else 0f)
+        next?.attachAux(if (on) id else 0, if (on) send else 0f)
     }
+
+    private val routeCallback: Any? = if (Build.VERSION.SDK_INT >= 23) object : android.media.AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(added: Array<out android.media.AudioDeviceInfo>?) { if (Prefs.seOn) handler.postDelayed({ effectsChanged() }, 300) }
+        override fun onAudioDevicesRemoved(removed: Array<out android.media.AudioDeviceInfo>?) { if (Prefs.seOn) handler.postDelayed({ effectsChanged() }, 300) }
+    } else null
 
     fun applyBitPerfect() {
         bitPerfectStatus = BitPerfect.apply(this, Prefs.bitPerfect, formatInfo)
@@ -774,7 +868,7 @@ class MusicService : MediaBrowserServiceCompat() {
         art = null
         if (isPlaying || cur?.isPlaying == true) exec.execute { LibraryDb.recordPlay(s.id) }
         updateMetadata()
-        exec.execute {
+        engineExec.execute {
             val info = try { Formats.probe(this, s) } catch (e: Exception) { null }
             val rg = if (Prefs.replayGain > 0) try {
                 com.jslw.genz.audio.TagIO.replayGainDb(this, s, Prefs.replayGain == 2)
@@ -965,6 +1059,7 @@ class MusicService : MediaBrowserServiceCompat() {
         art?.let { b.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) }
         session.setMetadata(b.build())
         publishQueue()
+        if (AutoBrowse.nowAlbumId != s.albumId) { AutoBrowse.nowAlbumId = s.albumId; try { notifyChildrenChanged("flow") } catch (_: Throwable) {} }
         exec.execute { val f = LibraryDb.isFavorite(s.id); handler.post { if (current === s && f != curFav) { curFav = f; updatePlaybackState() } } }
     }
 

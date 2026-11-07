@@ -101,8 +101,15 @@ class HomeFragment : BaseListFragment() {
             startActivity(Intent(requireContext(), NowPlayingActivity::class.java))
             requireActivity().overridePendingTransition(R.anim.slide_up, R.anim.stay)
         })
+        rows += Row("Refresh library", subtitle = "Find newly added songs", icon = R.drawable.ic_refresh, iconColor = 0xFF64D2FF.toInt(), onClick = {
+            val c = requireContext()
+            c.toast("Looking for new songs…")
+            Library.refresh(c) { n -> c.toast(if (n > 0) "Found $n new ${if (n == 1) "song" else "songs"}" else "Library is up to date") }
+        })
         rows += Row.section("Extras")
         rows += Row("Equalizer", icon = R.drawable.ic_equalizer, iconColor = 0xFF30B0C7.toInt(), chevron = true, onClick = { startScreen(EqualizerActivity::class.java) })
+        rows += Row("Advanced audio", subtitle = "JSLW Sound Engine" + if (com.jslw.genz.data.Prefs.seOn) " · on" else "", icon = R.drawable.ic_eq_surround,
+            iconColor = 0xFFFF9F0A.toInt(), chevron = true, onClick = { startScreen(SoundEngineActivity::class.java) })
         rows += Row("Themes", subtitle = skin.name, icon = R.drawable.ic_palette, iconColor = 0xFFFF2D92.toInt(), chevron = true, onClick = { startScreen(ThemesActivity::class.java) })
         rows += Row("Sleep Timer", icon = R.drawable.ic_timer, iconColor = 0xFF5E5CE6.toInt(), onClick = { Player.with(requireContext()) { Sheets.sleepTimer(requireActivity()) } })
         rows += Row("Settings", icon = R.drawable.ic_settings, iconColor = 0xFF8E8E93.toInt(), chevron = true, onClick = { startScreen(SettingsActivity::class.java) })
@@ -213,6 +220,7 @@ class BrowseFragment : BaseListFragment() {
     private fun groupMenu(anchor: View, songs: List<Song>, label: String) {
         val m = PopupMenu(requireContext(), anchor)
         m.menu.add("Play"); m.menu.add("Shuffle"); m.menu.add("Play next"); m.menu.add("Add to queue"); m.menu.add("Add to playlist…")
+        m.menu.add("Send with AIR share")
         m.setOnMenuItemClickListener { item ->
             val c = requireContext()
             when (item.title.toString()) {
@@ -220,6 +228,7 @@ class BrowseFragment : BaseListFragment() {
                 "Shuffle" -> Player.shuffle(c, songs, label)
                 "Play next" -> Player.with(c) { it.playNext(songs) }
                 "Add to queue" -> Player.with(c) { it.addToQueue(songs) }
+                "Send with AIR share" -> AirShare.send(requireActivity(), songs)
                 else -> Sheets.addToPlaylist(requireActivity(), songs)
             }
             true

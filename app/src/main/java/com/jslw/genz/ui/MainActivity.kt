@@ -62,6 +62,12 @@ class MainActivity : BaseActivity(), Player.Listener {
     }
     private val reload = Runnable { Library.load(this) }
 
+    override fun onResume() {
+        super.onResume()
+        // songs copied while GEN-Z was in the background: pick them up on return (at most once a minute)
+        if (Library.loaded && hasAudioPermission() && android.os.SystemClock.elapsedRealtime() - Library.lastLoad > 60_000) Library.load(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Tour.prepare(intent) // debug screenshot tour only
         super.onCreate(savedInstanceState)

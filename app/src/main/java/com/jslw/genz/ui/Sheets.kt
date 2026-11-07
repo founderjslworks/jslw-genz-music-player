@@ -41,13 +41,50 @@ object Sheets {
         val v = LayoutInflater.from(a).inflate(R.layout.item_row, parent, false)
         v.findViewById<android.widget.ImageView>(R.id.rowIcon).also { com.jslw.genz.skin.Icons.set(it, o.icon); it.visibility = View.VISIBLE }
         v.findViewById<TextView>(R.id.rowTitle).text = o.title
-        v.setOnClickListener { dismiss(); o.action() }
+        v.setOnClickListener {
+            // a quick press-pulse, then the sheet closes and the action runs
+            v.animate().cancel()
+            v.animate().scaleX(1f).scaleY(1f).setDuration(90).withEndAction { dismiss(); o.action() }.start()
+        }
+        pressFeedback(v)
         SkinPainter.apply(v)
         parent.addView(v)
     }
 
+    /** Rows shrink slightly under the finger and spring back – the GEN-Z touch feel. */
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
+    fun pressFeedback(v: View) {
+        v.setOnTouchListener { view, e ->
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> view.animate().scaleX(0.965f).scaleY(0.965f).alpha(0.82f).setDuration(110).start()
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL ->
+                    view.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(240)
+                        .setInterpolator(android.view.animation.OvershootInterpolator(2.2f)).start()
+            }
+            false
+        }
+    }
+
+    /** Opening: the header drops in, then the options rise one after another. */
+    private fun animateIn(header: View?, box: LinearLayout) {
+        if (com.jslw.genz.util.Perf.light) return
+        header?.let {
+            it.alpha = 0f; it.translationY = -it.resources.displayMetrics.density * 12
+            it.animate().alpha(1f).translationY(0f).setDuration(260).setStartDelay(40)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f)).start()
+        }
+        val d = box.resources.displayMetrics.density
+        for (i in 0 until box.childCount) {
+            val c = box.getChildAt(i)
+            c.alpha = 0f; c.translationY = 18 * d; c.scaleX = 0.97f; c.scaleY = 0.97f
+            c.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
+                .setStartDelay(70L + i * 28L).setDuration(300)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(1.8f)).start()
+        }
+    }
+
     /** Long-press / ⋮ menu for a song. [extra] options (e.g. "Remove from playlist") come first. */
-    fun songOptions(a: AppCompatActivity, s: Song, extra: List<Option> = emptyList()) {
+    fun songOptions(a: AppCompatActivity, s: Song, extra: List<Option> = emptyList(), more: List<Option> = emptyList()) {
         val d = BottomSheetDialog(a)
         val v = LayoutInflater.from(a).inflate(R.layout.sheet_song_options, null)
         ArtLoader.load(v.findViewById(R.id.optArt), s, a.dpi(112))
@@ -70,15 +107,19 @@ object Sheets {
         opts += Option(R.drawable.ic_cut, "Make ringtone") {
             a.startActivity(Intent(a, RingtoneCutterActivity::class.java).putExtra("song", s.id))
         }
+        opts += more
         opts += Option(R.drawable.ic_info, "File info") { fileInfo(a, s) }
+        opts += Option(R.drawable.ic_airshare, "Send with AIR share") { AirShare.send(a, listOf(s)) }
         if (s.id > 0) opts += Option(R.drawable.ic_export, "Share file") {
             val i = Intent(Intent.ACTION_SEND).setType(s.mime.ifBlank { "audio/*" })
                 .putExtra(Intent.EXTRA_STREAM, s.uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             a.startActivity(Intent.createChooser(i, "Share ${s.title}"))
         }
+        opts += Option(R.drawable.ic_delete, "Delete from device") { SongDelete.confirm(a, s) }
         for (o in opts) optionView(a, box, o) { d.dismiss() }
         SkinPainter.apply(v)
         d.setContentView(v)
+        d.setOnShowListener { animateIn(v.findViewById<View>(R.id.optArt)?.parent as? View, box) }
         d.show()
     }
 

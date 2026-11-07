@@ -13,7 +13,7 @@ A fully offline music player for Android, built for music lovers who want a play
 feels like their music. It runs on **Android 4.4 KitKat through Android 16**, on phones and tablets,
 with no internet permission at all.
 
-> Package `com.jslw.genz` · Version 1.8 · 🇮🇳 Made in India with ♥
+> Package `com.jslw.genz` · Version 1.9 · 🇮🇳 Made in India with ♥
 
 **⬇️ [Download the latest APK and user guide](https://github.com/founderjslworks/jslw-genz-music-player/releases/latest)** · 🌐 [www.jslworks.in](https://www.jslworks.in/android-devlopment)
 
@@ -21,6 +21,17 @@ with no internet permission at all.
 
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
+
+## What's new in 1.9
+
+- **JSLW Sound Engine (Advanced audio)**: Music, Movie, Game, Voice and Night profiles with surround, dialogue clarity, bass, treble, room and a volume leveller – tuned for wired headphones, **Bluetooth headphones** and speakers
+- When GEN-Z's own sound effects are off, it adds nothing to the audio, so the phone's built-in sound enhancement works as usual
+- **Opus** files now appear and play on Android 9 and older
+- No more freezes: songs open in the background, and a file that won't open is skipped
+- **Album Flow**: covers rise in, the centre cover floats, the backdrop takes the album's colours – and Album Flow on **Android Auto**
+- **Send with AIR share** from any song, album or artist, and **share themes**
+- **Delete from device** for songs and recordings, with Android's confirmation
+- New animated song menu (also on Now Playing ⋮), **Refresh library** to find newly added songs, and a **Performance** setting (Light mode for older phones)
 
 ## What's new in 1.8
 

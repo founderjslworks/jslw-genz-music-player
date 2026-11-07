@@ -147,6 +147,9 @@ class SettingsActivity : BaseActivity() {
         items += Item.Toggle("Keep screen on in Now Playing", "Handy for lyrics or in a dock", { Prefs.keepScreenOn }, { Prefs.keepScreenOn = it })
 
         items += Item.Section("Animations & effects")
+        items += Item.Action("Performance", { com.jslw.genz.util.Perf.describe() }) {
+            choose("Performance", listOf(0, 1, 2), { arrayOf("Automatic", "Best looks", "Light – smoother on older phones")[it] }, Prefs.performance) { Prefs.performance = it }
+        }
         items += Item.Action("Cover touch effect", {
             val p = Prefs.coverEffect
             if (p == "theme") "Theme default · " + com.jslw.genz.ui.views.CoverEffectView.label(SkinManager.current.coverEffect)
@@ -231,7 +234,10 @@ class SettingsActivity : BaseActivity() {
         }
         items += Item.Action("Add music folder…", { "For DSD (.dsf/.dff), AIFF and anything Android doesn't index" }) { addFolder() }
         items += Item.Action("Extra folders", { if (Prefs.extraFolders.isEmpty()) "None" else "${Prefs.extraFolders.size} folder(s) – tap to remove" }) { manageFolders() }
-        items += Item.Action("Rescan library", { "${Library.songs.size} songs" }) { Library.load(this); toast("Rescanning…") }
+        items += Item.Action("Refresh library", { "${Library.songs.size} songs · finds newly added music" }) {
+            toast("Looking for new songs…")
+            Library.refresh(this) { n -> toast(if (n > 0) "Found $n new ${if (n == 1) "song" else "songs"}" else "Library is up to date"); adapter.notifyDataSetChanged() }
+        }
 
         items += Item.Section("Utilities")
         items += Item.Toggle("Shake to skip", "Shake the phone to jump to the next song (only while playing)", { Prefs.shakeToSkip }, {

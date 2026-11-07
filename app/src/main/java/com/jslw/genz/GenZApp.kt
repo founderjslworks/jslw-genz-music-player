@@ -11,6 +11,7 @@ class GenZApp : MultiDexApplication() {
         super.onCreate()
         app = this
         Prefs.init(this)
+        com.jslw.genz.util.Perf.init(this)
         LibraryDb.init(this)
         SkinManager.init(this)
     }

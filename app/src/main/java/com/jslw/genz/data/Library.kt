@@ -32,23 +32,71 @@ object Library {
     fun addListener(l: () -> Unit) { listeners += l }
     fun removeListener(l: () -> Unit) { listeners -= l }
 
+    @Volatile private var again = false
+    @Volatile var lastLoad = 0L; private set
+
     fun load(ctx: Context) {
-        if (pending) return
+        if (pending) { again = true; return }   // a change arrived mid-scan: scan once more afterwards
         pending = true
         val app = ctx.applicationContext
         exec.execute {
             try {
                 build(app)
             } finally {
+                lastLoad = android.os.SystemClock.elapsedRealtime()
                 pending = false
                 main.post { listeners.forEach { it() } }
+                if (again) { again = false; main.post { load(app) } }
             }
         }
     }
 
+    /**
+     * Manual "Refresh library": asks Android to index any music files it hasn't noticed yet (songs copied over
+     * USB, received with AIR share or downloaded), then rebuilds the library. [done] gets the number of new songs.
+     */
+    fun refresh(ctx: Context, done: (Int) -> Unit) {
+        val app = ctx.applicationContext
+        val before = songs.size
+        Thread {
+            val known = HashSet<String>()
+            try {
+                app.contentResolver.query(android.provider.MediaStore.Files.getContentUri("external"),
+                    arrayOf(android.provider.MediaStore.Files.FileColumns.DATA), null, null, null)?.use { c ->
+                    while (c.moveToNext()) c.getString(0)?.let { known += it }
+                }
+            } catch (_: Exception) {}
+            val missing = ArrayList<String>()
+            fun walk(dir: java.io.File, depth: Int) {
+                if (depth > 7 || missing.size > 5000) return
+                val list = dir.listFiles() ?: return
+                for (f in list) {
+                    if (f.isDirectory) { if (!f.name.startsWith(".") && f.name != "Android") walk(f, depth + 1) }
+                    else if (f.extension.lowercase() in Song.SCAN_EXT && f.absolutePath !in known) missing += f.absolutePath
+                }
+            }
+            try { walk(android.os.Environment.getExternalStorageDirectory(), 0) } catch (_: Exception) {}
+            val finish = Runnable {
+                val once = object : () -> Unit {
+                    override fun invoke() { removeListener(this); done((songs.size - before).coerceAtLeast(0)) }
+                }
+                addListener(once)
+                load(app)
+            }
+            if (missing.isEmpty()) { main.post(finish); return@Thread }
+            val left = java.util.concurrent.atomic.AtomicInteger(missing.size)
+            val fired = java.util.concurrent.atomic.AtomicBoolean(false)
+            val fire = { if (fired.compareAndSet(false, true)) main.post(finish) }
+            android.media.MediaScannerConnection.scanFile(app, missing.toTypedArray(), null) { _, _ ->
+                if (left.decrementAndGet() <= 0) fire()
+            }
+            main.postDelayed({ fire() }, 15_000)   // never wait forever on the system scanner
+        }.start()
+    }
+
     private fun build(ctx: Context) {
         val base = MediaScanner.queryMediaStore(ctx)
-        val extra = MediaScanner.scanExtraFolders(ctx, base)
+        val extra = MediaScanner.scanExtraFolders(ctx, base).let { it + MediaScanner.unindexedOpus(ctx, base + it) }
         val overrides = LibraryDb.tagOverrides()
         val minMs = Prefs.minDurationSec * 1000L
         val all = (base + extra).filter { it.duration == 0L || it.duration >= minMs }

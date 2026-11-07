@@ -86,11 +86,34 @@ class ThemesActivity : BaseActivity() {
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
     }
 
+    /** Packs the theme (colours, fonts, images) into a .genzskin.zip and shares it – friends import it in Themes › Import pack. */
+    private fun shareTheme(s: Skin) {
+        val uri = try {
+            val dir = java.io.File(cacheDir, "shared").apply { mkdirs() }
+            val f = java.io.File(dir, "${s.name.replace(Regex("[^A-Za-z0-9 _-]"), "").trim().ifEmpty { s.id }}.genzskin.zip")
+            f.outputStream().use { SkinManager.exportPack(s, it) }
+            androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", f)
+        } catch (e: Exception) { toast("Couldn't pack \"${s.name}\": ${e.message}"); return }
+        val what = "\"${s.name}\" theme"
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Share $what")
+            .setItems(arrayOf("Send with AIR share", "Share via…")) { _, w ->
+                if (w == 0) AirShare.sendUris(this, listOf(uri), "application/zip", what)
+                else startActivity(Intent.createChooser(
+                    AirShare.intent(listOf(uri), "application/zip")
+                        .putExtra(Intent.EXTRA_SUBJECT, "GEN-Z Music theme: ${s.name}")
+                        .putExtra(Intent.EXTRA_TEXT, "A GEN-Z Music theme for you: open GEN-Z › Themes › Import pack and choose this file."),
+                    "Share $what"))
+            }
+            .show()
+    }
+
     private fun menu(anchor: View, s: Skin) {
         val m = PopupMenu(this, anchor)
         m.menu.add("Apply")
         m.menu.add("Edit a copy…")
         if (!s.builtIn) m.menu.add("Edit…")
+        m.menu.add("Share theme…")
         m.menu.add("Export as skin pack (.zip)")
         if (!s.builtIn) m.menu.add("Delete")
         m.setOnMenuItemClickListener { item ->
@@ -98,6 +121,7 @@ class ThemesActivity : BaseActivity() {
                 "Apply" -> apply(s)
                 "Edit a copy…" -> startActivity(Intent(this, ThemeEditorActivity::class.java).putExtra("base", s.id).putExtra("copy", true))
                 "Edit…" -> startActivity(Intent(this, ThemeEditorActivity::class.java).putExtra("base", s.id))
+                "Share theme…" -> shareTheme(s)
                 "Delete" -> MaterialAlertDialogBuilder(this).setTitle("Delete \"${s.name}\"?")
                     .setPositiveButton("Delete") { _, _ -> SkinManager.delete(s); if (skin.id != SkinManager.current.id) apply(SkinManager.current) else list.adapter?.notifyDataSetChanged() }
                     .setNegativeButton("Cancel", null).show()

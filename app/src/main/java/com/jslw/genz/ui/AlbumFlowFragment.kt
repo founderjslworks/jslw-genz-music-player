@@ -44,9 +44,18 @@ class AlbumFlowFragment : Fragment(), Refreshable {
     private var albums: List<Album> = emptyList()
     private var cover = 0
     private var centerPos = -1
+    private var centerPosPrev = -1
     private var order = IntArray(0)
     private var dist = FloatArray(16)
     private val reflections = LruCache<Long, Bitmap>(24)
+    private val tints = LruCache<Long, Int>(64)
+    private var bgColor = 0
+    private var bgAnim: android.animation.ValueAnimator? = null
+    private var floatAnim: android.animation.ValueAnimator? = null
+    private var floatTarget: View? = null
+    private var lastDir = 1f
+    private var entered = false
+    private val light get() = com.jslw.genz.util.Perf.light
     private var flippedAlbum: Album? = null
     private val tracksAdapter = RowAdapter()
 
@@ -74,6 +83,13 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         rv.setChildDrawingOrderCallback { count, i -> if (order.size == count) order[i] else i }
         rv.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { transform() }
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) stopFloat()
+                else if (newState == RecyclerView.SCROLL_STATE_IDLE && !light) {
+                    (0 until rv.childCount).map { rv.getChildAt(it) }.firstOrNull { rv.getChildAdapterPosition(it) == centerPos }
+                        ?.let { (rv.getChildViewHolder(it) as? CoverAdapter.VH)?.art?.let { a -> startFloat(a) } }
+                }
+            }
         })
         rv.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> transform() }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backCb)
@@ -114,7 +130,7 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         view?.findViewById<com.jslw.genz.ui.views.SlideToUnlockBar>(R.id.flowScrub)?.let { bar ->
             bar.visibility = if (albums.size > 1) View.VISIBLE else View.INVISIBLE
             bar.steps = albums.size.coerceAtLeast(1)
-            bar.text = "slide to browse albums"
+            bar.text = "slide to album"
             bar.typeface = SkinManager.current.typeface
             bar.tint = SkinManager.current.accent
             bar.onScrub = { pos -> (rv.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(pos, 0) }
@@ -123,7 +139,98 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         if (albums.isNotEmpty()) {
             (rv.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(start.coerceIn(0, albums.lastIndex), 0)
         }
-        rv.post { transform() }
+        rv.post { transform(); if (!entered) { entered = true; enterAnimation() } }
+    }
+
+    // ---------------------------------------------------------------- extra motion
+    /** Opening: covers rise from the floor one after another, the centre one last with a little bounce. */
+    private fun enterAnimation() {
+        if (light) return
+        val n = rv.childCount
+        for (i in 0 until n) {
+            val c = rv.getChildAt(i)
+            val vh = rv.getChildViewHolder(c) as? CoverAdapter.VH ?: continue
+            val d = abs(dist.getOrElse(i) { 0f })
+            val delay = (60 + d * 70).toLong()
+            for (t in listOf(vh.art, vh.refl)) {
+                t.alpha = 0f; t.translationY = cover * 0.45f; t.scaleX = 0.86f; t.scaleY = 0.86f
+                t.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
+                    .setStartDelay(delay).setDuration(520)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(1.1f)).start()
+            }
+        }
+        title.alpha = 0f; title.translationY = 24 * resources.displayMetrics.density
+        title.animate().alpha(1f).translationY(0f).setStartDelay(260).setDuration(420).setInterpolator(DecelerateInterpolator(1.6f)).start()
+    }
+
+    /** The new centre cover pops forward, starts floating gently, and the backdrop takes on its colours. */
+    private fun onNewCenter(pos: Int) {
+        val c = (0 until rv.childCount).map { rv.getChildAt(it) }.firstOrNull { rv.getChildAdapterPosition(it) == pos } ?: return
+        val vh = rv.getChildViewHolder(c) as? CoverAdapter.VH ?: return
+        if (!light) {
+            vh.art.animate().cancel()
+            vh.art.scaleX = 0.95f; vh.art.scaleY = 0.95f
+            vh.art.animate().scaleX(1f).scaleY(1f).setDuration(360)
+                .setInterpolator(android.view.animation.OvershootInterpolator(2.4f)).start()
+            startFloat(vh.art)
+        }
+        val a = albums.getOrNull(pos) ?: return
+        tints.get(a.id)?.let { tintTo(it) } ?: run {
+            val bmp = (vh.art.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: return
+            // colour picking runs in the background so browsing never stutters
+            androidx.palette.graphics.Palette.from(bmp).resizeBitmapArea(96 * 96).maximumColorCount(12).generate { p ->
+                val c = p?.vibrantSwatch?.rgb ?: p?.dominantSwatch?.rgb ?: return@generate
+                tints.put(a.id, c)
+                if (centerPos == pos && view != null) tintTo(c)
+            }
+        }
+    }
+
+    /** A slow, barely-there float of the centre cover while you look at it. */
+    private fun startFloat(v: View) {
+        floatAnim?.cancel()
+        floatTarget?.translationY = 0f
+        floatTarget = v
+        val amp = 4 * resources.displayMetrics.density
+        floatAnim = android.animation.ValueAnimator.ofFloat(0f, (2 * Math.PI).toFloat()).apply {
+            duration = 3600
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener { v.translationY = (kotlin.math.sin(it.animatedValue as Float) * amp) }
+            startDelay = 400
+            start()
+        }
+    }
+
+    private fun stopFloat() {
+        floatAnim?.cancel(); floatAnim = null
+        floatTarget?.animate()?.translationY(0f)?.setDuration(160)?.start()
+        floatTarget = null
+    }
+
+    /** Backdrop glow in the centre album's colour, cross-fading as you browse. */
+    private fun tintTo(color: Int) {
+        val root = view ?: return
+        val target = (color and 0x00FFFFFF) or 0x55000000
+        val from = bgColor
+        bgAnim?.cancel()
+        val shape = (root.getTag(R.id.flowList) as? android.graphics.drawable.GradientDrawable)
+            ?: android.graphics.drawable.GradientDrawable().apply {
+                gradientType = android.graphics.drawable.GradientDrawable.RADIAL_GRADIENT
+                gradientRadius = root.width.coerceAtLeast(1) * 0.75f
+                setGradientCenter(0.5f, 0.38f)
+                root.setTag(R.id.flowList, this)
+                rv.background = this
+            }
+        if (light) { bgColor = target; shape.colors = intArrayOf(target, 0x00000000); return }
+        bgAnim = android.animation.ValueAnimator.ofObject(android.animation.ArgbEvaluator(), from, target).apply {
+            duration = 520
+            addUpdateListener {
+                bgColor = it.animatedValue as Int
+                shape.colors = intArrayOf(bgColor, 0x00000000)
+            }
+            start()
+        }
     }
 
     /** The heart of the effect: tilt, scale, overlap and z-order covers by distance from centre. */
@@ -165,7 +272,10 @@ class AlbumFlowFragment : Fragment(), Refreshable {
             centerPos = best
             lastIndex = best
             rv.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            lastDir = if (best > centerPosPrev) 1f else -1f
+            centerPosPrev = best
             showCaption(albums.getOrNull(best))
+            onNewCenter(best)
             view?.findViewById<com.jslw.genz.ui.views.SlideToUnlockBar>(R.id.flowScrub)?.position = best
         }
     }
@@ -175,6 +285,12 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         title.text = a?.title ?: ""
         artist.text = a?.let { listOf(it.artist, if (it.year > 0) it.year.toString() else null).filterNotNull().joinToString(" · ") } ?: ""
         title.alpha = 0.3f; artist.alpha = 0.3f
+        if (!light) {
+            val dx = 26 * resources.displayMetrics.density * lastDir
+            title.translationX = dx; artist.translationX = dx * 1.4f
+            title.animate().translationX(0f).setInterpolator(DecelerateInterpolator(2f)).setDuration(300)
+            artist.animate().translationX(0f).setInterpolator(DecelerateInterpolator(2f)).setDuration(380)
+        }
         title.animate().alpha(1f).setDuration(180).start()
         artist.animate().alpha(1f).setDuration(240).start()
     }
@@ -224,6 +340,12 @@ class AlbumFlowFragment : Fragment(), Refreshable {
     }
 
     override fun refresh() { if (view != null) rv.post { setup() } }
+
+    override fun onDestroyView() {
+        floatAnim?.cancel(); bgAnim?.cancel()
+        floatAnim = null; floatTarget = null; entered = false
+        super.onDestroyView()
+    }
     override fun playingChanged() { tracksAdapter.refreshPlaying() }
 
     inner class CoverAdapter : RecyclerView.Adapter<CoverAdapter.VH>() {

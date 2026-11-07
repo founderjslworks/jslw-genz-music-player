@@ -36,7 +36,11 @@ object MediaScanner {
         val genres = if (modern) emptyMap() else legacyGenres(ctx)
 
         try {
-            ctx.contentResolver.query(uri, proj.toTypedArray(), "${MediaStore.Audio.Media.IS_MUSIC} != 0", null, null)?.use { c ->
+            ctx.contentResolver.query(
+                uri, proj.toTypedArray(),
+                "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.DISPLAY_NAME} LIKE '%.opus' OR ${MediaStore.Audio.Media.DISPLAY_NAME} LIKE '%.ogg'",
+                null, null
+            )?.use { c ->
                 val iId = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val iTitle = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
                 val iArtist = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
@@ -110,6 +114,36 @@ object MediaScanner {
             }
         } catch (_: Exception) {}
         return map
+    }
+
+    // ---------------------------------------------------------------- Opus on older Android
+    /**
+     * Android 9 and older don't know the ".opus" extension: such files are indexed only as plain files, so they
+     * never show up as music. Find them in MediaStore's file table and read them ourselves (Android 5+ decodes
+     * Ogg Opus natively).
+     */
+    fun unindexedOpus(ctx: Context, known: List<Song>): List<Song> {
+        if (Build.VERSION.SDK_INT < 21 || Build.VERSION.SDK_INT >= 30) return emptyList()
+        val knownPaths = known.mapTo(HashSet()) { it.path.lowercase() }
+        val files = MediaStore.Files.getContentUri("external")
+        val found = ArrayList<Found>()
+        try {
+            ctx.contentResolver.query(
+                files,
+                arrayOf(MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.SIZE,
+                    MediaStore.Files.FileColumns.DATE_MODIFIED),
+                "${MediaStore.Files.FileColumns.DATA} LIKE '%.opus' AND ${MediaStore.Files.FileColumns.MEDIA_TYPE} != ${MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO}",
+                null, null
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val path = c.getString(1) ?: continue
+                    if (path.lowercase() in knownPaths || !File(path).canRead()) continue
+                    found += Found(ContentUris.withAppendedId(files, c.getLong(0)), path.substringAfterLast('/'), c.getLong(2),
+                        path.substringBeforeLast('/', ""), c.getLong(3))
+                }
+            }
+        } catch (_: Exception) {}
+        return found.mapNotNull { x -> try { songFromFile(ctx, x) } catch (_: Exception) { null } }
     }
 
     // ---------------------------------------------------------------- extra folders
@@ -196,7 +230,8 @@ object MediaScanner {
                 "wav" -> Formats.parseWav(f)?.durationMs ?: 0L
                 else -> durationViaRetriever(ctx, x.uri)
             }
-            val tags = try { TagIO.basicTags(f, ext) } catch (e: Exception) { emptyMap() }
+            val tags = if (ext == "opus" || ext == "ogg") retrieverTags(ctx, x.uri)
+            else try { TagIO.basicTags(f, ext) } catch (e: Exception) { emptyMap() }
             val key = x.uri.toString()
             val folderName = x.dir.substringAfterLast('/')
             val album = tags["album"] ?: folderName
@@ -221,6 +256,23 @@ object MediaScanner {
             )
         }
     }
+
+    private fun retrieverTags(ctx: Context, uri: Uri): Map<String, String> = try {
+        val r = android.media.MediaMetadataRetriever()
+        r.setDataSource(ctx, uri)
+        val out = HashMap<String, String>()
+        fun put(k: String, key: Int) { r.extractMetadata(key)?.trim()?.takeIf { it.isNotEmpty() }?.let { out[k] = it } }
+        put("title", android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
+        put("artist", android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
+        put("album", android.media.MediaMetadataRetriever.METADATA_KEY_ALBUM)
+        put("albumArtist", android.media.MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+        put("genre", android.media.MediaMetadataRetriever.METADATA_KEY_GENRE)
+        put("year", android.media.MediaMetadataRetriever.METADATA_KEY_YEAR)
+        put("track", android.media.MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
+        out["track"]?.let { out["track"] = it.substringBefore('/') }
+        r.release()
+        out
+    } catch (e: Exception) { emptyMap() }
 
     private fun durationViaRetriever(ctx: Context, uri: Uri): Long = try {
         val r = android.media.MediaMetadataRetriever()

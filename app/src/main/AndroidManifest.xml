@@ -35,6 +35,11 @@
         android:name="android.hardware.touchscreen"
         android:required="false" />
 
+    <!-- AIR share (JSL WORKS file sharing): lets GEN-Z see it is installed, Android 11+ -->
+    <queries>
+        <package android:name="com.jslw.airshare" />
+    </queries>
+
     <application
         android:name=".GenZApp"
         android:allowBackup="true"
@@ -88,6 +93,9 @@
             android:name=".ui.EqualizerActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.SoundEngineActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.SettingsActivity"
             android:exported="false" />
         <activity
@@ -129,6 +137,17 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- shared files (theme packs) handed to AIR share and other apps, read-only and per-share -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/shared_files" />
+        </provider>
 
         <!-- album art for the car screen (read-only covers, nothing else) -->
         <provider

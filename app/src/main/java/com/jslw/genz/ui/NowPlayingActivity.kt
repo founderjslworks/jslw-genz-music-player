@@ -592,26 +592,22 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
     }
 
     // ---------------------------------------------------------------- ⋮ menu
-    private fun moreMenu(anchor: View) {
+    /** ⋮ opens the same themed, animated sheet as the song menus, with the Now Playing extras added. */
+    private fun moreMenu(@Suppress("UNUSED_PARAMETER") anchor: View) {
         val s = Player.current ?: return
         val svc = Player.service ?: return
-        val m = PopupMenu(this, anchor)
-        val items = linkedMapOf<String, () -> Unit>(
-            "Add to playlist…" to { Sheets.addToPlaylist(this, listOf(s)) },
-            "Go to album" to { Sheets.openInMain(this, MainActivity.EXTRA_ALBUM, Library.albumOf(s)?.id ?: s.albumId) },
-            "Go to artist" to { Sheets.openInMain(this, MainActivity.EXTRA_ARTIST, s.artist) },
-            "Choose lyrics file (.lrc / .txt)…" to { pickLyrics.launch(arrayOf("*/*")) },
-            (if (Prefs.floatingLyrics) "Floating lyrics: on" else "Floating lyrics: off") to { toggleFloating() },
-            "Edit tags & cover" to { startActivity(Intent(this, TagEditorActivity::class.java).putExtra("song", s.id)) },
-            "Make ringtone" to { startActivity(Intent(this, RingtoneCutterActivity::class.java).putExtra("song", s.id)) },
-            "File info" to { Sheets.fileInfo(this, s) },
-        )
-        items["Cover touch effect…"] = { Sheets.coverEffect(this) { coverFx.setEffect(skin.activeCoverEffect) } }
-        if (svc.canChangeSpeed) items["Speed & pitch…"] = { Sheets.speedPitch(this) }
-        if (LibraryDb.lyricLink(s.id) != null) items["Forget chosen lyrics file"] = { LibraryDb.setLyricLink(s.id, null); svc.reloadLyrics() }
-        items.keys.forEach { m.menu.add(it) }
-        m.setOnMenuItemClickListener { items[it.title.toString()]?.invoke(); true }
-        m.show()
+        val more = ArrayList<Sheets.Option>()
+        more += Sheets.Option(R.drawable.ic_lyrics, "Choose lyrics file (.lrc / .txt)…") { pickLyrics.launch(arrayOf("*/*")) }
+        if (LibraryDb.lyricLink(s.id) != null) more += Sheets.Option(R.drawable.ic_close, "Forget chosen lyrics file") {
+            LibraryDb.setLyricLink(s.id, null); svc.reloadLyrics()
+        }
+        more += Sheets.Option(R.drawable.ic_lyrics, if (Prefs.floatingLyrics) "Floating lyrics: on" else "Floating lyrics: off") { toggleFloating() }
+        more += Sheets.Option(R.drawable.ic_star, "Cover touch effect…") { Sheets.coverEffect(this) { coverFx.setEffect(skin.activeCoverEffect) } }
+        if (svc.canChangeSpeed) more += Sheets.Option(R.drawable.ic_speed, "Speed & pitch…") { Sheets.speedPitch(this) }
+        more += Sheets.Option(R.drawable.ic_eq_surround, "Advanced audio (JSLW Sound Engine)") {
+            startActivity(Intent(this, SoundEngineActivity::class.java))
+        }
+        Sheets.songOptions(this, s, more = more)
     }
 
     private fun toggleFloating() {

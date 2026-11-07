@@ -124,6 +124,41 @@ object Prefs {
         get() = s("cover_fx", "theme")
         set(v) = put { putString("cover_fx", v) }
 
+    // ---- JSLW Sound Engine (Advanced audio) – values 0..100
+    var seOn: Boolean
+        get() = b("se_on", false)
+        set(v) = put { putBoolean("se_on", v) }
+    var seProfile: String
+        get() = s("se_profile", "music")
+        set(v) = put { putString("se_profile", v) }
+    /** auto, headphones, speaker */
+    var seOutput: String
+        get() = s("se_out", "auto")
+        set(v) = put { putString("se_out", v) }
+    var seSurround: Int
+        get() = i("se_surround", 35)
+        set(v) = put { putInt("se_surround", v) }
+    var seDialogue: Int
+        get() = i("se_dialogue", 0)
+        set(v) = put { putInt("se_dialogue", v) }
+    var seBass: Int
+        get() = i("se_bass", 35)
+        set(v) = put { putInt("se_bass", v) }
+    var seTreble: Int
+        get() = i("se_treble", 30)
+        set(v) = put { putInt("se_treble", v) }
+    var seLeveller: Int
+        get() = i("se_level", 0)
+        set(v) = put { putInt("se_level", v) }
+    var seRoom: Int
+        get() = i("se_room", 10)
+        set(v) = put { putInt("se_room", v) }
+
+    /** 0 = automatic, 1 = best looks, 2 = light (older phones) – see util.Perf. */
+    var performance: Int
+        get() = i("performance", 0)
+        set(v) = put { putInt("performance", v) }
+
     /** List scroll animation (0 = off) – see ListAnim. */
     var listAnim: Int
         get() = i("list_anim", 13)

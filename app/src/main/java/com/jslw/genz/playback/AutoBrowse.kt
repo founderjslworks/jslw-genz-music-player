@@ -91,6 +91,7 @@ object AutoBrowse {
     /** Children of a node. Call off the main thread (the database is read for playlists, favourites, history). */
     fun children(ctx: Context, parent: String): List<MediaItem> = when {
         parent == ROOT -> listOf(
+            folder(ctx, "flow", "Album Flow", "Your albums as a cover wall", R.drawable.ic_album_flow, childStyle = GRID),
             playable(ctx, SHUFFLE_ALL, "Shuffle all", "${Library.songs.size} songs", R.drawable.ic_shuffle),
             folder(ctx, "recent", "Recently played", null, R.drawable.ic_history),
             folder(ctx, "favs", "Favourites", null, R.drawable.ic_favorite),
@@ -102,6 +103,14 @@ object AutoBrowse {
             folder(ctx, "songs", "All songs", null, R.drawable.ic_note),
         )
         parent == RECENT_ROOT -> listOfNotNull(Library.songs(LibraryDb.recentIds(1)).firstOrNull()?.let { songItem("recent", it) })
+        // Album Flow for the car: the cover wall starts at the album that is playing and flows on from there
+        parent == "flow" -> {
+            val all = Library.albums
+            val at = all.indexOfFirst { a -> a.songs.any { it.albumId == nowAlbumId } }.coerceAtLeast(0)
+            (all.drop(at) + all.take(at)).take(MAX_ITEMS).map {
+                folder(ctx, "al:${it.id}", it.title, it.artist, null, artUri(it.artSong))
+            }
+        }
         parent == "albums" -> Library.albums.take(MAX_ITEMS).map {
             folder(ctx, "al:${it.id}", it.title, it.artist, null, artUri(it.artSong))
         }
@@ -151,6 +160,8 @@ object AutoBrowse {
     }
 
     @Volatile private var lastSearch: List<Song> = emptyList()
+    /** Album of the song playing now, so the car's Album Flow opens on it. */
+    @Volatile var nowAlbumId: Long = Long.MIN_VALUE
 
     /** Search for the car's search screen: songs, then albums and artists as browsable rows. */
     fun search(ctx: Context, query: String): List<MediaItem> {
