@@ -28,12 +28,12 @@ namespace GenZ.Controls
         /// <summary>Called every frame while music plays: <paramref name="level"/> 0..1 sets how many particles rise.</summary>
         public void Pulse(double level, double frac)
         {
-            if (ActualWidth <= 0 || frac <= 0.005) return;
+            if (ActualWidth <= 0 || frac <= 0.005 || !IsVisible || GenZ.Core.Perf.Light) return;
             var now = DateTime.UtcNow;
             double dt = pulseAt == default ? 1 / 60.0 : Math.Min(0.1, (now - pulseAt).TotalSeconds);
             pulseAt = now;
-            carry += level * level * 130 * dt;            // about 130 particles a second at full level, at any refresh rate
-            while (carry >= 1 && ps.Count < 150)
+            carry += level * level * 40 * dt;             // about 40 motes a second at full level – light on the GPU
+            while (carry >= 1 && ps.Count < 60)
             {
                 carry -= 1;
                 double x = R(0, ActualWidth * frac);

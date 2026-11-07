@@ -527,7 +527,7 @@ namespace GenZ
             watchers.Clear();
             if (watchDebounce == null)
             {
-                watchDebounce = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+                watchDebounce = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
                 watchDebounce.Tick += (s, e) => { watchDebounce.Stop(); if (!Library.Scanning) { Library.ScanAsync(); UpdateScanText(); } };
             }
             foreach (var dir in Settings.Current.Folders)
@@ -535,15 +535,13 @@ namespace GenZ
                 try
                 {
                     if (!System.IO.Directory.Exists(dir)) continue;
-                    var w = new System.IO.FileSystemWatcher(dir) { IncludeSubdirectories = true, NotifyFilter = System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.DirectoryName | System.IO.NotifyFilters.LastWrite };
-                    System.IO.FileSystemEventHandler h = (s, e) =>
-                    {
-                        if (e.ChangeType != System.IO.WatcherChangeTypes.Deleted && System.IO.Path.HasExtension(e.FullPath)
-                            && Array.IndexOf(Library.Extensions, System.IO.Path.GetExtension(e.FullPath).ToLowerInvariant()) < 0) return;
-                        Dispatcher.BeginInvoke(new Action(() => { watchDebounce.Stop(); watchDebounce.Start(); }));
-                    };
-                    w.Created += h; w.Deleted += h; w.Changed += h;
-                    w.Renamed += (s, e) => h(s, e);
+                    // only new, removed or renamed music files count – edits, folder timestamps and other files are ignored
+                    var w = new System.IO.FileSystemWatcher(dir) { IncludeSubdirectories = true, NotifyFilter = System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.DirectoryName, InternalBufferSize = 32768 };
+                    Func<string, bool> music = f => Array.IndexOf(Library.Extensions, System.IO.Path.GetExtension(f).ToLowerInvariant()) >= 0;
+                    Action poke = () => Dispatcher.BeginInvoke(new Action(() => { watchDebounce.Stop(); watchDebounce.Start(); }));
+                    w.Created += (s, e) => { if (music(e.FullPath)) poke(); };
+                    w.Deleted += (s, e) => { if (music(e.FullPath) || !System.IO.Path.HasExtension(e.FullPath)) poke(); };
+                    w.Renamed += (s, e) => { if (music(e.FullPath) || music(e.OldFullPath) || !System.IO.Path.HasExtension(e.FullPath)) poke(); };
                     w.EnableRaisingEvents = true;
                     watchers.Add(w);
                 }

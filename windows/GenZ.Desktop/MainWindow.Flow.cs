@@ -58,12 +58,11 @@ namespace GenZ
             if (i != center || Settings.Current.ReduceMotion || Core.Perf.Light) return 1;
             double extra = 0, pt = (DateTime.Now - flowPopAt).TotalSeconds;
             if (pt < 0.45) extra += 0.055 * Math.Sin(pt / 0.45 * Math.PI);
-            if (i == flowPlayingIdx && Player.IsPlaying) extra += 0.014 * (1 + Math.Sin(DateTime.Now.TimeOfDay.TotalSeconds * 4.4)) / 2;
             return 1 + extra;
         }
 
-        bool FlowAlive() => !Settings.Current.ReduceMotion && !Core.Perf.Light &&
-            ((DateTime.Now - flowPopAt).TotalSeconds < 0.5 || (flowPlayingIdx >= 0 && flowPlayingIdx == flowCenter && Player.IsPlaying));
+        // only the short arrival pop animates on its own – a resting Album Flow draws nothing (3D redraws are costly)
+        bool FlowAlive() => !Settings.Current.ReduceMotion && !Core.Perf.Light && (DateTime.Now - flowPopAt).TotalSeconds < 0.5;
         static readonly MeshGeometry3D FlowQuad = MakeQuad(0, 1, false), FlowReflQuad = MakeQuad(-0.42, 0, true);
 
         static MeshGeometry3D MakeQuad(double y0, double y1, bool refl)
@@ -294,6 +293,7 @@ namespace GenZ
                 FlowSetKnob(x, Range());
                 double idx = x / Range() * (flowAlbums.Count - 1);
                 flowTarget = Math.Round(idx);
+                FlowHook();
             };
             void Release()
             {
@@ -466,8 +466,11 @@ namespace GenZ
             FlowKnob();
         }
 
+        int flowIdle;
+
         void FlowHook()
         {
+            flowIdle = 0;
             bool want = pageFlow != null && pageFlow.IsVisible;
             if (want && !flowHooked) { flowHooked = true; flowLast = TimeSpan.Zero; CompositionTarget.Rendering += FlowFrame; }
             else if (!want && flowHooked) { flowHooked = false; CompositionTarget.Rendering -= FlowFrame; }
@@ -511,8 +514,12 @@ namespace GenZ
                 FlowSetKnob(flowKnobFrom + (flowKnobTo - flowKnobFrom) * ease, Math.Max(1, kc.ActualWidth - flowKnob.Width));
                 if (p >= 1) flowKnobBackT = -1;
             }
-            if (moving || flowDragging || FlowAlive()) FlowUpdate();
-            else if (!flowKnobDrag && flowFlipAngle == flowFlipGoal) { /* idle: nothing to redraw */ }
+            if (moving || flowDragging || FlowAlive()) { FlowUpdate(); flowIdle = 0; }
+            else if (!flowKnobDrag && flowKnobBackT < 0 && flowFlipAngle == flowFlipGoal && ++flowIdle > 20)
+            {
+                // resting: stop asking WPF for a frame every vsync – that alone kept the whole window busy
+                flowHooked = false; CompositionTarget.Rendering -= FlowFrame;
+            }
         }
 
         /// <summary>Places every visible cover: tilt, scale, overlap and dimming by distance from the centre.</summary>
@@ -669,7 +676,7 @@ namespace GenZ
             var p = e.GetPosition(flowVp);
             double dx = p.X - flowDown.X;
             if (!flowDragging && Math.Abs(dx) < 6) return;
-            flowDragging = true;
+            flowDragging = true; FlowHook();
             double per = Math.Max(60, flowVp.ActualHeight * 0.3);
             double np = Math.Max(-0.4, Math.Min(flowAlbums.Count - 0.6, flowDownPos - dx / per));
             var now = DateTime.UtcNow; double sec = Math.Max(0.001, (now - flowLastMove).TotalSeconds);

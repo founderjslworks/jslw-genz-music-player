@@ -442,8 +442,13 @@ namespace GenZ
         void StartDeviceTimer()
         {
             if (deviceTimer != null) return;
-            deviceTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
-            deviceTimer.Tick += (s, e) => { if (IsVisible && WindowState != WindowState.Minimized) RefreshDevice(); };
+            deviceTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(30) };
+            deviceTimer.Tick += (s, e) =>
+            {
+                // only while a strip can be seen
+                bool seen = (deviceStrip != null && deviceStrip.IsVisible) || (npDeviceStrip != null && NpInfo.IsVisible);
+                if (seen && IsActive && WindowState != WindowState.Minimized) RefreshDevice();
+            };
             deviceTimer.Start();
         }
 
@@ -469,6 +474,9 @@ namespace GenZ
         void FillStrip(Border b, AudioDevice.Info i, bool compact)
         {
             if (b == null) return;
+            var key = i.Name + "|" + i.DeviceBattery + "|" + i.PcBattery + "|" + i.Charging + "|" + i.Kind;
+            if (b.Tag as string == key && b.Child != null) return;
+            b.Tag = key;
             // only for a soundbar, Bluetooth or HDMI device – not the PC's own speakers or sound card
             if (i.Name == null) { b.Visibility = Visibility.Collapsed; return; }
             var row = new Grid();
