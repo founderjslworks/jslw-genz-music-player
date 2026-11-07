@@ -363,7 +363,7 @@ namespace GenZ.Core
             if (play && count) Settings.Current.Played(song.Path);
             try
             {
-                source = CodecFactory.Instance.GetCodec(song.Path);
+                source = OggSource.Handles(song.Path) ? new OggSource(song.Path) : CodecFactory.Instance.GetCodec(song.Path);
                 var samples = source.ToSampleSource();
                 eq = Equalizer.Create10BandEqualizer(samples);
                 ApplyEq();

@@ -12,8 +12,8 @@
     <AssemblyName>GEN-Z Music</AssemblyName>
     <ApplicationIcon>Assets\genz.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.6.0</Version>
-    <FileVersion>1.6.0.0</FileVersion>
+    <Version>1.6.1</Version>
+    <FileVersion>1.6.1.0</FileVersion>
     <Product>GEN-Z Music</Product>
     <Company>JSL WORKS PVT LTD</Company>
     <Authors>Partho Ghosh</Authors>
@@ -28,6 +28,10 @@
     <PackageReference Include="CSCore" Version="1.2.1.2" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Concentus" Version="1.1.7" />
+    <PackageReference Include="Concentus.Oggfile" Version="1.0.4" />
+    <PackageReference Include="NVorbis" Version="0.10.5" />
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" />
   </ItemGroup>
 
   <ItemGroup>

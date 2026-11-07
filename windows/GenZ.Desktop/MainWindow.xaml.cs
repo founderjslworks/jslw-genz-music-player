@@ -47,6 +47,7 @@ namespace GenZ
             Player.TrackChanged += OnTrackChanged;
             Player.StateChanged += OnPlayerState;
             Library.Changed += OnLibraryChanged;
+            Loaded += (s, e) => WatchFolders();
             ThemeManager.Changed += OnThemeChanged;
             // progress, lyrics and live effects update every frame (smooth on 120 / 144 / 240 Hz screens) while music plays,
             // and a few times a second when paused
@@ -478,7 +479,7 @@ namespace GenZ
                 Grid.SetColumn(t, 1); g.Children.Add(t);
                 var rm = new Button { Style = (Style)FindResource("IconButton"), Tag = FindResource("IcClose"), ToolTip = "Remove", Width = 32, Height = 32 };
                 var folder = f;
-                rm.Click += (s, e) => { Settings.Current.Folders.Remove(folder); Settings.Save(); ShowAbout(); Library.ScanAsync(); UpdateScanText(); };
+                rm.Click += (s, e) => { Settings.Current.Folders.Remove(folder); Settings.Save(); ShowAbout(); Library.ScanAsync(); UpdateScanText(); WatchFolders(); };
                 Grid.SetColumn(rm, 2); g.Children.Add(rm);
                 row.Child = g;
                 FolderList.Children.Add(row);
@@ -491,14 +492,64 @@ namespace GenZ
             using (var d = new System.Windows.Forms.FolderBrowserDialog { Description = "Choose a folder with your music", ShowNewFolderButton = false })
             {
                 if (d.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
-                if (!Settings.Current.Folders.Contains(d.SelectedPath, StringComparer.OrdinalIgnoreCase)) Settings.Current.Folders.Add(d.SelectedPath);
+                if (!Settings.Current.Folders.Contains(d.SelectedPath, StringComparer.OrdinalIgnoreCase)) { Settings.Current.Folders.Add(d.SelectedPath); WatchFolders(); }
                 Settings.Save();
                 Library.ScanAsync(); UpdateScanText();
                 if (view == View.About) ShowAbout();
             }
         }
 
-        void OnRescan(object sender, RoutedEventArgs e) { Library.ScanAsync(); UpdateScanText(); }
+        void OnRescan(object sender, RoutedEventArgs e) => OnRefreshLibrary(sender, e);
+
+        /// <summary>Manual refresh: scans the music folders again and says how many new songs turned up.</summary>
+        async void OnRefreshLibrary(object sender, RoutedEventArgs e)
+        {
+            if (Library.Scanning) { ShowToast("Already looking for new songs…"); return; }
+            int before = Library.Songs.Count;
+            var spin = new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(800)) { RepeatBehavior = RepeatBehavior.Forever };
+            RefreshSpin.BeginAnimation(RotateTransform.AngleProperty, spin);
+            ShowToast("Looking for new songs…");
+            var t = Library.ScanAsync(); UpdateScanText();
+            try { await t; } catch { }
+            RefreshSpin.BeginAnimation(RotateTransform.AngleProperty, null);
+            int diff = Library.Songs.Count - before;
+            ShowToast(diff > 0 ? "Found " + diff + (diff == 1 ? " new song" : " new songs") : diff < 0 ? "Library updated" : "Library is up to date");
+        }
+
+        // ---------------------------------------------------------------- watch the music folders for new files
+        readonly List<System.IO.FileSystemWatcher> watchers = new List<System.IO.FileSystemWatcher>();
+        DispatcherTimer watchDebounce;
+
+        /// <summary>New songs copied into a music folder show up by themselves a few seconds later.</summary>
+        void WatchFolders()
+        {
+            foreach (var w in watchers) { try { w.EnableRaisingEvents = false; w.Dispose(); } catch { } }
+            watchers.Clear();
+            if (watchDebounce == null)
+            {
+                watchDebounce = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+                watchDebounce.Tick += (s, e) => { watchDebounce.Stop(); if (!Library.Scanning) { Library.ScanAsync(); UpdateScanText(); } };
+            }
+            foreach (var dir in Settings.Current.Folders)
+            {
+                try
+                {
+                    if (!System.IO.Directory.Exists(dir)) continue;
+                    var w = new System.IO.FileSystemWatcher(dir) { IncludeSubdirectories = true, NotifyFilter = System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.DirectoryName | System.IO.NotifyFilters.LastWrite };
+                    System.IO.FileSystemEventHandler h = (s, e) =>
+                    {
+                        if (e.ChangeType != System.IO.WatcherChangeTypes.Deleted && System.IO.Path.HasExtension(e.FullPath)
+                            && Array.IndexOf(Library.Extensions, System.IO.Path.GetExtension(e.FullPath).ToLowerInvariant()) < 0) return;
+                        Dispatcher.BeginInvoke(new Action(() => { watchDebounce.Stop(); watchDebounce.Start(); }));
+                    };
+                    w.Created += h; w.Deleted += h; w.Changed += h;
+                    w.Renamed += (s, e) => h(s, e);
+                    w.EnableRaisingEvents = true;
+                    watchers.Add(w);
+                }
+                catch { }
+            }
+        }
         void OnWebsite(object sender, RoutedEventArgs e) => Open("https://www.jslworks.in/");
         void OnUpdates(object sender, RoutedEventArgs e) => Open("https://www.jslworks.in/android-devlopment");
         static void Open(string url) { try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { } }
@@ -824,6 +875,13 @@ namespace GenZ
             else if (e.Key == Key.L && ctrl) { OnLyricsToggle(this, null); e.Handled = true; }
             else if (e.Key == Key.I && ctrl) { EditSong(SongList.IsKeyboardFocusWithin && SongList.SelectedItem is Song sel ? sel : Player.Current ?? shownSong); e.Handled = true; }
             else if (e.Key == Key.N && ctrl) { OnNewPlaylist(this, null); e.Handled = true; }
+            else if (e.Key == Key.F5) { OnRefreshLibrary(this, null); e.Handled = true; }
+            else if (e.Key == Key.C && ctrl && SongList.IsKeyboardFocusWithin && SongList.SelectedItems.Count > 0)
+            {
+                var files = SongList.SelectedItems.OfType<Song>().Select(x => x.Path).Where(System.IO.File.Exists).ToList();
+                try { Sharing.CopyFiles(files); ShowToast("Copied " + files.Count + (files.Count == 1 ? " file" : " files") + " – paste them into any app"); } catch { }
+                e.Handled = true;
+            }
             else if (SearchBox.IsKeyboardFocusWithin) { if (e.Key == Key.Escape) { SearchBox.Text = ""; SongList.Focus(); } }
             else if (e.Key == Key.Space) { Player.Toggle(); e.Handled = true; }
             else if (ctrl && e.Key == Key.Right) { OnNext(this, EventArgs.Empty); e.Handled = true; }

@@ -210,7 +210,10 @@ namespace GenZ
         }
 
         TextBlock flowSlideText;
-        double flowKnobX, flowKnobFrom, flowKnobBackT = -1, flowKnobBackLen;
+        double flowKnobX, flowKnobFrom, flowKnobTo, flowKnobBackT = -1, flowKnobBackLen;
+
+        /// <summary>Where the knob belongs for the album in the centre: first album far left, last album far right.</summary>
+        double FlowKnobSpot(double range) => flowAlbums.Count < 2 ? 0 : Math.Max(0, Math.Min(1, flowPos / (flowAlbums.Count - 1))) * range;
 
         static LinearGradientBrush Grad(double angle, params (string c, double o)[] stops)
         {
@@ -297,14 +300,15 @@ namespace GenZ
                 if (!flowKnobDrag) return;
                 flowKnobDrag = false;
                 if (flowKnob.IsMouseCaptured) flowKnob.ReleaseMouseCapture();
-                // glide back to the start, the text fading back in, just like the original
-                flowKnobFrom = flowKnobX; flowKnobBackT = 0;
-                flowKnobBackLen = Settings.Current.ReduceMotion ? 0.001 : 0.26 + 0.22 * flowKnobX / Range();
+                // settle on the chosen album's spot (it no longer springs back to the far left)
+                flowKnobFrom = flowKnobX; flowKnobTo = Math.Round(flowTarget) / Math.Max(1, flowAlbums.Count - 1) * Range();
+                flowKnobBackT = 0;
+                flowKnobBackLen = Settings.Current.ReduceMotion ? 0.001 : 0.22;
                 FlowHook();
             }
             flowKnob.MouseLeftButtonUp += (s, e) => Release();
             flowKnob.LostMouseCapture += (s, e) => Release();
-            canvas.SizeChanged += (s, e) => FlowSetKnob(flowKnobDrag ? flowKnobX : 0, Range());
+            canvas.SizeChanged += (s, e) => FlowSetKnob(flowKnobDrag ? flowKnobX : FlowKnobSpot(Range()), Range());
             return flowTrack;
         }
 
@@ -318,7 +322,8 @@ namespace GenZ
                 flowKnob.Height = Math.Max(20, cv.ActualHeight - 4);
                 Canvas.SetTop(flowKnob, 2);
             }
-            flowSlideText.Opacity = Math.Max(0, 1 - x / Math.Max(1, range * 0.32));
+            // the hint fades while the knob covers it, and stays faint once you've browsed along
+            flowSlideText.Opacity = Math.Max(0.35, 1 - x / Math.Max(1, range * 0.32));
         }
 
         void FlowShimmer(TextBlock t)
@@ -503,7 +508,7 @@ namespace GenZ
             {
                 flowKnobBackT += dt;
                 double p = Math.Min(1, flowKnobBackT / flowKnobBackLen), ease = 1 - Math.Pow(1 - p, 3);
-                FlowSetKnob(flowKnobFrom * (1 - ease), Math.Max(1, kc.ActualWidth - flowKnob.Width));
+                FlowSetKnob(flowKnobFrom + (flowKnobTo - flowKnobFrom) * ease, Math.Max(1, kc.ActualWidth - flowKnob.Width));
                 if (p >= 1) flowKnobBackT = -1;
             }
             if (moving || flowDragging || FlowAlive()) FlowUpdate();
@@ -556,7 +561,8 @@ namespace GenZ
 
         void FlowKnob()
         {
-            if (flowKnob?.Parent is Canvas cv && !flowKnobDrag && flowKnobX == 0) FlowSetKnob(0, Math.Max(1, cv.ActualWidth - flowKnob.Width));
+            // the knob follows the album in the centre (wheel, arrow keys, drag on the covers)
+            if (flowKnob?.Parent is Canvas cv && !flowKnobDrag && flowKnobBackT < 0) { double r = Math.Max(1, cv.ActualWidth - flowKnob.Width); FlowSetKnob(FlowKnobSpot(r), r); }
         }
 
         FlowItem FlowMake(int i)

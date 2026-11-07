@@ -85,7 +85,7 @@ namespace GenZ.Core
     /// <summary>Scans the music folders, reads tags with TagLib and keeps a cache so the next start is instant.</summary>
     public static class Library
     {
-        public static readonly string[] Extensions = { ".mp3", ".flac", ".wav", ".aiff", ".aif", ".m4a", ".aac", ".wma", ".mp4", ".opus", ".ogg" };
+        public static readonly string[] Extensions = { ".mp3", ".flac", ".wav", ".aiff", ".aif", ".m4a", ".aac", ".wma", ".mp4", ".opus", ".ogg", ".oga" };
         public static List<Song> Songs { get; private set; } = new List<Song>();
         public static List<AlbumInfo> Albums { get; private set; } = new List<AlbumInfo>();
         public static List<ArtistInfo> Artists { get; private set; } = new List<ArtistInfo>();

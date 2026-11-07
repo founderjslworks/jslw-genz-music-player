@@ -244,6 +244,17 @@ namespace GenZ
             return mi;
         }
 
+        void ShareAirShare(List<string> paths, string label)
+        {
+            try { if (Sharing.SendWithAirShare(paths)) { ShowToast("Opening AIR share with " + label); return; } }
+            catch (Exception ex) { ShowToast("Couldn't open AIR share: " + ex.Message); return; }
+            if (Dialogs.Confirm(this, "AIR share isn't installed", "AIR share sends music to nearby phones and PCs over Wi-Fi – fast, offline and free.\n\n"
+                + "Until it's installed, GEN-Z can copy the files so you can paste them into any app.", "Copy files"))
+            {
+                Sharing.CopyFiles(paths); ShowToast("Copied – paste them anywhere");
+            }
+        }
+
         /// <summary>Moves songs to the Recycle Bin (handy for voice and call recordings) and drops them from the library.</summary>
         void DeleteSongs(List<Song> list)
         {
@@ -295,6 +306,25 @@ namespace GenZ
                 add.Items.Add(Item(p.Name, "IcPlaylist", () => { Playlists.Add(pl, list); ShowToast("Added " + Songs(list.Count) + " to " + pl.Name); }));
             }
             m.Items.Add(add);
+
+            // share: AIR share, Windows' Share panel, or copy the files to paste into any app
+            var share = Item("Share", "IcShare", null);
+            var paths = list.Select(x => x.Path).Where(System.IO.File.Exists).ToList();
+            string label = one ? "“" + list[0].Title + "”" : Songs(list.Count);
+            share.Items.Add(Item("Send with AIR share", "IcShare", () => ShareAirShare(paths, label)));
+            if (Sharing.ShareSheetAvailable)
+                share.Items.Add(Item("Share… (WhatsApp, Nearby sharing, Mail…)", "IcExport", () =>
+                {
+                    try { Sharing.ShareSheet(new System.Windows.Interop.WindowInteropHelper(this).Handle, paths, label); }
+                    catch (Exception ex) { Dialogs.Message(this, "Share", "Windows couldn't open the Share panel: " + ex.Message); }
+                }));
+            share.Items.Add(Item(one ? "Copy file" : "Copy files", "IcPlaylistAdd", () =>
+            {
+                try { Sharing.CopyFiles(paths); ShowToast("Copied – paste into WhatsApp, Telegram, Explorer or a USB drive"); }
+                catch (Exception ex) { ShowToast("Couldn't copy: " + ex.Message); }
+            }, "Ctrl+C"));
+            share.IsEnabled = paths.Count > 0;
+            m.Items.Add(share);
 
             if (context == "list" && view == View.Playlist && openPlaylist != null)
                 m.Items.Add(Item("Remove from this playlist", "IcDelete", RemoveSelected, "Del"));
