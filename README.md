@@ -22,6 +22,15 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.2
+
+- **Playing on your soundbar**: Now Playing and Sound show the connected soundbar / Bluetooth device by name, its battery (when it reports one), the Bluetooth codec, and your phone's battery
+- **Album Flow styles**: 3D carousel ring, card stack, wave, fan of cards, record crate and depth tunnel, plus classic. Each theme suggests one, and you can pick your own
+- **Room presets**: Bedroom, Living room, Studio, Home theatre, Club, Concert hall, Stadium
+- **Cleaner Sound screen**: sections for profile, output, room and equalizer, 29 presets sorted into Popular, Indian, Chill, Tone and Situations, new icons, and one compact fine-tuning card
+- **Hidden folders**: call recordings and WhatsApp Audio are kept out of the library (Settings › Hidden folders), and any folder can be hidden with a long press
+- Themes preview the current screens and style the new parts; the play / pause button is now centred and sized properly
+
 ## What's new in 1.9
 
 - **JSLW Sound Engine (Advanced audio)**: Music, Movie, Game, Voice and Night profiles with surround, dialogue clarity, bass, treble, room and a volume leveller – tuned for wired headphones, **Bluetooth headphones** and speakers

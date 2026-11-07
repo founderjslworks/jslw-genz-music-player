@@ -85,8 +85,9 @@ object ControlFx {
                 val tt = (t * 1.3f - k * 0.15f).coerceIn(0f, 1f)
                 if (tt <= 0f || tt >= 1f) continue
                 val e = 1f - (1f - tt) * (1f - tt)
-                val rad = if (outward) r * (0.95f + e * 0.9f) else r * (1.85f - e * 0.9f)
-                p.strokeWidth = (4f - k) * d * (1f - tt * 0.6f)
+                // kept within ~1.4× the button so the rings never run over previous / next
+                val rad = if (outward) r * (1f + e * 0.42f) else r * (1.42f - e * 0.42f)
+                p.strokeWidth = (3f - k * 0.7f) * d * (1f - tt * 0.6f)
                 p.alpha = (190 * (1f - tt)).toInt()
                 c.drawCircle(cx, cy, rad, p)
             }
@@ -96,7 +97,7 @@ object ControlFx {
                 val e = (t * 1.3f).coerceIn(0f, 1f)
                 for (k in 0 until 8) {
                     val a = Math.toRadians((k * 45 + 20).toDouble())
-                    val rad = r * (1f + e * 1.1f)
+                    val rad = r * (1.05f + e * 0.45f)
                     p.alpha = (230 * (1f - e)).toInt()
                     c.drawCircle(cx + (Math.cos(a) * rad).toFloat(), cy + (Math.sin(a) * rad).toFloat(), 2.6f * d * (1f - e * 0.5f), p)
                 }
@@ -122,7 +123,14 @@ object ControlFx {
     private fun overlay(v: View, duration: Long, draw: (Canvas, Float, Float, Float, Float, Paint) -> Unit): FxDrawable {
         val fx = FxDrawable(draw)
         val root = v.rootView as? ViewGroup ?: return fx
-        val loc = IntArray(2); v.getLocationInWindow(loc)
+        // centre from the parent's position + the view's layout box, so a button that is mid-"heartbeat"
+        // (scaled) doesn't pull the rings off-centre
+        val loc = IntArray(2)
+        val parent = v.parent as? View
+        if (parent != null) {
+            parent.getLocationInWindow(loc)
+            loc[0] += v.left + v.translationX.toInt(); loc[1] += v.top + v.translationY.toInt()
+        } else v.getLocationInWindow(loc)
         val rl = IntArray(2); root.getLocationInWindow(rl)
         fx.cx = loc[0] - rl[0] + v.width / 2f
         fx.cy = loc[1] - rl[1] + v.height / 2f

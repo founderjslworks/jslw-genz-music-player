@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GEN-Z original icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M6,3h12a1.5,1.5 0,0 1,1.5 1.5v8A1.5,1.5 0,0 1,18 14H6a1.5,1.5 0,0 1,-1.5 -1.5v-8A1.5,1.5 0,0 1,6 3zM6.5,5v7h11V5zM9,15.5h6v1.5H9zM1.5,10h2v11h-2zM20.5,10h2v11h-2zM7,19h10v2H7z"/>
+</vector>

@@ -35,6 +35,29 @@ object SoundEngine {
         Prefs.seTreble = p.treble; Prefs.seLeveller = p.leveller; Prefs.seRoom = p.room
     }
 
+    /** Room presets: the reverb space (PresetReverb preset) and a starting amount for the Room slider. */
+    class Room(val id: String, val name: String, val preset: Int, val amount: Int)
+
+    val ROOMS = listOf(
+        Room("auto", "Auto", -1, 10),
+        Room("off", "Off", 0, 0),
+        Room("bedroom", "Bedroom", 1, 25),
+        Room("living", "Living room", 2, 35),
+        Room("studio", "Studio", 6, 30),
+        Room("theatre", "Home theatre", 3, 50),
+        Room("club", "Club", 4, 45),
+        Room("hall", "Concert hall", 5, 55),
+        Room("stadium", "Stadium", 5, 85),
+    )
+
+    fun room(id: String) = ROOMS.firstOrNull { it.id == id } ?: ROOMS[0]
+
+    fun applyRoom(id: String) {
+        val r = room(id)
+        Prefs.seRoomType = r.id
+        if (r.id != "auto") Prefs.seRoom = r.amount
+    }
+
     enum class Output(val label: String) {
         HEADPHONES("Headphones"), BLUETOOTH("Bluetooth headphones"), SPEAKER("Speaker"),
         SOUNDBAR("Soundbar / home theatre"),

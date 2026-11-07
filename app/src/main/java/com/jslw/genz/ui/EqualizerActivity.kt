@@ -40,6 +40,10 @@ class EqualizerActivity : BaseActivity() {
         setContentView(R.layout.activity_equalizer)
         setupScreen(findViewById(R.id.root))
         header("Sound")
+        val strip = com.jslw.genz.ui.views.DeviceStrip(this, skin.text, skin.accent)
+        val contentBox = findViewById<View>(R.id.eqGraph).parent as LinearLayout
+        contentBox.addView(strip, 0, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            .apply { bottomMargin = (10 * resources.displayMetrics.density).toInt() })
         bandsBox = findViewById(R.id.eqBands)
         curve = findViewById(R.id.eqCurve)
         presetGroup = findViewById(R.id.eqPresets)
@@ -115,6 +119,7 @@ class EqualizerActivity : BaseActivity() {
             Sheets.askText(this, "Save preset", "My sound", "Save") { name ->
                 fx.saveCustom(name, levels)
                 Prefs.eqPreset = name
+                category = "Mine"
                 buildPresets()
                 toast("Saved \"$name\"")
             }
@@ -235,6 +240,17 @@ class EqualizerActivity : BaseActivity() {
         val n = name.lowercase()
         return when {
             "flat" in n || "normal" in n -> R.drawable.ic_eq_flat
+            "bollywood" in n || "tv" in n -> R.drawable.ic_se_movie
+            "bhangra" in n || "indian" in n -> R.drawable.ic_cat_dhol
+            "sufi" in n || "devotional" in n -> R.drawable.ic_diya
+            "lo-fi" in n -> R.drawable.ic_cat_chill
+            "piano" in n -> R.drawable.ic_piano
+            "gaming" in n -> R.drawable.ic_se_game
+            "car" == n -> R.drawable.ic_car
+            "small" in n -> R.drawable.ic_speaker_small
+            "podcast" in n -> R.drawable.ic_eq_vocal
+            "r&b" in n -> R.drawable.ic_se_music
+            "dance" in n -> R.drawable.ic_room_club
             "bass" in n -> R.drawable.ic_eq_bass
             "rock" in n || "metal" in n -> R.drawable.ic_eq_rock
             "pop" in n || "dance" in n -> R.drawable.ic_star
@@ -262,10 +278,55 @@ class EqualizerActivity : BaseActivity() {
         }
     }
 
+    private var category: String? = null
+    private var catGroup: ChipGroup? = null
+
+    private fun categoryIcon(c: String) = when (c) {
+        "Popular" -> R.drawable.ic_star; "Indian" -> R.drawable.ic_cat_dhol; "Chill" -> R.drawable.ic_cat_chill
+        "Tone" -> R.drawable.ic_room_studio; "Situations" -> R.drawable.ic_cat_scene; "Mine" -> R.drawable.ic_eq_custom
+        else -> R.drawable.ic_eq_device
+    }
+
+    /** Presets sorted into categories: a row of category chips, then that category's presets. */
     private fun buildPresets() {
         presets = fx.presets()
+        val mine = fx.customPresets().keys
+        val catOf = presets.keys.associateWith { n ->
+            AudioFx.CATEGORIES.firstOrNull { n in it.second }?.first ?: if (n in mine) "Mine" else "Device"
+        }
+        val cats = AudioFx.CATEGORIES.map { it.first } +
+            listOfNotNull("Device".takeIf { "Device" in catOf.values }, "Mine".takeIf { "Mine" in catOf.values })
+        if (category !in cats) category = catOf[Prefs.eqPreset]?.takeIf { it in cats } ?: cats.first()
+        val cg = catGroup ?: ChipGroup(this).apply { isSingleLine = true; isSingleSelection = true; isSelectionRequired = true }.also { g ->
+            catGroup = g
+            val scroll = presetGroup.parent as View
+            val box = scroll.parent as android.view.ViewGroup
+            box.addView(android.widget.HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = false; addView(g)
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                    .apply { topMargin = dp(10f).toInt() }
+            }, box.indexOfChild(scroll))
+        }
+        cg.removeAllViews()
+        for (c in cats) {
+            val chip = Chip(this)
+            chip.text = c
+            chip.isCheckable = true
+            chip.id = View.generateViewId()
+            SkinPainter.styleChip(chip)
+            chipIcon(chip, categoryIcon(c))
+            chip.isChecked = c == category
+            chip.setOnClickListener { category = c; fillPresets(catOf) }
+            Sheets.pressFeedback(chip)
+            cg.addView(chip)
+        }
+        fillPresets(catOf)
+    }
+
+    private fun fillPresets(catOf: Map<String, String>) {
         presetGroup.removeAllViews()
         for ((name, vals) in presets) {
+            if (catOf[name] != category) continue
             val c = Chip(this)
             c.text = name
             c.isCheckable = true
@@ -275,7 +336,12 @@ class EqualizerActivity : BaseActivity() {
             c.isChecked = name == Prefs.eqPreset
             c.setOnClickListener { applyPreset(name, vals) }
             presetGroup.addView(c)
+            if (!com.jslw.genz.util.Perf.light) {
+                c.alpha = 0f; c.translationX = dp(16f)
+                c.animate().alpha(1f).translationX(0f).setStartDelay(presetGroup.childCount * 30L).setDuration(260).start()
+            }
         }
+        (presetGroup.parent as? android.widget.HorizontalScrollView)?.scrollTo(0, 0)
     }
 
     private fun selectPresetChip(name: String?) {

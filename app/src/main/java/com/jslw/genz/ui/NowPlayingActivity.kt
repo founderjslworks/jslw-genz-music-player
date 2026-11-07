@@ -55,6 +55,7 @@ import kotlin.math.abs
 class NowPlayingActivity : BaseActivity(), Player.Listener {
     private lateinit var root: DragDismissLayout
     private lateinit var content: View
+    private var deviceStrip: com.jslw.genz.ui.views.DeviceStrip? = null
     private lateinit var art: ImageView
     private lateinit var artSquare: View
     private lateinit var coverFx: com.jslw.genz.ui.views.CoverEffectView
@@ -113,6 +114,12 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         setContentView(R.layout.activity_now_playing)
         root = findViewById(R.id.npRoot)
         content = findViewById(R.id.npContent)
+        // "Playing on <soundbar>" strip under the top bar – only while on Bluetooth / HDMI
+        deviceStrip = com.jslw.genz.ui.views.DeviceStrip(this, skin.npText, skin.accent).also { st ->
+            val side = resources.getDimensionPixelSize(R.dimen.np_side)
+            (content as android.view.ViewGroup).addView(st, 1, android.widget.LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = side; marginEnd = side; bottomMargin = (6 * resources.displayMetrics.density).toInt() })
+        }
         art = findViewById(R.id.npArt)
         artSquare = findViewById(R.id.npArtSquare)
         coverFx = findViewById(R.id.npCoverFx)
@@ -579,6 +586,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             }
         }
         SkinPainter.apply(content, skin, target)
+        deviceStrip?.setColors(target.text, target.accent)
         if (seek.styleName != skin.progressStyle) seek.setStyle(skin.progressStyle, skin.progressColors)
         // keep the play-head/halo in step with the song accent even when the gradient comes from the cover
         seek.setColors(target.accent, SkinPainter.withAlpha(target.text, 0x33))

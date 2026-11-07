@@ -14,8 +14,8 @@
     <!-- mini preview of the theme: header strip, background, accent, text -->
     <LinearLayout
         android:id="@+id/themePreview"
-        android:layout_width="64dp"
-        android:layout_height="56dp"
+        android:layout_width="58dp"
+        android:layout_height="96dp"
         android:orientation="vertical">
 
         <View

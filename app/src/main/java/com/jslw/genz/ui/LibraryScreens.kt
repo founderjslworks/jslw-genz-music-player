@@ -187,7 +187,7 @@ class BrowseFragment : BaseListFragment() {
                 Library.folders.forEach { f ->
                     rows += Row(f.name, f.path, extra = f.songs.size.toString(), icon = R.drawable.ic_folder, chevron = true,
                         onClick = { open(SongsFragment.forSource(Source.OfFolder(f.path, f.name))) },
-                        onLong = { v -> groupMenu(v, f.songs, f.name) })
+                        onLong = { v -> groupMenu(v, f.songs, f.name, folder = f.path) })
                 }
             }
             "playlists" -> {
@@ -222,10 +222,11 @@ class BrowseFragment : BaseListFragment() {
         onLong = { v -> groupMenu(v, al.songs, al.title) },
     )
 
-    private fun groupMenu(anchor: View, songs: List<Song>, label: String) {
+    private fun groupMenu(anchor: View, songs: List<Song>, label: String, folder: String? = null) {
         val m = PopupMenu(requireContext(), anchor)
         m.menu.add("Play"); m.menu.add("Shuffle"); m.menu.add("Play next"); m.menu.add("Add to queue"); m.menu.add("Add to playlist…")
         m.menu.add("Send with AIR share")
+        if (folder != null) m.menu.add("Hide this folder")
         m.setOnMenuItemClickListener { item ->
             val c = requireContext()
             when (item.title.toString()) {
@@ -234,6 +235,10 @@ class BrowseFragment : BaseListFragment() {
                 "Play next" -> Player.with(c) { it.playNext(songs) }
                 "Add to queue" -> Player.with(c) { it.addToQueue(songs) }
                 "Send with AIR share" -> AirShare.send(requireActivity(), songs)
+                "Hide this folder" -> folder?.let {
+                    com.jslw.genz.data.HiddenFolders.hide(it); Library.load(c)
+                    c.toast("\"$label\" hidden – bring it back in Settings › Hidden folders")
+                }
                 else -> Sheets.addToPlaylist(requireActivity(), songs)
             }
             true

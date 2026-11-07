@@ -147,18 +147,14 @@ class ThemesActivity : BaseActivity() {
             val s = items[position]
             val v = h.itemView
             val d = resources.displayMetrics.density
-            v.findViewById<View>(R.id.themePreview).background = GradientDrawable().apply {
-                setColor(s.background); cornerRadius = 8 * d; setStroke((1 * d).toInt(), s.divider)
-            }
-            v.findViewById<View>(R.id.themeSw1).background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(s.header, s.headerEnd)).apply {
-                cornerRadii = floatArrayOf(8 * d, 8 * d, 8 * d, 8 * d, 0f, 0f, 0f, 0f)
-            }
-            v.findViewById<View>(R.id.themeSw3).background = GradientDrawable().apply { setColor(s.text); cornerRadius = 3 * d }
-            v.findViewById<View>(R.id.themeSw4).background = GradientDrawable().apply { setColor(s.accent); cornerRadius = 3 * d }
+            // a mini phone screen in the theme's colours: header, Album Flow, chips, seek bar, play button
+            v.findViewById<View>(R.id.themePreview).background = com.jslw.genz.skin.ThemePreview(s, d)
+            for (id in intArrayOf(R.id.themeSw1, R.id.themeSw2)) v.findViewById<View>(id).visibility = View.INVISIBLE
             v.findViewById<TextView>(R.id.themeName).apply { text = s.name; typeface = s.boldTypeface }
             v.findViewById<TextView>(R.id.themeAuthor).text = listOfNotNull(
                 if (s.builtIn) "Built-in" else if (s.packDir != null) "Skin pack" else "Theme file",
                 com.jslw.genz.ui.views.SparkleSeekBar.LABELS[s.progressStyle],
+                FlowStyles.ALL.firstOrNull { it.first == s.flowStyle }?.second,
                 s.author.takeIf { it.isNotBlank() }?.let { "by $it" },
                 "v${s.version}",
             ).joinToString(" · ")

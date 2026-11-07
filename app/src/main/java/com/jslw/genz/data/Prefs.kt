@@ -154,6 +154,28 @@ object Prefs {
         get() = i("se_room", 10)
         set(v) = put { putInt("se_room", v) }
 
+    /** Room preset (see audio.SoundEngine.ROOMS); "auto" = chosen by the sound profile. */
+    var seRoomType: String
+        get() = s("se_room_type", "auto")
+        set(v) = put { putString("se_room_type", v) }
+
+    // ---- hidden folders ----
+    var hideCallRecordings: Boolean
+        get() = b("hide_call_rec", true)
+        set(v) = put { putBoolean("hide_call_rec", v) }
+    var hideWhatsAppAudio: Boolean
+        get() = b("hide_wa_audio", true)
+        set(v) = put { putBoolean("hide_wa_audio", v) }
+    /** Folders the user hid, one path per line. */
+    var hiddenFolders: String
+        get() = s("hidden_folders", "")
+        set(v) = put { putString("hidden_folders", v) }
+
+    /** Album Flow layout style (see ui.FlowStyles). */
+    var flowStyle: String
+        get() = s("flow_style", "theme")
+        set(v) = put { putString("flow_style", v) }
+
     /** One-time move to the combined Sound screen (EQ + JSLW Sound Engine, one switch). */
     var soundMerged: Boolean
         get() = b("sound_merged", false)

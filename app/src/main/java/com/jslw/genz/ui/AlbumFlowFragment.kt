@@ -109,6 +109,7 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         rv.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> transform() }
         rv.addItemDecoration(shineDecoration)
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backCb)
+        addStyleButton(v as ViewGroup)
         return v
     }
 
@@ -119,11 +120,14 @@ class AlbumFlowFragment : Fragment(), Refreshable {
     override fun onResume() {
         super.onResume()
         (activity as? MainActivity)?.setScreenTitle("Album Flow")
+        val st = FlowStyles.current()
+        if (st != style) { style = st; if (::rv.isInitialized) transform() }
     }
 
     private fun setup() {
         if (view == null) return
         albums = Library.albums
+        style = FlowStyles.current()
         emptyView.visibility = if (albums.isEmpty()) View.VISIBLE else View.GONE
         val h = rv.height
         val w = rv.width
@@ -156,6 +160,61 @@ class AlbumFlowFragment : Fragment(), Refreshable {
             (rv.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(start.coerceIn(0, albums.lastIndex), 0)
         }
         rv.post { transform(); if (!entered) { entered = true; enterAnimation() } }
+    }
+
+    /** Top-right button: choose how Album Flow lays out and moves the covers. */
+    private fun addStyleButton(root: ViewGroup) {
+        val d = resources.displayMetrics.density
+        val sk = SkinManager.current
+        val b = android.widget.ImageButton(requireContext()).apply {
+            setImageResource(R.drawable.ic_palette)
+            setColorFilter(sk.text)
+            contentDescription = "Album Flow style"
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL
+                setColor(androidx.core.graphics.ColorUtils.setAlphaComponent(sk.surface, 0xCC))
+            }
+            val p = (10 * d).toInt(); setPadding(p, p, p, p)
+            setOnClickListener { chooseStyle() }
+        }
+        root.addView(b, android.widget.FrameLayout.LayoutParams((44 * d).toInt(), (44 * d).toInt(), android.view.Gravity.TOP or android.view.Gravity.END)
+            .apply { topMargin = (10 * d).toInt(); marginEnd = (12 * d).toInt() })
+    }
+
+    private fun chooseStyle() {
+        val all = FlowStyles.CHOICES
+        val cur = all.indexOfFirst { it.first == com.jslw.genz.data.Prefs.flowStyle }.coerceAtLeast(0)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Album Flow style")
+            .setSingleChoiceItems(all.map { it.second }.toTypedArray(), cur) { dlg, w ->
+                dlg.dismiss()
+                switchStyle(all[w].first)
+            }.show()
+    }
+
+    /** Covers glide from the old arrangement into the new one. */
+    private fun switchStyle(choice: String) {
+        com.jslw.genz.data.Prefs.flowStyle = choice
+        val id = FlowStyles.current()
+        if (id == style) return
+        val n = rv.childCount
+        val before = Array(n) { i -> FlowStyles.snapshot(rv.getChildAt(i)) }
+        style = id
+        transform()
+        if (light) return
+        val after = Array(n) { i -> FlowStyles.snapshot(rv.getChildAt(i)) }
+        android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 520
+            interpolator = android.view.animation.OvershootInterpolator(1.05f)
+            addUpdateListener { an ->
+                val t = an.animatedValue as Float
+                for (i in 0 until minOf(n, rv.childCount)) FlowStyles.blend(rv.getChildAt(i), before[i], after[i], t)
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) { transform() }
+            })
+            start()
+        }
     }
 
     // ---------------------------------------------------------------- extra motion
@@ -323,6 +382,8 @@ class AlbumFlowFragment : Fragment(), Refreshable {
     }
 
     /** The heart of the effect: tilt, scale, overlap and z-order covers by distance from centre. */
+    private var style = "classic"
+
     private fun transform() {
         if (cover == 0) return
         val cx = rv.width / 2f
@@ -342,7 +403,6 @@ class AlbumFlowFragment : Fragment(), Refreshable {
             c.pivotY = cover / 2f
             // lean into the motion: the faster you browse, the more the covers tilt (Animation: velocity lean)
             val lean = if (light) 0f else (vel / density).coerceIn(-45f, 45f) * 0.28f
-            c.rotationY = -cl * 58f - lean
             // spotlight: side covers sink into shadow
             val vh = rv.getChildViewHolder(c) as? CoverAdapter.VH
             if (vh != null) {
@@ -353,11 +413,7 @@ class AlbumFlowFragment : Fragment(), Refreshable {
                     vh.refl.colorFilter = if (k == 0) null else dim[k]
                 }
             }
-            val s = 1f - 0.16f * min(ad, 1f)
-            c.scaleX = s; c.scaleY = s
-            val shift = if (ad <= 1f) ad * 0.48f else 0.48f + (ad - 1f) * 0.70f
-            c.translationX = -sign(d) * shift * cover
-            c.alpha = (1f - 0.14f * (ad - 1f).coerceAtLeast(0f)).coerceIn(0.25f, 1f)
+            FlowStyles.apply(style, c, d, cover.toFloat(), lean)
             if (ad < bestD) { bestD = ad; best = rv.getChildAdapterPosition(c) }
         }
         // draw farthest first, centre cover last (insertion sort: n is ~10, no allocation)

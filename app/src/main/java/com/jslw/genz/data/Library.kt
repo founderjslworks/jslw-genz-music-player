@@ -99,7 +99,8 @@ object Library {
         val extra = MediaScanner.scanExtraFolders(ctx, base).let { it + MediaScanner.unindexedOpus(ctx, base + it) }
         val overrides = LibraryDb.tagOverrides()
         val minMs = Prefs.minDurationSec * 1000L
-        val all = (base + extra).filter { it.duration == 0L || it.duration >= minMs }
+        val visible = HiddenFolders.filter()
+        val all = (base + extra).filter { (it.duration == 0L || it.duration >= minMs) && visible(it) }
         val overriddenAlbum = HashSet<Long>()
         for (s in all) overrides[s.id]?.let { o ->
             o.title?.let { s.title = it }

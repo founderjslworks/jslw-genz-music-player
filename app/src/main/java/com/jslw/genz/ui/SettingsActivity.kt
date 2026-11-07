@@ -156,6 +156,10 @@ class SettingsActivity : BaseActivity() {
         items += Item.Toggle("Keep screen on in Now Playing", "Handy for lyrics or in a dock", { Prefs.keepScreenOn }, { Prefs.keepScreenOn = it })
 
         items += Item.Section("Animations & effects")
+        items += Item.Action("Album Flow style", { FlowStyles.CHOICES.let { ch -> (ch.firstOrNull { it.first == Prefs.flowStyle } ?: ch[0]).second } }) {
+            val ch = FlowStyles.CHOICES
+            choose("Album Flow style", ch.map { it.first }, { id -> ch.first { it.first == id }.second }, Prefs.flowStyle.takeIf { p -> ch.any { it.first == p } } ?: "theme") { Prefs.flowStyle = it }
+        }
         items += Item.Action("Performance", { com.jslw.genz.util.Perf.describe() }) {
             choose("Performance", listOf(0, 1, 2), { arrayOf("Automatic", "Best looks", "Light – smoother on older phones")[it] }, Prefs.performance) { Prefs.performance = it }
         }
@@ -241,6 +245,12 @@ class SettingsActivity : BaseActivity() {
                 Prefs.minDurationSec = it; Library.load(this)
             }
         }
+        items += Item.Action("Hidden folders", {
+            listOfNotNull(
+                "Call recordings".takeIf { Prefs.hideCallRecordings }, "WhatsApp Audio".takeIf { Prefs.hideWhatsAppAudio },
+                com.jslw.genz.data.HiddenFolders.custom().size.takeIf { it > 0 }?.let { "$it more" },
+            ).joinToString(" · ").ifEmpty { "Nothing hidden" }
+        }) { hiddenFolders() }
         items += Item.Action("Add music folder…", { "For DSD (.dsf/.dff), AIFF and anything Android doesn't index" }) { addFolder() }
         items += Item.Action("Extra folders", { if (Prefs.extraFolders.isEmpty()) "None" else "${Prefs.extraFolders.size} folder(s) – tap to remove" }) { manageFolders() }
         items += Item.Action("Refresh library", { "${Library.songs.size} songs · finds newly added music" }) {
@@ -330,6 +340,22 @@ class SettingsActivity : BaseActivity() {
             toast("Scanning the Music folder")
             adapter.notifyDataSetChanged()
         }
+    }
+
+    /** Call recordings / WhatsApp Audio switches plus every folder hidden from the Folders list. */
+    private fun hiddenFolders() {
+        val custom = com.jslw.genz.data.HiddenFolders.custom().toList()
+        val names = arrayOf("Call recordings", "WhatsApp Audio & voice notes") + custom.map { it.substringAfterLast('/') + "  (" + it + ")" }
+        val checked = BooleanArray(names.size) { i -> when (i) { 0 -> Prefs.hideCallRecordings; 1 -> Prefs.hideWhatsAppAudio; else -> true } }
+        MaterialAlertDialogBuilder(this).setTitle("Hide these folders")
+            .setMultiChoiceItems(names, checked) { _, w, on -> checked[w] = on }
+            .setPositiveButton("Done") { _, _ ->
+                Prefs.hideCallRecordings = checked[0]; Prefs.hideWhatsAppAudio = checked[1]
+                custom.forEachIndexed { k, path -> if (!checked[k + 2]) com.jslw.genz.data.HiddenFolders.unhide(path) }
+                Library.load(this); adapter.notifyDataSetChanged()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun manageFolders() {

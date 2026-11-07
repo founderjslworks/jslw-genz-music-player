@@ -293,7 +293,19 @@ object SkinPainter {
             layers = soft
             // pressed = the shadows swap sides, so the card looks pushed in
             val a = if (pressed) -1 else 1
-            insets = arrayOf(
+            insets = if (oval) {
+                // round buttons: every layer stays a true circle centred on the button – the shadows are
+                // concentric halos nudged by 1dp only, so the disc never looks off-centre or squashed
+                val m = maxOf(ix, iy) + oi
+                val n = (1 * d).toInt().coerceAtLeast(1) * a
+                arrayOf(
+                    intArrayOf(m - oi + n, m - oi + n, m - oi - n, m - oi - n),
+                    intArrayOf(m - oi / 2 + n, m - oi / 2 + n, m - oi / 2 - n, m - oi / 2 - n),
+                    intArrayOf(m - oi - n, m - oi - n, m - oi + n, m - oi + n),
+                    intArrayOf(m - oi / 2 - n, m - oi / 2 - n, m - oi / 2 + n, m - oi / 2 + n),
+                    intArrayOf(m, m, m, m),
+                )
+            } else arrayOf(
                 intArrayOf(ix + a * oi + oi / 2, iy + a * oi + oi / 2, ix - a * oi - oi / 2, iy - a * oi - oi / 2),
                 intArrayOf(ix + a * oi / 2, iy + a * oi / 2, ix - a * oi / 2, iy - a * oi / 2),
                 intArrayOf(ix - a * oi - oi / 2, iy - a * oi - oi / 2, ix + a * oi + oi / 2, iy + a * oi + oi / 2),

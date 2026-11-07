@@ -76,6 +76,8 @@ data class Skin(
     /** Folder of an installed skin pack (fonts/, icons/, images/), null for built-ins. */
     val packDir: String?,
     val json: String,
+    /** Album Flow layout this theme suggests (see ui.FlowStyles); the user's own choice wins. */
+    val flowStyle: String = "classic",
 ) {
     /** The effect actually used: the user's choice, or this theme's default. */
     val activeCoverEffect: String get() = com.jslw.genz.data.Prefs.coverEffect.let { if (it == "theme") coverEffect else it }
@@ -158,6 +160,7 @@ data class Skin(
                 version = o.optInt("version", 1),
                 packDir = packDir,
                 json = json,
+                flowStyle = o.optString("flowStyle", "classic"),
             )
         }
     }

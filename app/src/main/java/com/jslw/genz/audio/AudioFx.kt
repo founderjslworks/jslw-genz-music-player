@@ -156,6 +156,8 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
 
     private fun reverbPreset(v: SoundEngine.Values?): Int = when {
         eqOn && Prefs.reverb > 0 -> Prefs.reverb
+        v != null && Prefs.seRoomType == "off" -> 0
+        v != null && v.room > 0.02f && Prefs.seRoomType != "auto" -> SoundEngine.room(Prefs.seRoomType).preset.coerceAtLeast(0)
         v != null && v.room > 0.02f -> when (Prefs.seProfile) {
             "movie" -> 3      // large room
             "game" -> 2       // medium room
@@ -169,6 +171,7 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
         if (!created || reverb == null) return 0f
         if (eqOn && Prefs.reverb > 0) return 1f
         if (!engineOn) return 0f
+        if (Prefs.seRoomType == "off") return 0f
         return SoundEngine.values(ctx).room.coerceIn(0f, 1f) * 0.7f
     }
 
@@ -259,6 +262,10 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
         return out
     }
 
+    /** Which group a preset belongs to: a built-in category, "Device" or "Mine". */
+    fun category(name: String): String =
+        CATEGORIES.firstOrNull { name in it.second }?.first ?: if (customPresets().containsKey(name)) "Mine" else "Device"
+
     fun customPresets(): Map<String, IntArray> {
         val out = LinkedHashMap<String, IntArray>()
         try {
@@ -327,6 +334,31 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
             "Treble" to floatArrayOf(0f, 0f, 0f, 0f, 0f, 1f, 3f, 5f, 7f, 8f),
             "Loudness" to floatArrayOf(6f, 4f, 0f, 0f, -2f, 0f, -1f, -2f, 4f, 2f),
             "Late Night" to floatArrayOf(-3f, -2f, 0f, 1f, 2f, 2f, 1f, 0f, -2f, -3f),
+            "Dance" to floatArrayOf(5f, 4f, 2f, 0f, 0f, -1f, 1f, 3f, 4f, 4f),
+            "R&B" to floatArrayOf(3f, 6f, 5f, 1f, -2f, -1f, 2f, 3f, 3f, 3f),
+            "Metal" to floatArrayOf(4f, 3f, 1f, -1f, -2f, 0f, 3f, 5f, 6f, 5f),
+            "Bollywood" to floatArrayOf(4f, 4f, 2f, 0f, 1f, 3f, 3f, 2f, 3f, 3f),
+            "Bhangra" to floatArrayOf(7f, 6f, 3f, 0f, -1f, 1f, 2f, 3f, 4f, 3f),
+            "Indian Classical" to floatArrayOf(1f, 1f, 1f, 2f, 3f, 3f, 2f, 2f, 3f, 2f),
+            "Sufi & Ghazal" to floatArrayOf(2f, 2f, 1f, 2f, 4f, 4f, 3f, 1f, 1f, 0f),
+            "Devotional" to floatArrayOf(1f, 1f, 2f, 3f, 4f, 4f, 3f, 1f, 0f, -1f),
+            "Lo-fi" to floatArrayOf(4f, 3f, 2f, 1f, 0f, -1f, -2f, -3f, -4f, -5f),
+            "Piano" to floatArrayOf(0f, 0f, 1f, 2f, 2f, 1f, 2f, 3f, 2f, 1f),
+            "Deep Bass" to floatArrayOf(9f, 8f, 5f, 2f, 0f, 0f, 0f, 0f, 0f, 0f),
+            "Podcast" to floatArrayOf(-6f, -4f, -1f, 2f, 4f, 4f, 3f, 1f, -1f, -3f),
+            "Gaming" to floatArrayOf(2f, 1f, 0f, -1f, 0f, 2f, 4f, 4f, 3f, 2f),
+            "TV & Movies" to floatArrayOf(3f, 2f, 0f, 1f, 3f, 4f, 3f, 1f, 1f, 0f),
+            "Car" to floatArrayOf(4f, 3f, 1f, 0f, -1f, 0f, 1f, 2f, 3f, 3f),
+            "Small Speakers" to floatArrayOf(-4f, -2f, 2f, 3f, 3f, 2f, 1f, 1f, 0f, -1f),
+        )
+
+        /** Built-in presets grouped for the Sound screen; device and saved presets get their own groups. */
+        val CATEGORIES: List<Pair<String, List<String>>> = listOf(
+            "Popular" to listOf("Flat", "Pop", "Rock", "Hip-Hop", "Electronic", "Dance", "R&B", "Metal"),
+            "Indian" to listOf("Bollywood", "Bhangra", "Indian Classical", "Sufi & Ghazal", "Devotional"),
+            "Chill" to listOf("Jazz", "Classical", "Acoustic", "Piano", "Lo-fi"),
+            "Tone" to listOf("Bass Boost", "Deep Bass", "Treble", "Vocal", "Loudness"),
+            "Situations" to listOf("Late Night", "Podcast", "Gaming", "TV & Movies", "Car", "Small Speakers"),
         )
     }
 }
