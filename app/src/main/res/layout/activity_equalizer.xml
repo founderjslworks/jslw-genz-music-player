@@ -40,7 +40,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:tag="skin_text"
-                    android:text="Equalizer"
+                    android:text="JSLW Sound Engine"
                     android:textSize="@dimen/text_18"
                     android:textStyle="bold" />
 

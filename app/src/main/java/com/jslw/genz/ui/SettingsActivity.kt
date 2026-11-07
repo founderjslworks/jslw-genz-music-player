@@ -136,6 +136,15 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun build() {
+        items += Item.Section("Home & gestures")
+        items += Item.Action("Show on Home", { HomeItems.summary() }) { HomeItems.choose(this) { adapter.notifyDataSetChanged() } }
+        items += Item.Action("Swipe right on a song", { SwipeActions.of(Prefs.swipeRight).label }) {
+            choose("Swipe right", SwipeActions.ALL.map { it.id }, { SwipeActions.of(it).label }, Prefs.swipeRight) { Prefs.swipeRight = it }
+        }
+        items += Item.Action("Swipe left on a song", { SwipeActions.of(Prefs.swipeLeft).label }) {
+            choose("Swipe left", SwipeActions.ALL.map { it.id }, { SwipeActions.of(it).label }, Prefs.swipeLeft) { Prefs.swipeLeft = it }
+        }
+
         items += Item.Section("Appearance")
         items += Item.Action("Theme", { SkinManager.current.name }) { startActivity(Intent(this, ThemesActivity::class.java)) }
         items += Item.Toggle("Album-art colours on Now Playing", "Background follows the cover (for themes that allow it)",

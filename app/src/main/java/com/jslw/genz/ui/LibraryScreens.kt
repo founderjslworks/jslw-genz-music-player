@@ -85,33 +85,38 @@ class HomeFragment : BaseListFragment() {
         val rows = ArrayList<Row>()
         val loaded = Library.loaded
         fun n(x: Int) = if (loaded) x.toString() else ""
-        rows += Row("Album Flow", icon = R.drawable.ic_album_flow, iconColor = 0xFFFF2D55.toInt(), chevron = true, onClick = { open(AlbumFlowFragment()) })
-        rows += Row("Playlists", icon = R.drawable.ic_playlist, iconColor = 0xFFFF9500.toInt(), chevron = true, extra = n(LibraryDb.playlists().size),
-            onClick = { open(BrowseFragment.of("playlists")) })
-        rows += Row("Artists", icon = R.drawable.ic_artist, iconColor = 0xFFAF52DE.toInt(), chevron = true, extra = n(Library.artists.size), onClick = { open(BrowseFragment.of("artists")) })
-        rows += Row("Albums", icon = R.drawable.ic_album, iconColor = 0xFF007AFF.toInt(), chevron = true, extra = n(Library.albums.size), onClick = { open(BrowseFragment.of("albums")) })
-        rows += Row("Songs", icon = R.drawable.ic_note, iconColor = 0xFF34C759.toInt(), chevron = true, extra = n(Library.songs.size), onClick = { open(SongsFragment.forSource(Source.AllSongs)) })
-        rows += Row("Genres", icon = R.drawable.ic_genre, iconColor = 0xFF5856D6.toInt(), chevron = true, extra = n(Library.genres.size), onClick = { open(BrowseFragment.of("genres")) })
-        rows += Row("Folders", icon = R.drawable.ic_folder, iconColor = 0xFFFF9F0A.toInt(), chevron = true, extra = n(Library.folders.size), onClick = { open(BrowseFragment.of("folders")) })
-        rows += Row("Shuffle Songs", icon = R.drawable.ic_shuffle, iconColor = 0xFF00C7BE.toInt(), onClick = {
+        val show = HomeItems.visible()
+        fun add(key: String, r: () -> Row) { if (key in show) rows += r() }
+        add("flow") { Row("Album Flow", icon = R.drawable.ic_album_flow, iconColor = 0xFFFF2D55.toInt(), chevron = true, onClick = { open(AlbumFlowFragment()) }) }
+        add("favs") { Row("Favourites", icon = R.drawable.ic_favorite, iconColor = 0xFFFF375F.toInt(), chevron = true, extra = n(LibraryDb.favoriteCount()),
+            onClick = { open(SongsFragment.forSource(Source.Favorites)) }) }
+        add("playlists") { Row("Playlists", icon = R.drawable.ic_playlist, iconColor = 0xFFFF9500.toInt(), chevron = true, extra = n(LibraryDb.playlists().size),
+            onClick = { open(BrowseFragment.of("playlists")) }) }
+        add("recent") { Row("Recently played", icon = R.drawable.ic_history, iconColor = 0xFF64D2FF.toInt(), chevron = true, onClick = { open(SongsFragment.forSource(Source.Recent)) }) }
+        add("most") { Row("Most played", icon = R.drawable.ic_star, iconColor = 0xFFFFD60A.toInt(), chevron = true, onClick = { open(SongsFragment.forSource(Source.MostPlayed)) }) }
+        add("artists") { Row("Artists", icon = R.drawable.ic_artist, iconColor = 0xFFAF52DE.toInt(), chevron = true, extra = n(Library.artists.size), onClick = { open(BrowseFragment.of("artists")) }) }
+        add("albums") { Row("Albums", icon = R.drawable.ic_album, iconColor = 0xFF007AFF.toInt(), chevron = true, extra = n(Library.albums.size), onClick = { open(BrowseFragment.of("albums")) }) }
+        add("songs") { Row("Songs", icon = R.drawable.ic_note, iconColor = 0xFF34C759.toInt(), chevron = true, extra = n(Library.songs.size), onClick = { open(SongsFragment.forSource(Source.AllSongs)) }) }
+        add("genres") { Row("Genres", icon = R.drawable.ic_genre, iconColor = 0xFF5856D6.toInt(), chevron = true, extra = n(Library.genres.size), onClick = { open(BrowseFragment.of("genres")) }) }
+        add("folders") { Row("Folders", icon = R.drawable.ic_folder, iconColor = 0xFFFF9F0A.toInt(), chevron = true, extra = n(Library.folders.size), onClick = { open(BrowseFragment.of("folders")) }) }
+        add("shuffle") { Row("Shuffle Songs", icon = R.drawable.ic_shuffle, iconColor = 0xFF00C7BE.toInt(), onClick = {
             if (Library.songs.isEmpty()) requireContext().toast("No songs found yet")
             else Player.shuffle(requireContext(), Library.songs, "All songs")
-        })
-        if (Player.current != null) rows += Row("Now Playing", icon = R.drawable.ic_play, iconColor = 0xFFFF3B30.toInt(), chevron = true, onClick = {
+        }) }
+        if (Player.current != null) add("nowplaying") { Row("Now Playing", icon = R.drawable.ic_play, iconColor = 0xFFFF3B30.toInt(), chevron = true, onClick = {
             startActivity(Intent(requireContext(), NowPlayingActivity::class.java))
             requireActivity().overridePendingTransition(R.anim.slide_up, R.anim.stay)
-        })
-        rows += Row("Refresh library", subtitle = "Find newly added songs", icon = R.drawable.ic_refresh, iconColor = 0xFF64D2FF.toInt(), onClick = {
+        }) }
+        add("refresh") { Row("Refresh library", subtitle = "Find newly added songs", icon = R.drawable.ic_refresh, iconColor = 0xFF64D2FF.toInt(), onClick = {
             val c = requireContext()
             c.toast("Looking for new songs…")
             Library.refresh(c) { n -> c.toast(if (n > 0) "Found $n new ${if (n == 1) "song" else "songs"}" else "Library is up to date") }
-        })
+        }) }
         rows += Row.section("Extras")
-        rows += Row("Equalizer", icon = R.drawable.ic_equalizer, iconColor = 0xFF30B0C7.toInt(), chevron = true, onClick = { startScreen(EqualizerActivity::class.java) })
-        rows += Row("Advanced audio", subtitle = "JSLW Sound Engine" + if (com.jslw.genz.data.Prefs.seOn) " · on" else "", icon = R.drawable.ic_eq_surround,
-            iconColor = 0xFFFF9F0A.toInt(), chevron = true, onClick = { startScreen(SoundEngineActivity::class.java) })
-        rows += Row("Themes", subtitle = skin.name, icon = R.drawable.ic_palette, iconColor = 0xFFFF2D92.toInt(), chevron = true, onClick = { startScreen(ThemesActivity::class.java) })
-        rows += Row("Sleep Timer", icon = R.drawable.ic_timer, iconColor = 0xFF5E5CE6.toInt(), onClick = { Player.with(requireContext()) { Sheets.sleepTimer(requireActivity()) } })
+        add("sound") { Row("Sound & equalizer", subtitle = "JSLW Sound Engine" + if (Prefs.eqEnabled) " · on" else "", icon = R.drawable.ic_equalizer,
+            iconColor = 0xFF30B0C7.toInt(), chevron = true, onClick = { startScreen(EqualizerActivity::class.java) }) }
+        add("themes") { Row("Themes", subtitle = skin.name, icon = R.drawable.ic_palette, iconColor = 0xFFFF2D92.toInt(), chevron = true, onClick = { startScreen(ThemesActivity::class.java) }) }
+        add("sleep") { Row("Sleep Timer", icon = R.drawable.ic_timer, iconColor = 0xFF5E5CE6.toInt(), onClick = { Player.with(requireContext()) { Sheets.sleepTimer(requireActivity()) } }) }
         rows += Row("Settings", icon = R.drawable.ic_settings, iconColor = 0xFF8E8E93.toInt(), chevron = true, onClick = { startScreen(SettingsActivity::class.java) })
         adapter.rows = rows
         // bounce in every time the menu appears (first launch and when coming back to it)
@@ -363,16 +368,10 @@ class SongsFragment : BaseListFragment() {
 
             override fun isLongPressDragEnabled() = false
 
-            override fun clearView(rv: RecyclerView, vh: RecyclerView.ViewHolder) {
-                super.clearView(rv, vh)
-                if (isPlaylist && from >= 0 && to >= 0 && from != to) {
-                    val ids = songs.map { it.id }.toMutableList()
-                    ids.add(to, ids.removeAt(from))
-                    LibraryDb.setPlaylistSongs((source as Source.OfPlaylist).playlistId, ids)
-                    build()
-                }
-                from = -1; to = -1
-            }
+            // Playlists: a full swipe removes the song. Elsewhere a swipe is a gesture: pull the row past the mark,
+            // let go, the action runs and the row springs back into place.
+            private var armed = 0
+            private var armedVh: RecyclerView.ViewHolder? = null
 
             override fun onSwiped(vh: RecyclerView.ViewHolder, direction: Int) {
                 val pos = vh.bindingAdapterPosition
@@ -384,25 +383,91 @@ class SongsFragment : BaseListFragment() {
                     build()
                     return
                 }
-                if (direction == ItemTouchHelper.RIGHT) { Player.with(c) { it.playNext(listOf(s)) }; c.toast("Playing next: ${s.title}") }
-                else { Player.with(c) { it.addToQueue(listOf(s)) }; c.toast("Added to queue: ${s.title}") }
                 rowsAdapter.notifyItemChanged(pos)
             }
 
+            override fun getSwipeThreshold(vh: RecyclerView.ViewHolder) = if (isPlaylist) 0.5f else 2f
+            override fun getSwipeEscapeVelocity(defaultValue: Float) = if (isPlaylist) defaultValue else Float.MAX_VALUE
+            override fun getSwipeVelocityThreshold(defaultValue: Float) = if (isPlaylist) defaultValue else 0f
+
             override fun onChildDraw(c: Canvas, rv: RecyclerView, vh: RecyclerView.ViewHolder, dX: Float, dY: Float, state: Int, active: Boolean) {
-                if (state == ItemTouchHelper.ACTION_STATE_SWIPE) {
-                    // resist: the row moves at most a third of the width so it reads as a gesture, not a delete
-                    val limited = if (isPlaylist) dX else dX.coerceIn(-rv.width / 3f, rv.width / 3f)
-                    vh.itemView.alpha = 1f - abs(limited) / rv.width
-                    super.onChildDraw(c, rv, vh, limited, dY, state, active)
-                } else super.onChildDraw(c, rv, vh, dX, dY, state, active)
+                if (state != ItemTouchHelper.ACTION_STATE_SWIPE || isPlaylist) {
+                    super.onChildDraw(c, rv, vh, dX, dY, state, active); return
+                }
+                val max = rv.width * 0.34f
+                // rubber band: follows the finger, then resists
+                val x = Math.signum(dX) * max * (1f - Math.exp(-abs(dX) / max.toDouble()).toFloat())
+                val trigger = max * 0.55f
+                if (active) {
+                    val dir = if (abs(x) >= trigger) (if (x > 0) 1 else -1) else 0
+                    if (dir != armed) {
+                        armed = dir; armedVh = vh
+                        if (dir != 0) vh.itemView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                    }
+                }
+                drawSwipeBackground(c, vh.itemView, x, abs(x) >= trigger)
+                vh.itemView.alpha = 1f
+                super.onChildDraw(c, rv, vh, x, dY, state, active)
             }
 
-            override fun getSwipeThreshold(vh: RecyclerView.ViewHolder) = if (isPlaylist) 0.5f else 0.3f
+            override fun clearView(rv: RecyclerView, vh: RecyclerView.ViewHolder) {
+                super.clearView(rv, vh)
+                vh.itemView.translationX = 0f
+                vh.itemView.alpha = 1f
+                if (isPlaylist && from >= 0 && to >= 0 && from != to) {
+                    val ids = songs.map { it.id }.toMutableList()
+                    ids.add(to, ids.removeAt(from))
+                    LibraryDb.setPlaylistSongs((source as Source.OfPlaylist).playlistId, ids)
+                    build()
+                }
+                from = -1; to = -1
+                if (armed != 0 && armedVh === vh) {
+                    val s = songs.getOrNull(vh.bindingAdapterPosition)
+                    val id = if (armed > 0) Prefs.swipeRight else Prefs.swipeLeft
+                    armed = 0; armedVh = null
+                    if (s != null) SwipeActions.run(requireActivity(), id, s)
+                }
+            }
         }
         val ith = ItemTouchHelper(cb)
         ith.attachToRecyclerView(list)
         rowsAdapter.itemTouchHelper = ith
+    }
+
+    private val swipePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    private val swipeText = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    private val swipeRect = android.graphics.RectF()
+
+    /** The coloured strip behind a swiped row: the action's icon and name, brighter once it will fire. */
+    private fun drawSwipeBackground(c: Canvas, row: View, x: Float, ready: Boolean) {
+        if (x == 0f) return
+        val sk = SkinManager.current
+        val action = SwipeActions.of(if (x > 0) Prefs.swipeRight else Prefs.swipeLeft)
+        if (action.id == "none") return
+        val d = resources.displayMetrics.density
+        swipePaint.color = sk.accent
+        swipePaint.alpha = if (ready) 235 else 110
+        if (x > 0) swipeRect.set(row.left + 6 * d, row.top + 4 * d, row.left + x, row.bottom - 4 * d)
+        else swipeRect.set(row.right + x, row.top + 4 * d, row.right - 6 * d, row.bottom - 4 * d)
+        c.drawRoundRect(swipeRect, 14 * d, 14 * d, swipePaint)
+        val icon = androidx.appcompat.content.res.AppCompatResources.getDrawable(requireContext(), action.icon)?.mutate() ?: return
+        val sz = (22 * d).toInt()
+        val cy = ((row.top + row.bottom) / 2f).toInt()
+        val ix = if (x > 0) (row.left + 20 * d).toInt() else (row.right - 20 * d - sz).toInt()
+        icon.setBounds(ix, cy - sz / 2, ix + sz, cy + sz / 2)
+        androidx.core.graphics.drawable.DrawableCompat.setTint(icon, 0xFFFFFFFF.toInt())
+        icon.alpha = if (ready) 255 else 170
+        val scale = if (ready) 1.12f else 1f
+        c.save(); c.scale(scale, scale, ix + sz / 2f, cy.toFloat()); icon.draw(c); c.restore()
+        if (abs(x) > 120 * d) {
+            swipeText.color = 0xFFFFFFFF.toInt()
+            swipeText.textSize = 13 * resources.displayMetrics.scaledDensity
+            swipeText.typeface = sk.typeface
+            swipeText.alpha = if (ready) 255 else 170
+            val tw = swipeText.measureText(action.label)
+            val tx = if (x > 0) ix + sz + 10 * d else ix - 10 * d - tw
+            c.drawText(action.label, tx, cy + swipeText.textSize / 3, swipeText)
+        }
     }
 
     @SuppressLint("NotifyDataSetChanged")

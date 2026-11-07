@@ -20,7 +20,10 @@ import com.jslw.genz.ui.views.EqBandView
 import com.jslw.genz.ui.views.EqCurveView
 import com.jslw.genz.util.toast
 
-/** Graphic equalizer (10-band on Android 9+), presets, bass boost, 3D surround, loudness and reverb. */
+/**
+ * Sound: one switch for everything – JSLW Sound Engine profile and output, the graphic equalizer
+ * (10-band on Android 9+) with presets, and six tuning sliders.
+ */
 class EqualizerActivity : BaseActivity() {
     private lateinit var fx: AudioFx
     private lateinit var svc: MusicService
@@ -36,14 +39,26 @@ class EqualizerActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_equalizer)
         setupScreen(findViewById(R.id.root))
-        header("Equalizer")
+        header("Sound")
         bandsBox = findViewById(R.id.eqBands)
         curve = findViewById(R.id.eqCurve)
         presetGroup = findViewById(R.id.eqPresets)
         Player.with(this) { s -> svc = s; fx = s.fx; build() }
     }
 
+    private var tuning: SoundTuning? = null
+
     private fun build() {
+        // one-time move from the separate Equalizer + Advanced audio screens: one switch, overlapping effects folded
+        if (!Prefs.soundMerged) {
+            val on = Prefs.eqEnabled || Prefs.seOn
+            Prefs.eqEnabled = on; Prefs.seOn = on
+            if (Prefs.bassStrength > 0 && Prefs.seBass == 35) Prefs.seBass = (Prefs.bassStrength / 10).coerceIn(0, 100)
+            if (Prefs.virtStrength > 0) Prefs.seSurround = maxOf(Prefs.seSurround, Prefs.virtStrength / 10)
+            Prefs.bassStrength = 0; Prefs.virtStrength = 0; Prefs.loudness = 0; Prefs.reverb = 0
+            Prefs.soundMerged = true
+            svc.effectsChanged()
+        }
         val enable = findViewById<SwitchCompat>(R.id.eqEnable)
         val info = findViewById<TextView>(R.id.eqInfo)
         val note = findViewById<TextView>(R.id.eqNote)
@@ -52,11 +67,27 @@ class EqualizerActivity : BaseActivity() {
             enable.isEnabled = false
         } else info.text = if (fx.tenBand) "10-band graphic equalizer" else "${fx.bandFreqs.size}-band equalizer (device)"
         note.text = buildString {
-            append("Effects work on the music GEN-Z plays, including DSD and AIFF.")
+            append("Works on the music GEN-Z plays – wired and Bluetooth headphones, speakers, DSD and AIFF. ")
+            append("Switched off, GEN-Z adds nothing to the sound, so your phone's own sound enhancement applies.")
             if (Prefs.bitPerfect) append("\nBit-perfect USB output is on: Android bypasses all effects in that mode.")
         }
         enable.isChecked = Prefs.eqEnabled
-        enable.setOnCheckedChangeListener { _, on -> Prefs.eqEnabled = on; svc.effectsChanged(); setEnabled(on) }
+        enable.setOnCheckedChangeListener { _, on -> Prefs.eqEnabled = on; Prefs.seOn = on; svc.effectsChanged(); setEnabled(on) }
+
+        // the old separate effect cards are replaced by the Sound Engine sliders
+        for (id in listOf(R.id.eqBass, R.id.eqVirt, R.id.eqLoud)) (findViewById<View>(id).parent as View).visibility = View.GONE
+        (findViewById<View>(R.id.eqReverbIcon).parent as View).visibility = View.GONE
+        (findViewById<View>(R.id.eqReverb).parent as View).visibility = View.GONE
+        if (tuning == null) {
+            val t = SoundTuning(this) { svc.effectsChanged() }
+            tuning = t
+            val content = findViewById<View>(R.id.eqGraph).parent as LinearLayout
+            // profile right under the switch, sliders after the equalizer
+            var at = content.indexOfChild(findViewById(R.id.eqInfo)) + 1
+            for (v in t.profileViews()) content.addView(v, at++)
+            var end = content.indexOfChild(findViewById(R.id.eqNote))
+            for (v in t.sliderViews()) content.addView(v, end++)
+        }
 
         // faders
         levels = fx.currentLevels()
@@ -97,9 +128,6 @@ class EqualizerActivity : BaseActivity() {
         }
         findViewById<MaterialButton>(R.id.eqReset).setOnClickListener { applyPreset("Flat", IntArray(levels.size)) }
 
-        slider(R.id.eqBass, R.id.eqBassVal, Prefs.bassStrength) { Prefs.bassStrength = it }
-        slider(R.id.eqVirt, R.id.eqVirtVal, Prefs.virtStrength) { Prefs.virtStrength = it }
-        slider(R.id.eqLoud, R.id.eqLoudVal, Prefs.loudness) { Prefs.loudness = it }
 
         val reverb = findViewById<ChipGroup>(R.id.eqReverb)
         reverb.removeAllViews()
@@ -272,7 +300,13 @@ class EqualizerActivity : BaseActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        tuning?.showOutput()
+    }
+
     private fun setEnabled(on: Boolean) {
+        tuning?.setEnabled(on)
         val a = if (on) 1f else 0.45f
         findViewById<View>(R.id.eqGraph).animate().alpha(a).setDuration(200).start()
         bands.forEach { it.isEnabled = on }

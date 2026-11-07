@@ -154,6 +154,24 @@ object Prefs {
         get() = i("se_room", 10)
         set(v) = put { putInt("se_room", v) }
 
+    /** One-time move to the combined Sound screen (EQ + JSLW Sound Engine, one switch). */
+    var soundMerged: Boolean
+        get() = b("sound_merged", false)
+        set(v) = put { putBoolean("sound_merged", v) }
+
+    /** Home screen entries the user chose (see ui.HomeItems); empty = defaults. */
+    var homeItems: String
+        get() = s("home_items", "")
+        set(v) = put { putString("home_items", v) }
+
+    /** Song-list swipe actions (see ui.SwipeActions). */
+    var swipeRight: String
+        get() = s("swipe_right", "next")
+        set(v) = put { putString("swipe_right", v) }
+    var swipeLeft: String
+        get() = s("swipe_left", "queue")
+        set(v) = put { putString("swipe_left", v) }
+
     /** 0 = automatic, 1 = best looks, 2 = light (older phones) – see util.Perf. */
     var performance: Int
         get() = i("performance", 0)

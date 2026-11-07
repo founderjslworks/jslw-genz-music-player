@@ -56,6 +56,16 @@ class AlbumFlowFragment : Fragment(), Refreshable {
     private var lastDir = 1f
     private var entered = false
     private val light get() = com.jslw.genz.util.Perf.light
+    private var vel = 0f                       // smoothed scroll speed, px per frame
+    private var leanAnim: android.animation.ValueAnimator? = null
+    private var shinePhase = -1f               // -1 = no shine sweep running
+    private var shineAnim: android.animation.ValueAnimator? = null
+    private val shinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    // spotlight: covers darken with distance from the centre (11 cached filters, no per-frame allocation)
+    private val dim = Array(11) { i ->
+        val v = 255 - i * 11
+        android.graphics.PorterDuffColorFilter(android.graphics.Color.rgb(v, v, v), android.graphics.PorterDuff.Mode.MULTIPLY)
+    }
     private var flippedAlbum: Album? = null
     private val tracksAdapter = RowAdapter()
 
@@ -82,9 +92,14 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         LinearSnapHelper().attachToRecyclerView(rv)
         rv.setChildDrawingOrderCallback { count, i -> if (order.size == count) order[i] else i }
         rv.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { transform() }
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                vel = vel * 0.75f + dx * 0.25f
+                leanAnim?.cancel()
+                transform()
+            }
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) stopFloat()
+                if (newState != RecyclerView.SCROLL_STATE_IDLE) { stopFloat(); stopShine() }
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) settleLean()
                 else if (newState == RecyclerView.SCROLL_STATE_IDLE && !light) {
                     (0 until rv.childCount).map { rv.getChildAt(it) }.firstOrNull { rv.getChildAdapterPosition(it) == centerPos }
                         ?.let { (rv.getChildViewHolder(it) as? CoverAdapter.VH)?.art?.let { a -> startFloat(a) } }
@@ -92,6 +107,7 @@ class AlbumFlowFragment : Fragment(), Refreshable {
             }
         })
         rv.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> transform() }
+        rv.addItemDecoration(shineDecoration)
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backCb)
         return v
     }
@@ -168,6 +184,10 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         val c = (0 until rv.childCount).map { rv.getChildAt(it) }.firstOrNull { rv.getChildAdapterPosition(it) == pos } ?: return
         val vh = rv.getChildViewHolder(c) as? CoverAdapter.VH ?: return
         if (!light) {
+            // the reflection wobbles like water as the cover settles
+            vh.refl.scaleY = 0.82f; vh.refl.alpha = 0.55f
+            vh.refl.pivotY = 0f
+            vh.refl.animate().scaleY(1f).alpha(1f).setDuration(620).setInterpolator(android.view.animation.OvershootInterpolator(3f)).start()
             vh.art.animate().cancel()
             vh.art.scaleX = 0.95f; vh.art.scaleY = 0.95f
             vh.art.animate().scaleX(1f).scaleY(1f).setDuration(360)
@@ -186,17 +206,86 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         }
     }
 
+    /** Covers ease back upright when browsing stops. */
+    private fun settleLean() {
+        if (vel == 0f) return
+        leanAnim?.cancel()
+        leanAnim = android.animation.ValueAnimator.ofFloat(vel, 0f).apply {
+            duration = 280
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { vel = it.animatedValue as Float; transform() }
+            start()
+        }
+    }
+
+    /** A soft glint of light sweeps across the centre cover now and then. */
+    private fun startShine() {
+        if (light || shineAnim != null) return
+        shineAnim = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            // one sweep in the first quarter of every 4.4 s
+            duration = 4400
+            startDelay = 700
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode = android.animation.ValueAnimator.RESTART
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener {
+                val t = it.animatedValue as Float
+                val was = shinePhase
+                shinePhase = if (t < 0.25f) { val x = t / 0.25f; x * x * (3 - 2 * x) } else -1f
+                if (shinePhase >= 0f || was >= 0f) rv.invalidate()
+            }
+            start()
+        }
+    }
+
+    private fun stopShine() {
+        shineAnim?.cancel(); shineAnim = null
+        shinePhase = -1f
+        if (::rv.isInitialized) rv.invalidate()
+    }
+
+    private val shineDecoration = object : RecyclerView.ItemDecoration() {
+        override fun onDrawOver(c: android.graphics.Canvas, parent: RecyclerView, state: RecyclerView.State) {
+            val p = shinePhase
+            if (p < 0f || p >= 0.98f) return
+            val child = (0 until parent.childCount).map { parent.getChildAt(it) }
+                .firstOrNull { parent.getChildAdapterPosition(it) == centerPos } ?: return
+            val sc = child.scaleX
+            val w = cover * sc
+            val left = child.left + child.translationX + (child.width - w) / 2f
+            val top = child.top + child.translationY + ((child as? ViewGroup)?.getChildAt(0)?.translationY ?: 0f) + (cover / 2f) * (1f - sc)
+            val band = w * 0.35f
+            val x = left - band + (w + band * 2f) * p
+            shinePaint.shader = android.graphics.LinearGradient(x - band, top, x + band, top + w * 0.6f,
+                intArrayOf(0x00FFFFFF, 0x40FFFFFF, 0x00FFFFFF), null, android.graphics.Shader.TileMode.CLAMP)
+            c.save()
+            c.clipRect(left, top, left + w, top + w)
+            c.drawRect(left, top, left + w, top + w, shinePaint)
+            c.restore()
+        }
+    }
+
     /** A slow, barely-there float of the centre cover while you look at it. */
     private fun startFloat(v: View) {
         floatAnim?.cancel()
         floatTarget?.translationY = 0f
         floatTarget = v
         val amp = 4 * resources.displayMetrics.density
+        val playingHere = albums.getOrNull(centerPos)?.songs?.any { it === Player.current } == true
+        startShine()
         floatAnim = android.animation.ValueAnimator.ofFloat(0f, (2 * Math.PI).toFloat()).apply {
             duration = 3600
             repeatCount = android.animation.ValueAnimator.INFINITE
             interpolator = android.view.animation.LinearInterpolator()
-            addUpdateListener { v.translationY = (kotlin.math.sin(it.animatedValue as Float) * amp) }
+            addUpdateListener {
+                val ph = it.animatedValue as Float
+                v.translationY = (kotlin.math.sin(ph) * amp)
+                // the album that's playing breathes gently, as if with the music
+                if (playingHere && Player.service?.isPlaying == true) {
+                    val b = 1f + 0.018f * (kotlin.math.sin(ph * 4f) + 1f) / 2f
+                    v.scaleX = b; v.scaleY = b
+                }
+            }
             startDelay = 400
             start()
         }
@@ -204,7 +293,7 @@ class AlbumFlowFragment : Fragment(), Refreshable {
 
     private fun stopFloat() {
         floatAnim?.cancel(); floatAnim = null
-        floatTarget?.animate()?.translationY(0f)?.setDuration(160)?.start()
+        floatTarget?.animate()?.translationY(0f)?.scaleX(1f)?.scaleY(1f)?.setDuration(160)?.start()
         floatTarget = null
     }
 
@@ -251,7 +340,19 @@ class AlbumFlowFragment : Fragment(), Refreshable {
             c.cameraDistance = 9000 * density
             c.pivotX = c.width / 2f
             c.pivotY = cover / 2f
-            c.rotationY = -cl * 58f
+            // lean into the motion: the faster you browse, the more the covers tilt (Animation: velocity lean)
+            val lean = if (light) 0f else (vel / density).coerceIn(-45f, 45f) * 0.28f
+            c.rotationY = -cl * 58f - lean
+            // spotlight: side covers sink into shadow
+            val vh = rv.getChildViewHolder(c) as? CoverAdapter.VH
+            if (vh != null) {
+                val k = if (light) 0 else (min(ad, 2.5f) / 2.5f * 10f).toInt().coerceIn(0, 10)
+                if (vh.art.getTag(R.id.coverArt) != k) {
+                    vh.art.setTag(R.id.coverArt, k)
+                    vh.art.colorFilter = if (k == 0) null else dim[k]
+                    vh.refl.colorFilter = if (k == 0) null else dim[k]
+                }
+            }
             val s = 1f - 0.16f * min(ad, 1f)
             c.scaleX = s; c.scaleY = s
             val shift = if (ad <= 1f) ad * 0.48f else 0.48f + (ad - 1f) * 0.70f
@@ -302,7 +403,9 @@ class AlbumFlowFragment : Fragment(), Refreshable {
 
     private fun flipOpen(a: Album, v: View) {
         flippedAlbum = a
-        v.animate().rotationY(90f).setDuration(170).setInterpolator(AccelerateInterpolator()).withEndAction {
+        stopFloat(); stopShine()
+        // lift: the cover comes forward a little as it turns over
+        v.animate().rotationY(90f).scaleX(v.scaleX * 1.08f).scaleY(v.scaleY * 1.08f).setDuration(190).setInterpolator(AccelerateInterpolator()).withEndAction {
             v.visibility = View.INVISIBLE
             view?.findViewById<TextView>(R.id.flipTitle)?.text = a.title
             view?.findViewById<TextView>(R.id.flipArtist)?.text = "${a.artist} · ${a.songs.size} songs"
@@ -317,7 +420,9 @@ class AlbumFlowFragment : Fragment(), Refreshable {
             flip.visibility = View.VISIBLE
             flip.cameraDistance = 9000 * resources.displayMetrics.density
             flip.rotationY = -90f
-            flip.animate().rotationY(0f).setDuration(240).setInterpolator(DecelerateInterpolator()).start()
+            flip.scaleX = 1.08f; flip.scaleY = 1.08f
+            flip.animate().rotationY(0f).scaleX(1f).scaleY(1f).setDuration(300)
+                .setInterpolator(android.view.animation.OvershootInterpolator(1.2f)).start()
             backCb.isEnabled = true
         }.start()
     }
@@ -342,7 +447,7 @@ class AlbumFlowFragment : Fragment(), Refreshable {
     override fun refresh() { if (view != null) rv.post { setup() } }
 
     override fun onDestroyView() {
-        floatAnim?.cancel(); bgAnim?.cancel()
+        floatAnim?.cancel(); bgAnim?.cancel(); shineAnim?.cancel(); leanAnim?.cancel(); shineAnim = null
         floatAnim = null; floatTarget = null; entered = false
         super.onDestroyView()
     }
@@ -376,6 +481,16 @@ class AlbumFlowFragment : Fragment(), Refreshable {
                 h.refl.setImageBitmap(r)
             }
             h.itemView.setOnClickListener { v -> onCoverClick(v, h.bindingAdapterPosition) }
+            // press: the cover sinks under the finger and springs back
+            @Suppress("ClickableViewAccessibility")
+            h.itemView.setOnTouchListener { _, e ->
+                when (e.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> h.art.animate().scaleX(0.94f).scaleY(0.94f).setDuration(120).start()
+                    android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL ->
+                        h.art.animate().scaleX(1f).scaleY(1f).setDuration(320).setInterpolator(android.view.animation.OvershootInterpolator(2.6f)).start()
+                }
+                false
+            }
         }
     }
 

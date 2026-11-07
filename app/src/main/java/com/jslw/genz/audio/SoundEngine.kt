@@ -35,14 +35,28 @@ object SoundEngine {
         Prefs.seTreble = p.treble; Prefs.seLeveller = p.leveller; Prefs.seRoom = p.room
     }
 
-    enum class Output(val label: String) { HEADPHONES("Headphones"), BLUETOOTH("Bluetooth headphones"), SPEAKER("Speaker") }
+    enum class Output(val label: String) {
+        HEADPHONES("Headphones"), BLUETOOTH("Bluetooth headphones"), SPEAKER("Speaker"),
+        SOUNDBAR("Soundbar / home theatre"),
+    }
+
+    /** Bluetooth device names that are soundbars or home-theatre systems rather than headphones. */
+    private val BAR_WORDS = listOf("bar", "aavante", "theatre", "theater", "home", "tv", "cinema", "hts", "subwoofer", "sound system")
+
+    fun isSoundbarName(name: String?): Boolean {
+        val n = name?.lowercase() ?: return false
+        return BAR_WORDS.any { n.contains(it) }
+    }
 
     /** What the music is playing through right now. */
     fun detect(ctx: Context): Output {
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return Output.SPEAKER
         if (Build.VERSION.SDK_INT >= 23) {
             val outs = try { am.getDevices(AudioManager.GET_DEVICES_OUTPUTS) } catch (_: Throwable) { emptyArray() }
-            if (outs.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }) return Output.BLUETOOTH
+            outs.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }?.let { bt ->
+                return if (isSoundbarName(bt.productName?.toString())) Output.SOUNDBAR else Output.BLUETOOTH
+            }
+            if (outs.any { it.type == AudioDeviceInfo.TYPE_HDMI || it.type == AudioDeviceInfo.TYPE_HDMI_ARC }) return Output.SOUNDBAR
             if (outs.any {
                     it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
                         it.type == AudioDeviceInfo.TYPE_USB_HEADSET || it.type == AudioDeviceInfo.TYPE_USB_DEVICE
@@ -61,17 +75,31 @@ object SoundEngine {
     fun output(ctx: Context): Output = when (Prefs.seOutput) {
         "headphones" -> Output.HEADPHONES
         "speaker" -> Output.SPEAKER
+        "soundbar" -> Output.SOUNDBAR
         else -> detect(ctx)
     }
 
     /** Effective settings after tuning for the output (speakers get less surround and bass). 0..1 each. */
     class Values(val surround: Float, val dialogue: Float, val bass: Float, val treble: Float, val leveller: Float, val room: Float,
-                 val headphones: Boolean)
+                 val headphones: Boolean, val soundbar: Boolean = false)
 
     fun values(ctx: Context): Values {
         val out = output(ctx)
-        val hp = out != Output.SPEAKER
         fun f(v: Int) = v.coerceIn(0, 100) / 100f
+        if (out == Output.SOUNDBAR) {
+            // Soundbar mode: speaker-style (transaural) widening for a bar in front of you, voices always lifted
+            // for TV and films, a firm leveller for late-night viewing, and bass left to the bar's subwoofer.
+            return Values(
+                surround = (0.35f + f(Prefs.seSurround) * 0.65f).coerceAtMost(1f),
+                dialogue = maxOf(f(Prefs.seDialogue), 0.35f),
+                bass = f(Prefs.seBass) * 0.6f,
+                treble = f(Prefs.seTreble) * 0.85f,
+                leveller = maxOf(f(Prefs.seLeveller), 0.3f),
+                room = f(Prefs.seRoom) * 0.8f,
+                headphones = false, soundbar = true,
+            )
+        }
+        val hp = out != Output.SPEAKER
         return Values(
             surround = f(Prefs.seSurround) * (if (hp) 1f else 0.5f),
             dialogue = f(Prefs.seDialogue),

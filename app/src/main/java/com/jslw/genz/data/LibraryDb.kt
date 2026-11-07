@@ -116,6 +116,9 @@ object LibraryDb {
         return out
     }
 
+    fun favoriteCount(): Int =
+        db.rawQuery("SELECT COUNT(*) FROM favorites", null).use { if (it.moveToFirst()) it.getInt(0) else 0 }
+
     fun isFavorite(songId: Long): Boolean =
         db.rawQuery("SELECT 1 FROM favorites WHERE song_id=?", arrayOf(songId.toString())).use { it.moveToFirst() }
 

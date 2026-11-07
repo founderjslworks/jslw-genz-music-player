@@ -9,7 +9,6 @@ import android.os.Build
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.jslw.genz.model.Song
 import com.jslw.genz.util.toast
-import com.jslw.genz.util.toast
 
 /**
  * Send songs straight to AIR share – JSL WORKS' offline Wi-Fi file sharing app – which opens on its

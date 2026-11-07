@@ -604,8 +604,8 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         more += Sheets.Option(R.drawable.ic_lyrics, if (Prefs.floatingLyrics) "Floating lyrics: on" else "Floating lyrics: off") { toggleFloating() }
         more += Sheets.Option(R.drawable.ic_star, "Cover touch effect…") { Sheets.coverEffect(this) { coverFx.setEffect(skin.activeCoverEffect) } }
         if (svc.canChangeSpeed) more += Sheets.Option(R.drawable.ic_speed, "Speed & pitch…") { Sheets.speedPitch(this) }
-        more += Sheets.Option(R.drawable.ic_eq_surround, "Advanced audio (JSLW Sound Engine)") {
-            startActivity(Intent(this, SoundEngineActivity::class.java))
+        more += Sheets.Option(R.drawable.ic_equalizer, "Sound & equalizer") {
+            startActivity(Intent(this, EqualizerActivity::class.java))
         }
         Sheets.songOptions(this, s, more = more)
     }
