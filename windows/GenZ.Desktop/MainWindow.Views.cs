@@ -393,7 +393,101 @@ namespace GenZ
             ShowGrid("Themes", $"{ThemeManager.All.Count} themes · the same looks as GEN-Z on Android");
             BuildTools(GridTools, "themes", ThemeModes, "cards", null, null, null);
             GridTools.Children.Insert(0, ThemeSearchBox());
+            var imp = new Button { Style = (Style)FindResource("GhostPill"), Margin = new Thickness(0, 0, 10, 0), Padding = new Thickness(14, 6, 14, 6), ToolTip = "Add a theme shared from GEN-Z on Android or another PC" };
+            var isp = new StackPanel { Orientation = Orientation.Horizontal };
+            var iic = new Path { Data = (Geometry)FindResource("IcImport"), Width = 13, Height = 13, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 8, 0) };
+            iic.SetResourceReference(Shape.FillProperty, "AccentBrush");
+            var itx = new TextBlock { Text = "Import theme", FontSize = 12.5 };
+            itx.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+            isp.Children.Add(iic); isp.Children.Add(itx); imp.Content = isp;
+            imp.Click += (s, e) => ImportTheme();
+            GridTools.Children.Insert(1, imp);
             RenderThemes(false);
+        }
+
+        // ---------------------------------------------------------------- sharing themes (same .genzskin.zip packs as Android)
+        void ImportTheme()
+        {
+            var d = new Microsoft.Win32.OpenFileDialog { Filter = "GEN-Z theme (*.genzskin.zip;*.zip;*.json)|*.genzskin.zip;*.zip;*.json", Title = "Import a GEN-Z theme" };
+            if (d.ShowDialog(this) != true) return;
+            try
+            {
+                string json;
+                if (d.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) json = System.IO.File.ReadAllText(d.FileName);
+                else using (var z = System.IO.Compression.ZipFile.OpenRead(d.FileName))
+                {
+                    var entry = z.Entries.FirstOrDefault(x => x.FullName.Equals("theme.json", StringComparison.OrdinalIgnoreCase))
+                                ?? z.Entries.FirstOrDefault(x => x.FullName.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
+                    if (entry == null) throw new Exception("there is no theme.json inside");
+                    using (var r = new System.IO.StreamReader(entry.Open())) json = r.ReadToEnd();
+                }
+                var t = Theme.Parse(json);
+                if (string.IsNullOrEmpty(t.Id)) t.Id = "user_" + DateTime.Now.Ticks;
+                System.IO.Directory.CreateDirectory(ThemeManager.UserDir);
+                System.IO.File.WriteAllText(System.IO.Path.Combine(ThemeManager.UserDir, string.Concat(t.Id.Split(System.IO.Path.GetInvalidFileNameChars())) + ".json"), json);
+                ThemeManager.Load();
+                var added = ThemeManager.All.FirstOrDefault(x => x.Id == t.Id);
+                if (added != null) ApplyTheme(added);
+                ShowToast("Added theme “" + t.Name + "”");
+                RenderThemes(true);
+            }
+            catch (Exception ex) { Dialogs.Message(this, "Import theme", "Couldn't read this theme: " + ex.Message); }
+        }
+
+        /// <summary>Saves a .genzskin.zip that GEN-Z on Android (Themes › Import pack) and on Windows can open.</summary>
+        void ExportTheme(Theme t)
+        {
+            var name = string.Concat((t.Name ?? t.Id).Split(System.IO.Path.GetInvalidFileNameChars()));
+            var d = new Microsoft.Win32.SaveFileDialog { Filter = "GEN-Z theme pack (*.genzskin.zip)|*.genzskin.zip", FileName = name + ".genzskin.zip", Title = "Share theme" };
+            if (d.ShowDialog(this) != true) return;
+            try
+            {
+                if (System.IO.File.Exists(d.FileName)) System.IO.File.Delete(d.FileName);
+                using (var z = System.IO.Compression.ZipFile.Open(d.FileName, System.IO.Compression.ZipArchiveMode.Create))
+                using (var w = new System.IO.StreamWriter(z.CreateEntry("theme.json").Open()))
+                    w.Write(t.RawJson ?? "{}");
+                ShowToast("Saved “" + t.Name + "” – send it to a friend");
+                ShowInFolder(d.FileName);
+            }
+            catch (Exception ex) { Dialogs.Message(this, "Share theme", "Couldn't save the theme: " + ex.Message); }
+        }
+
+        void ThemeMenu(FrameworkElement el, Theme t)
+        {
+            el.MouseRightButtonUp += (s, e) =>
+            {
+                var m = new ContextMenu { PlacementTarget = el };
+                m.Items.Add(Item("Apply", "IcPalette", () => ApplyTheme(t)));
+                m.Items.Add(Item("Share theme…", "IcShare", () => ExportTheme(t)));
+                if (t.UserTheme)
+                    m.Items.Add(Item("Remove", "IcDelete", () =>
+                    {
+                        try { System.IO.File.Delete(System.IO.Path.Combine(ThemeManager.UserDir, string.Concat(t.Id.Split(System.IO.Path.GetInvalidFileNameChars())) + ".json")); } catch { }
+                        ThemeManager.Load(); RenderThemes(true);
+                    }));
+                m.IsOpen = true; e.Handled = true;
+            };
+        }
+
+        /// <summary>A tiny Now Playing in the theme's colours: Album Flow covers and the round play button.</summary>
+        static FrameworkElement ThemeMini(Theme t)
+        {
+            var c = new Canvas { Width = 66, Height = 58, IsHitTestVisible = false };
+            var accent = t.C("accent", Colors.MediumPurple);
+            var side = new SolidColorBrush(Color.FromArgb(150, accent.R, accent.G, accent.B));
+            foreach (var x in new[] { 2.0, 44.0 })
+            {
+                var r = new Border { Width = 20, Height = 24, CornerRadius = new CornerRadius(2), Background = side,
+                    RenderTransform = new SkewTransform(0, x < 20 ? -12 : 12), RenderTransformOrigin = new Point(0.5, 0.5) };
+                Canvas.SetLeft(r, x); Canvas.SetTop(r, 6); c.Children.Add(r);
+            }
+            var mid = new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(3), Background = new LinearGradientBrush(t.Header, accent, 45) };
+            Canvas.SetLeft(mid, 18); Canvas.SetTop(mid, 3); c.Children.Add(mid);
+            var ring = new System.Windows.Shapes.Ellipse { Width = 22, Height = 22, Stroke = new SolidColorBrush(Color.FromArgb(150, accent.R, accent.G, accent.B)), StrokeThickness = 1.2 };
+            Canvas.SetLeft(ring, 22); Canvas.SetTop(ring, 36); c.Children.Add(ring);
+            var dot = new System.Windows.Shapes.Ellipse { Width = 16, Height = 16, Fill = new SolidColorBrush(accent) };
+            Canvas.SetLeft(dot, 25); Canvas.SetTop(dot, 39); c.Children.Add(dot);
+            return c;
         }
 
         /// <summary>A small rounded search field for themes (name, dark / light, font, bar style).</summary>
@@ -493,16 +587,19 @@ namespace GenZ
             var body = new StackPanel { Margin = new Thickness(14, 10, 14, 10) };
             Grid.SetRow(body, 1);
             body.Children.Add(Swatches(t, 20));
-            var bar = new Border { Height = 5, CornerRadius = new CornerRadius(2.5), Margin = new Thickness(0, 14, 40, 0), HorizontalAlignment = HorizontalAlignment.Stretch, Background = ProgressBrush(t) };
+            var bar = new Border { Height = 5, CornerRadius = new CornerRadius(2.5), Margin = new Thickness(0, 14, 80, 0), HorizontalAlignment = HorizontalAlignment.Stretch, Background = ProgressBrush(t) };
             body.Children.Add(bar);
             body.Children.Add(new TextBlock
             {
-                Text = (t.Dark ? "Dark" : "Light") + " · " + Cap(t.ProgressStyle) + " bar",
-                FontFamily = ThemeManager.Font(t.Font), FontSize = 11, Margin = new Thickness(0, 10, 0, 0),
+                Text = (t.Dark ? "Dark" : "Light") + " · " + Cap(t.ProgressStyle) + " bar · " + Controls.FlowStyles.NameOf(t.FlowStyle),
+                FontFamily = ThemeManager.Font(t.Font), FontSize = 11, Margin = new Thickness(0, 10, 0, 0), TextTrimming = TextTrimming.CharacterEllipsis,
                 Foreground = new SolidColorBrush(t.C("textSecondary", Colors.Gray))
             });
             g.Children.Add(body);
+            var mini = ThemeMini(t); mini.HorizontalAlignment = HorizontalAlignment.Right; mini.VerticalAlignment = VerticalAlignment.Bottom; mini.Margin = new Thickness(0, 0, 10, 26);
+            Grid.SetRow(mini, 1); g.Children.Add(mini);
             card.Child = g;
+            ThemeMenu(card, theme);
             var st = new ScaleTransform(1, 1); card.RenderTransformOrigin = new Point(0.5, 0.5); card.RenderTransform = st;
             card.MouseEnter += (s, e) => Spring(st, 1.04);
             card.MouseLeave += (s, e) => Spring(st, 1.0);
@@ -563,6 +660,7 @@ namespace GenZ
             row.MouseEnter += (s, e) => row.SetResourceReference(Border.BackgroundProperty, "HoverBrush");
             row.MouseLeave += (s, e) => row.Background = Brushes.Transparent;
             row.MouseLeftButtonUp += (s, e) => ApplyTheme(theme);
+            ThemeMenu(row, theme);
             Bounce.Press(row);
             return row;
         }

@@ -32,6 +32,33 @@ namespace GenZ.Core
             ["Acoustic"] = new double[] { 4, 3, 2, 1, 1, 1, 2, 2, 3, 2 },
             ["Treble"] = new double[] { 0, 0, 0, 0, 0, 1, 3, 5, 6, 7 },
             ["Late Night"] = new double[] { 2, 2, 1, 0, 0, 0, -1, -2, -2, -3 },
+            ["Loudness"] = new double[] { 6, 4, 0, 0, -2, 0, -1, -2, 4, 2 },
+            ["Dance"] = new double[] { 5, 4, 2, 0, 0, -1, 1, 3, 4, 4 },
+            ["R&B"] = new double[] { 3, 6, 5, 1, -2, -1, 2, 3, 3, 3 },
+            ["Metal"] = new double[] { 4, 3, 1, -1, -2, 0, 3, 5, 6, 5 },
+            ["Bollywood"] = new double[] { 4, 4, 2, 0, 1, 3, 3, 2, 3, 3 },
+            ["Bhangra"] = new double[] { 7, 6, 3, 0, -1, 1, 2, 3, 4, 3 },
+            ["Indian Classical"] = new double[] { 1, 1, 1, 2, 3, 3, 2, 2, 3, 2 },
+            ["Sufi & Ghazal"] = new double[] { 2, 2, 1, 2, 4, 4, 3, 1, 1, 0 },
+            ["Devotional"] = new double[] { 1, 1, 2, 3, 4, 4, 3, 1, 0, -1 },
+            ["Lo-fi"] = new double[] { 4, 3, 2, 1, 0, -1, -2, -3, -4, -5 },
+            ["Piano"] = new double[] { 0, 0, 1, 2, 2, 1, 2, 3, 2, 1 },
+            ["Deep Bass"] = new double[] { 9, 8, 5, 2, 0, 0, 0, 0, 0, 0 },
+            ["Podcast"] = new double[] { -6, -4, -1, 2, 4, 4, 3, 1, -1, -3 },
+            ["Gaming"] = new double[] { 2, 1, 0, -1, 0, 2, 4, 4, 3, 2 },
+            ["TV & Movies"] = new double[] { 3, 2, 0, 1, 3, 4, 3, 1, 1, 0 },
+            ["Car"] = new double[] { 4, 3, 1, 0, -1, 0, 1, 2, 3, 3 },
+            ["Small Speakers"] = new double[] { -4, -2, 2, 3, 3, 2, 1, 1, 0, -1 },
+        };
+
+        /// <summary>Presets sorted into groups for the Sound page (same as GEN-Z for Android).</summary>
+        public static readonly (string Name, string Icon, string[] Presets)[] PresetGroups =
+        {
+            ("Popular", "IcStarFill", new[] { "Flat", "Pop", "Rock", "Hip-Hop", "Electronic", "Dance", "R&B", "Metal" }),
+            ("Indian", "IcDhol", new[] { "Bollywood", "Bhangra", "Indian Classical", "Sufi & Ghazal", "Devotional" }),
+            ("Chill", "IcChill", new[] { "Jazz", "Classical", "Acoustic", "Piano", "Lo-fi" }),
+            ("Tone", "IcRoomStudio", new[] { "Bass Boost", "Deep Bass", "Treble", "Vocal", "Loudness" }),
+            ("Situations", "IcScene", new[] { "Late Night", "Podcast", "Gaming", "TV & Movies", "Car", "Small Speakers" }),
         };
 
         static ISoundOut output;
@@ -392,8 +419,36 @@ namespace GenZ.Core
             var c = Settings.Current;
             var p = Theater.Profiles.Find(x => x.Id == c.TheaterProfile) ?? Theater.Profiles[1];
             if (p.Id == "custom") p = c.TheaterCustom ?? p;
-            t.Set(p, c.TheaterOn, c.TheaterHeadphones);
+            var room = Theater.Rooms.Find(r => r.Id == c.TheaterRoom) ?? Theater.Rooms[0];
+            if (room.Id != "auto") { p = p.Copy(); p.Room = room.Id == "off" ? 0 : c.TheaterRoomAmount; }
+            var kind = OutputKind();
+            t.Set(p, c.TheaterOn, kind == AudioDevice.Kind.Headphones, room.Scale, kind == AudioDevice.Kind.Soundbar);
         }
+
+        static AudioDevice.Kind detected = AudioDevice.Kind.Headphones;
+        static DateTime detectedAt;
+
+        /// <summary>The output the engine tunes for: the user's choice, or what Windows is playing on.</summary>
+        public static AudioDevice.Kind OutputKind()
+        {
+            var c = Settings.Current;
+            var o = string.IsNullOrEmpty(c.TheaterOutput) ? (c.TheaterHeadphones ? "headphones" : "speakers") : c.TheaterOutput;
+            switch (o)
+            {
+                case "headphones": return AudioDevice.Kind.Headphones;
+                case "speakers": return AudioDevice.Kind.Speakers;
+                case "soundbar": return AudioDevice.Kind.Soundbar;
+            }
+            if ((DateTime.UtcNow - detectedAt).TotalSeconds > 5)
+            {
+                try { detected = AudioDevice.Read(false).Kind; } catch { }
+                detectedAt = DateTime.UtcNow;
+            }
+            return detected;
+        }
+
+        /// <summary>Call when Windows' default output changed so "Auto-detect" picks it up straight away.</summary>
+        public static void OutputChanged() { detectedAt = DateTime.MinValue; ApplyTheater(); }
 
         public static void ApplyEq()
         {

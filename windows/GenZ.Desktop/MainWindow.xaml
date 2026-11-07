@@ -216,7 +216,7 @@
                         <TextBlock Text="EXTRAS" Margin="26,16,0,6" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Text2Brush}" />
                         <RadioButton x:Name="NavThemes" Style="{StaticResource NavItem}" Content="Themes" Tag="{StaticResource IcPalette}" Checked="OnNav" />
                         <RadioButton x:Name="NavAnim" Style="{StaticResource NavItem}" Content="Animations" Tag="{StaticResource IcSpark}" Checked="OnNav" />
-                        <RadioButton x:Name="NavEq" Style="{StaticResource NavItem}" Content="Equalizer" Tag="{StaticResource IcEq}" Checked="OnNav" />
+                        <RadioButton x:Name="NavEq" Style="{StaticResource NavItem}" Content="Sound" Tag="{StaticResource IcEq}" Checked="OnNav" />
                         <RadioButton x:Name="NavAbout" Style="{StaticResource NavItem}" Content="Settings &amp; About" Tag="{StaticResource IcSettings}" Checked="OnNav" />
                     </StackPanel>
                     </ScrollViewer>
@@ -293,8 +293,8 @@
                     <StackPanel Margin="28,22,28,20">
                         <Grid>
                             <StackPanel>
-                                <TextBlock Text="Equalizer &amp; Sound" FontSize="30" FontWeight="Bold" FontFamily="{DynamicResource DisplayFont}" />
-                                <TextBlock Text="GEN-Z Home Theater sound profiles and a 10-band equalizer – they work only inside GEN-Z." Margin="0,2,0,0" FontSize="13" Foreground="{DynamicResource Text2Brush}" />
+                                <TextBlock Text="Sound" FontSize="30" FontWeight="Bold" FontFamily="{DynamicResource DisplayFont}" />
+                                <TextBlock Text="JSLW Sound Engine, room, output and a 10-band equalizer – they work only inside GEN-Z." Margin="0,2,0,0" FontSize="13" Foreground="{DynamicResource Text2Brush}" />
                             </StackPanel>
                             <CheckBox x:Name="EqOn" HorizontalAlignment="Right" VerticalAlignment="Center" Checked="OnEqToggle" Unchecked="OnEqToggle" Cursor="Hand">
                                 <CheckBox.Template>
@@ -313,7 +313,7 @@
                             </CheckBox>
                         </Grid>
                         <StackPanel x:Name="TheaterPanel" Margin="0,18,0,6" />
-                        <TextBlock Text="10-BAND EQUALIZER" Margin="0,22,0,0" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                        <TextBlock Text="10-BAND EQUALIZER · PRESETS" Margin="0,22,0,0" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
                         <WrapPanel x:Name="EqPresets" Margin="0,10,0,8" />
                         <Border CornerRadius="18" Background="{DynamicResource SurfaceBrush}" Padding="20,18" Margin="0,8,0,0">
                             <Grid x:Name="EqBands" Height="300" />

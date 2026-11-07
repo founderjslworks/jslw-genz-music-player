@@ -244,6 +244,36 @@ namespace GenZ
             return mi;
         }
 
+        /// <summary>Moves songs to the Recycle Bin (handy for voice and call recordings) and drops them from the library.</summary>
+        void DeleteSongs(List<Song> list)
+        {
+            var what = list.Count == 1 ? "“" + list[0].Title + "”" : Songs(list.Count);
+            if (!Dialogs.Confirm(this, "Delete " + what + "?", "The file" + (list.Count == 1 ? "" : "s") + " will be moved to the Recycle Bin.\n\n"
+                + string.Join("\n", list.Take(4).Select(x => x.Path)) + (list.Count > 4 ? "\n…" : ""), "Move to Recycle Bin")) return;
+            int done = 0;
+            foreach (var s in list)
+            {
+                // never delete the file under the player: move on first
+                if (Player.Current != null && string.Equals(Player.Current.Path, s.Path, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (Player.Queue.Count > 1) Player.Next(); else Player.Stop();
+                }
+                try
+                {
+                    Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(s.Path, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                    done++;
+                }
+                catch (Exception) { if (System.IO.File.Exists(s.Path)) continue; }
+                var idx = Player.Queue.Select((q, i) => (q, i)).Where(x => string.Equals(x.q.Path, s.Path, StringComparison.OrdinalIgnoreCase)).Select(x => x.i).ToList();
+                if (idx.Count > 0) Player.RemoveAt(idx);
+                Settings.Current.Favourites.RemoveAll(p => string.Equals(p, s.Path, StringComparison.OrdinalIgnoreCase));
+                Library.Remove(s.Path);
+            }
+            Settings.Save();
+            ShowToast(done == 0 ? "Nothing was deleted" : "Moved " + (done == 1 ? "1 song" : done + " songs") + " to the Recycle Bin");
+            ShowView(view, true);
+        }
+
         ContextMenu SongsMenu(IList<Song> songs, string context)
         {
             var m = new ContextMenu();
@@ -298,6 +328,20 @@ namespace GenZ
                 m.Items.Add(Item("Show in folder", "IcFolder", () => ShowInFolder(s.Path)));
                 m.Items.Add(Item("Song info & tags…", "IcEdit", () => EditSong(s), "Ctrl+I"));
             }
+            if (context == "tile" && view == View.Folders)
+            {
+                var dir = System.IO.Path.GetDirectoryName(list[0].Path);
+                if (list.All(x => string.Equals(System.IO.Path.GetDirectoryName(x.Path), dir, StringComparison.OrdinalIgnoreCase)))
+                    m.Items.Add(Item("Hide this folder", "IcHide", () =>
+                    {
+                        if (!Settings.Current.HiddenFolders.Contains(dir)) Settings.Current.HiddenFolders.Add(dir);
+                        Settings.Save(); Library.Reapply();
+                        ShowToast("Folder hidden – bring it back in Settings › Hidden folders");
+                        ShowView(View.Folders, true);
+                    }));
+            }
+            m.Items.Add(new Separator());
+            m.Items.Add(Item(one ? "Delete from PC…" : "Delete " + Songs(list.Count) + " from PC…", "IcDelete", () => DeleteSongs(list)));
             m.Items.Add(new Separator());
             m.Items.Add(Item(one ? "Find cover art & lyrics online" : "Find covers & lyrics online (" + list.Count + ")", "IcCloud", () => FetchOnline(list)));
             return m;

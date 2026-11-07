@@ -76,6 +76,7 @@ namespace GenZ
             Closing += (s, e) => { Settings.Current.NowPlayingOpen = NpColumn.Width.Value > 0; SaveSession(); };
 
             BuildEq();
+            ApplyNav();
             SetThumbIcons();
             Library.LoadCache();
             InitFeatures();
@@ -361,13 +362,72 @@ namespace GenZ
             BuildPresets();
         }
 
+        string presetGroup;
+        WrapPanel presetGroups;
+
+        static string PresetIcon(string n)
+        {
+            n = n.ToLowerInvariant();
+            if (n.Contains("flat")) return "IcFlat";
+            if (n.Contains("bollywood") || n.Contains("tv")) return "IcMovie";
+            if (n.Contains("bhangra") || n.Contains("indian")) return "IcDhol";
+            if (n.Contains("sufi") || n.Contains("devotional")) return "IcDiya";
+            if (n.Contains("lo-fi")) return "IcChill";
+            if (n.Contains("piano")) return "IcPiano";
+            if (n.Contains("gaming")) return "IcGame";
+            if (n == "car") return "IcCar";
+            if (n.Contains("small")) return "IcSpeakerSmall";
+            if (n.Contains("podcast") || n.Contains("vocal")) return "IcEqVocal";
+            if (n.Contains("bass")) return "IcEqBass";
+            if (n.Contains("rock") || n.Contains("metal")) return "IcRock";
+            if (n.Contains("electr")) return "IcElectronic";
+            if (n.Contains("hip")) return "IcHiphop";
+            if (n.Contains("acoustic")) return "IcAcoustic";
+            if (n.Contains("treble")) return "IcEqTreble";
+            if (n.Contains("loud")) return "IcEqLoud";
+            if (n.Contains("night")) return "IcNight";
+            if (n.Contains("dance")) return "IcRoomClub";
+            return "IcNote";
+        }
+
+        Button IconPill(string text, string icon, bool on)
+        {
+            var b = new Button { Style = (Style)FindResource(on ? "PillButton" : "GhostPill"), Margin = new Thickness(0, 0, 8, 8), Padding = new Thickness(12, 6, 14, 6) };
+            var sp = new StackPanel { Orientation = Orientation.Horizontal };
+            var ic = new System.Windows.Shapes.Path { Data = (Geometry)FindResource(icon), Width = 14, Height = 14, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 7, 0) };
+            ic.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, on ? "OnAccentBrush" : "AccentBrush");
+            var t = new TextBlock { Text = text };
+            t.SetResourceReference(TextBlock.ForegroundProperty, on ? "OnAccentBrush" : "AccentBrush");
+            sp.Children.Add(ic); sp.Children.Add(t); b.Content = sp;
+            return b;
+        }
+
+        /// <summary>Category pills (Popular, Indian, Chill, Tone, Situations), then that category's presets.</summary>
         void BuildPresets()
         {
-            EqPresets.Children.Clear();
-            foreach (var kv in Player.Presets)
+            if (presetGroups == null && EqPresets.Parent is Panel host)
             {
-                var name = kv.Key; var gains = kv.Value;
-                var b = new Button { Content = name, Style = (Style)FindResource(name == Settings.Current.EqPreset ? "PillButton" : "GhostPill"), Margin = new Thickness(0, 0, 8, 8), Padding = new Thickness(14, 6, 14, 6) };
+                presetGroups = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
+                host.Children.Insert(host.Children.IndexOf(EqPresets), presetGroups);
+            }
+            if (presetGroup == null)
+                presetGroup = Player.PresetGroups.FirstOrDefault(g => g.Presets.Contains(Settings.Current.EqPreset)).Name ?? "Popular";
+            presetGroups.Children.Clear();
+            foreach (var g in Player.PresetGroups)
+            {
+                var name = g.Name;
+                var b = IconPill(name, g.Icon, name == presetGroup);
+                b.Click += (s, e) => { presetGroup = name; BuildPresets(); };
+                presetGroups.Children.Add(b);
+            }
+            EqPresets.Children.Clear();
+            var list = Player.PresetGroups.First(g => g.Name == presetGroup).Presets;
+            int k = 0;
+            foreach (var pn in list)
+            {
+                if (!Player.Presets.TryGetValue(pn, out var gains)) continue;
+                var name = pn;
+                var b = IconPill(name, PresetIcon(name), name == Settings.Current.EqPreset);
                 b.Click += (s, e) =>
                 {
                     eqUpdating = true;
@@ -377,6 +437,11 @@ namespace GenZ
                     EqOn.IsChecked = true; Settings.Current.EqEnabled = true;
                     Player.ApplyEq(); BuildPresets();
                 };
+                if (!Settings.Current.ReduceMotion)
+                {
+                    b.Opacity = 0;
+                    b.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(240)) { BeginTime = TimeSpan.FromMilliseconds(25 * k++) });
+                }
                 EqPresets.Children.Add(b);
             }
         }
@@ -1183,11 +1248,60 @@ namespace GenZ
             PrefsPanel.Children.Add(Toggle("Soft fade on play and pause", "The music fades in and out instead of stopping abruptly", cur.FadePlayPause, v => cur.FadePlayPause = v));
             PrefsPanel.Children.Add(Toggle("Continue where you left off", "Remember Up next, the song and its position when GEN-Z closes", cur.RememberQueue, v => cur.RememberQueue = v));
             OnlinePrefs(PrefsPanel);
+            LibraryPrefs(cur);
             Section(PrefsPanel, "MINI PLAYER (PICTURE IN PICTURE)", "A small always-on-top player. Open it with the button in the title bar or Ctrl+P.");
             PrefsPanel.Children.Add(Toggle("Open the mini player when minimized", "While music plays, minimizing GEN-Z shows the mini player", cur.AutoPip, v => cur.AutoPip = v));
             var b = new Button { Style = (Style)FindResource("PillButton"), Content = "Open mini player now", HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 6, 0, 0) };
             b.Click += (s, e) => OnPip(this, null);
             PrefsPanel.Children.Add(b);
+        }
+
+        static readonly (string Name, string Label)[] NavChoices =
+        {
+            ("NavAlbums", "Albums"), ("NavFlow", "Album Flow"), ("NavArtists", "Artists"), ("NavGenres", "Genres"), ("NavFolders", "Folders"),
+            ("NavFav", "Favourites"), ("NavRecent", "Recently played"), ("NavMost", "Most played"), ("NavQueue", "Up next"), ("NavAnim", "Animations"),
+        };
+
+        /// <summary>Shows only the sidebar entries the user ticked (Songs, Themes, Sound and Settings always stay).</summary>
+        void ApplyNav()
+        {
+            var hidden = Settings.Current.HiddenNav ?? new List<string>();
+            foreach (var (name, _) in NavChoices)
+                if (FindName(name) is FrameworkElement el) el.Visibility = hidden.Contains(name) ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        /// <summary>Hidden folders, Album Flow style and what the sidebar shows.</summary>
+        void LibraryPrefs(Settings cur)
+        {
+            Section(PrefsPanel, "HIDDEN FOLDERS", "Call recordings and WhatsApp Audio are kept out of your library. Right-click a folder in Folders to hide it too.");
+            PrefsPanel.Children.Add(Toggle("Hide call recordings", "Folders such as Call recordings or CallRecord", cur.HideCallRecordings, v => { cur.HideCallRecordings = v; Library.Reapply(); }));
+            PrefsPanel.Children.Add(Toggle("Hide WhatsApp Audio", "WhatsApp Audio and voice notes copied from your phone", cur.HideWhatsAppAudio, v => { cur.HideWhatsAppAudio = v; Library.Reapply(); }));
+            foreach (var dir in cur.HiddenFolders.ToList())
+            {
+                var row = new Grid { Margin = new Thickness(0, 4, 0, 4) };
+                var t = new TextBlock { Text = dir, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 100, 0) };
+                row.Children.Add(t);
+                var un = new Button { Style = (Style)FindResource("GhostPill"), Content = "Show again", HorizontalAlignment = HorizontalAlignment.Right, Padding = new Thickness(12, 4, 12, 4) };
+                var d = dir;
+                un.Click += (s, e) => { cur.HiddenFolders.Remove(d); Settings.Save(); Library.Reapply(); BuildPrefs(); };
+                row.Children.Add(un);
+                PrefsPanel.Children.Add(row);
+            }
+
+            Section(PrefsPanel, "ALBUM FLOW STYLE", "How Album Flow lays out the covers. Each theme suggests one; you can also change it with the Style button in Album Flow.");
+            var flowOpts = new[] { ("theme", "Theme default (" + Controls.FlowStyles.NameOf(ThemeManager.Current?.FlowStyle) + ")") }.Concat(Controls.FlowStyles.All.Select(a => (a.Id, a.Name))).ToArray();
+            PrefsPanel.Children.Add(Choices(flowOpts, string.IsNullOrEmpty(cur.FlowStyle) ? "theme" : cur.FlowStyle, v => { cur.FlowStyle = v; }));
+
+            Section(PrefsPanel, "SIDEBAR", "Choose what the sidebar shows. Songs, Themes, Sound and Settings are always there.");
+            foreach (var (name, label) in NavChoices)
+            {
+                var n = name;
+                PrefsPanel.Children.Add(Toggle(label, null, !cur.HiddenNav.Contains(n), v =>
+                {
+                    cur.HiddenNav.Remove(n); if (!v) cur.HiddenNav.Add(n);
+                    ApplyNav();
+                }));
+            }
         }
 
         /// <summary>Old-hardware support: Automatic / Best looks / Light, and software drawing (safe mode).</summary>

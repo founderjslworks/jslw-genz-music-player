@@ -85,7 +85,7 @@ namespace GenZ.Core
     /// <summary>Scans the music folders, reads tags with TagLib and keeps a cache so the next start is instant.</summary>
     public static class Library
     {
-        public static readonly string[] Extensions = { ".mp3", ".flac", ".wav", ".aiff", ".aif", ".m4a", ".aac", ".wma", ".mp4" };
+        public static readonly string[] Extensions = { ".mp3", ".flac", ".wav", ".aiff", ".aif", ".m4a", ".aac", ".wma", ".mp4", ".opus", ".ogg" };
         public static List<Song> Songs { get; private set; } = new List<Song>();
         public static List<AlbumInfo> Albums { get; private set; } = new List<AlbumInfo>();
         public static List<ArtistInfo> Artists { get; private set; } = new List<ArtistInfo>();
@@ -113,9 +113,46 @@ namespace GenZ.Core
             catch { }
         }
 
+        /// <summary>Every song found, including those in hidden folders (the cache keeps them all).</summary>
+        static List<Song> all = new List<Song>();
+
+        static readonly System.Text.RegularExpressions.Regex CallRx = new System.Text.RegularExpressions.Regex(
+            @"(^|\\)(call[ _-]?rec[a-z]*|call ?recordings?|call|calls|phonerecord[a-z]*)(\\|$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        static readonly System.Text.RegularExpressions.Regex WaRx = new System.Text.RegularExpressions.Regex(
+            @"\\whatsapp( business)? (audio|voice notes)(\\|$)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        public static bool IsCallRecordings(string dir) => CallRx.IsMatch(dir ?? "");
+        public static bool IsWhatsAppAudio(string dir) => WaRx.IsMatch(dir ?? "");
+
+        /// <summary>Call recordings and WhatsApp Audio stay out of the library by default, plus any folder the user hid.</summary>
+        static bool Visible(Song s)
+        {
+            var c = Settings.Current;
+            var dir = System.IO.Path.GetDirectoryName(s.Path) ?? "";
+            if (c.HideCallRecordings && IsCallRecordings(dir)) return false;
+            if (c.HideWhatsAppAudio && IsWhatsAppAudio(dir)) return false;
+            if (c.HiddenFolders != null)
+                foreach (var h in c.HiddenFolders)
+                    if (dir.Equals(h, StringComparison.OrdinalIgnoreCase) || dir.StartsWith(h.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) return false;
+            return true;
+        }
+
+        /// <summary>Apply hidden-folder changes without rescanning.</summary>
+        public static void Reapply() { Set(all); Changed?.Invoke(); }
+
+        /// <summary>Forget a deleted file.</summary>
+        public static void Remove(string path)
+        {
+            all = all.Where(x => !string.Equals(x.Path, path, StringComparison.OrdinalIgnoreCase)).ToList();
+            Set(all);
+            try { File.WriteAllText(CachePath, Json.Write(all)); } catch { }
+            Changed?.Invoke();
+        }
+
         static void Set(List<Song> songs)
         {
-            Songs = songs.OrderBy(s => s.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
+            all = songs;
+            Songs = songs.Where(Visible).OrderBy(s => s.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
             Albums = Songs.GroupBy(s => s.AlbumKey).Select(g =>
             {
                 var f = g.First();
@@ -146,8 +183,8 @@ namespace GenZ.Core
         /// <summary>Regroup albums/artists/genres after tags were edited, and save the cache.</summary>
         public static void Refresh()
         {
-            Set(Songs.ToList());
-            try { File.WriteAllText(CachePath, Json.Write(Songs)); } catch { }
+            Set(all.ToList());
+            try { File.WriteAllText(CachePath, Json.Write(all)); } catch { }
             Changed?.Invoke();
         }
 
@@ -173,7 +210,7 @@ namespace GenZ.Core
             if (Scanning) return Task.FromResult(0);
             Scanning = true;
             var folders = Settings.Current.Folders.ToList();
-            var cached = Songs.ToDictionary(s => s.Path, StringComparer.OrdinalIgnoreCase);
+            var cached = all.GroupBy(s => s.Path, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
             return Task.Run(() =>
             {
                 var result = new List<Song>();

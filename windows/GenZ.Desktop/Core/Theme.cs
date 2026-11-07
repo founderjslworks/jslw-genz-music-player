@@ -10,7 +10,8 @@ namespace GenZ.Core
     /// <summary>A GEN-Z theme – the very same JSON files the Android app uses.</summary>
     public class Theme
     {
-        public string Id, Name, Author, Font, DisplayFont, LcdFont, ProgressStyle, CoverEffect, NpControls;
+        public string Id, Name, Author, Font, DisplayFont, LcdFont, ProgressStyle, CoverEffect, NpControls, FlowStyle, RawJson;
+        public bool UserTheme;
         public bool Dark;
         public double CornerRadius;
         public Dictionary<string, Color> Colors = new Dictionary<string, Color>();
@@ -43,9 +44,10 @@ namespace GenZ.Core
                 Id = d.Str("id"), Name = d.Str("name", "Theme"), Author = d.Str("author", "JSL WORKS"),
                 Dark = d.Bool("dark", true), Font = d.Str("font", "inter"), LcdFont = d.Str("lcdFont", "vt323"),
                 ProgressStyle = d.Str("progressStyle", "sparkle"), CoverEffect = d.Str("coverEffect", "ripple"),
-                NpControls = d.Str("npControls", "standard"), CornerRadius = d.Num("cornerRadius", 14),
+                NpControls = d.Str("npControls", "standard"), FlowStyle = d.Str("flowStyle", "classic"), CornerRadius = d.Num("cornerRadius", 14),
             };
             t.DisplayFont = d.Str("displayFont", t.Font);
+            t.RawJson = json;
             var cols = d.Obj("colors");
             if (cols != null) foreach (var kv in cols) if (kv.Value != null) t.Colors[kv.Key] = ParseColor(kv.Value.ToString());
             if (d.TryGetValue("progressColors", out var pc) && pc is System.Collections.IEnumerable list && !(pc is string))
@@ -69,17 +71,30 @@ namespace GenZ.Core
         public static Theme Current { get; private set; }
         public static event Action Changed;
 
+        /// <summary>Themes the user imported (from GEN-Z for Android or another PC).</summary>
+        public static string UserDir => Path.Combine(Settings.Dir, "skins");
+
         public static void Load()
         {
             var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "skins");
             var list = new List<Theme>();
-            if (Directory.Exists(dir))
-                foreach (var f in Directory.GetFiles(dir, "*.json"))
+            foreach (var (d, user) in new[] { (dir, false), (UserDir, true) })
+            {
+                if (!Directory.Exists(d)) continue;
+                foreach (var f in Directory.GetFiles(d, "*.json"))
                 {
-                    try { var t = Theme.Parse(File.ReadAllText(f)); if (string.IsNullOrEmpty(t.Id)) t.Id = Path.GetFileNameWithoutExtension(f); list.Add(t); }
+                    try
+                    {
+                        var t = Theme.Parse(File.ReadAllText(f)); t.UserTheme = user;
+                        if (string.IsNullOrEmpty(t.Id)) t.Id = Path.GetFileNameWithoutExtension(f);
+                        list.RemoveAll(x => x.Id == t.Id);   // an imported theme replaces a built-in one with the same id
+                        list.Add(t);
+                    }
                     catch { }
                 }
+            }
             All = list.OrderBy(t => { int i = Array.IndexOf(Order, t.Id); return i < 0 ? 999 : i; }).ToList();
+            if (Current != null) Current = All.FirstOrDefault(t => t.Id == Current.Id) ?? Current;
         }
 
         static readonly Dictionary<string, string> FontNames = new Dictionary<string, string>

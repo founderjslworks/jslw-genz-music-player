@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using GenZ.Controls;
 using GenZ.Core;
 
@@ -171,9 +172,60 @@ namespace GenZ
             }
         }
 
-        // ================================================================ GEN-Z Home Theater
+        // ================================================================ JSLW Sound Engine (Sound page)
         readonly Dictionary<string, Slider> theaterSliders = new Dictionary<string, Slider>();
         bool theaterUpdating;
+        Border deviceStrip, npDeviceStrip;
+        DispatcherTimer deviceTimer;
+        TextBlock listeningLine;
+
+        static readonly (string id, string name, string icon)[] Outputs =
+        {
+            ("auto", "Auto-detect", "IcSpark"), ("headphones", "Headphones", "IcHeadphones"),
+            ("speakers", "Speakers", "IcSpeakerSmall"), ("soundbar", "Soundbar mode", "IcSoundbar"),
+        };
+
+        string OutputId() { var c = Settings.Current; return string.IsNullOrEmpty(c.TheaterOutput) ? (c.TheaterHeadphones ? "headphones" : "speakers") : c.TheaterOutput; }
+
+        TextBlock Section(string text, string icon)
+        {
+            var t = new TextBlock { FontSize = 11, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 18, 0, 8) };
+            t.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+            var ic = new Path { Data = (Geometry)FindResource(icon), Width = 13, Height = 13, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 7, -2) };
+            ic.SetResourceReference(Shape.FillProperty, "AccentBrush");
+            t.Inlines.Add(new System.Windows.Documents.InlineUIContainer(ic));
+            t.Inlines.Add(new System.Windows.Documents.Run(text.ToUpperInvariant()));
+            return t;
+        }
+
+        /// <summary>Premium icon tile: gradient square with a white glyph when chosen, a soft outline when not.</summary>
+        Border IconTile(string icon, double size, bool on)
+        {
+            var b = new Border { Width = size, Height = size, CornerRadius = new CornerRadius(size * 0.28) };
+            var ic = new Path { Data = (Geometry)FindResource(icon), Stretch = Stretch.Uniform, Margin = new Thickness(size * 0.24) };
+            if (on) { b.SetResourceReference(Border.BackgroundProperty, "HeaderBrush"); ic.Fill = Brushes.White; }
+            else
+            {
+                b.SetResourceReference(Border.BackgroundProperty, "AccentSoftBrush");
+                b.SetResourceReference(Border.BorderBrushProperty, "DividerBrush"); b.BorderThickness = new Thickness(1);
+                ic.SetResourceReference(Shape.FillProperty, "AccentBrush");
+            }
+            b.Child = ic;
+            return b;
+        }
+
+        FrameworkElement SoundTile(string icon, string name, string tip, bool on, Action pick)
+        {
+            var sp = new StackPanel { Width = 92, Margin = new Thickness(0, 0, 8, 8), Cursor = Cursors.Hand, ToolTip = tip, Background = Brushes.Transparent };
+            var t = IconTile(icon, 54, on); t.HorizontalAlignment = HorizontalAlignment.Center;
+            sp.Children.Add(t);
+            var l = new TextBlock { Text = name, FontSize = 11.5, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0), FontWeight = on ? FontWeights.Bold : FontWeights.Normal };
+            l.SetResourceReference(TextBlock.ForegroundProperty, on ? "TextBrush" : "Text2Brush");
+            sp.Children.Add(l);
+            sp.MouseLeftButtonUp += (s, e) => pick();
+            Bounce.Press(sp);
+            return sp;
+        }
 
         void BuildTheater()
         {
@@ -181,85 +233,125 @@ namespace GenZ
             if (c.TheaterCustom == null) c.TheaterCustom = Theater.Profiles.First(p => p.Id == "custom").Copy();
             TheaterPanel.Children.Clear(); theaterSliders.Clear();
 
+            deviceStrip = MakeDeviceStrip(false);
+            TheaterPanel.Children.Add(deviceStrip);
+            StartDeviceTimer();
+
             var card = new Border { CornerRadius = new CornerRadius(18), Padding = new Thickness(20, 18, 20, 18) };
             card.SetResourceReference(Border.BackgroundProperty, "SurfaceBrush");
             var body = new StackPanel();
             card.Child = body;
 
             var head = new Grid();
-            var ht = new StackPanel();
-            ht.Children.Add(new TextBlock { Text = "GEN-Z HOME THEATER", FontSize = 11, FontWeight = FontWeights.Bold, Foreground = (Brush)FindResource("AccentBrush") });
-            var sub = new TextBlock { Text = "Surround, clear dialogue and steady volume – works only inside GEN-Z and switches off when you close it.", FontSize = 12, Margin = new Thickness(0, 3, 0, 0), TextWrapping = TextWrapping.Wrap, MaxWidth = 520 };
+            head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); head.ColumnDefinitions.Add(new ColumnDefinition());
+            head.Children.Add(IconTile("IcEq", 44, true));
+            var ht = new StackPanel { Margin = new Thickness(14, 0, 70, 0), VerticalAlignment = VerticalAlignment.Center };
+            ht.Children.Add(new TextBlock { Text = "JSLW Sound Engine", FontSize = 18, FontWeight = FontWeights.Bold });
+            var sub = new TextBlock { Text = "Surround, clear dialogue, room and steady volume – only inside GEN-Z, switched off when you close it.", FontSize = 12, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap };
             sub.SetResourceReference(TextBlock.ForegroundProperty, "Text2Brush");
             ht.Children.Add(sub);
-            head.Children.Add(ht);
-            var sw = new CheckBox { Style = (Style)FindResource("Switch"), IsChecked = c.TheaterOn, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, ToolTip = "Home Theater on / off" };
-            sw.Checked += (s, e) => { c.TheaterOn = true; Settings.Save(); Player.ApplyTheater(); ShowToast("Home Theater on · " + Theater.Profiles.First(p => p.Id == c.TheaterProfile).Name); };
-            sw.Unchecked += (s, e) => { c.TheaterOn = false; Settings.Save(); Player.ApplyTheater(); ShowToast("Home Theater off"); };
-            head.Children.Add(sw);
+            Grid.SetColumn(ht, 1); head.Children.Add(ht);
+            var sw = new CheckBox { Style = (Style)FindResource("Switch"), IsChecked = c.TheaterOn, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, ToolTip = "JSLW Sound Engine on / off" };
+            sw.Checked += (s, e) => { c.TheaterOn = true; Settings.Save(); Player.ApplyTheater(); ShowToast("JSLW Sound Engine on · " + Theater.Profiles.First(p => p.Id == c.TheaterProfile).Name); };
+            sw.Unchecked += (s, e) => { c.TheaterOn = false; Settings.Save(); Player.ApplyTheater(); ShowToast("JSLW Sound Engine off"); };
+            Grid.SetColumn(sw, 1); head.Children.Add(sw);
             body.Children.Add(head);
 
-            // profile cards
-            var cards = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
+            // profile
+            body.Children.Add(Section("Sound profile", "IcNote"));
+            var cards = new WrapPanel();
             foreach (var p in Theater.Profiles)
             {
                 var prof = p;
-                bool on = p.Id == c.TheaterProfile;
-                var b = new Border { Width = 128, Height = 92, CornerRadius = new CornerRadius(14), Margin = new Thickness(0, 0, 10, 10), Cursor = Cursors.Hand, Padding = new Thickness(12, 10, 12, 10), BorderThickness = new Thickness(on ? 2 : 1), ToolTip = p.Blurb };
-                b.SetResourceReference(Border.BackgroundProperty, on ? "AccentSoftBrush" : "BgBrush");
-                b.SetResourceReference(Border.BorderBrushProperty, on ? "AccentBrush" : "DividerBrush");
-                var sp = new StackPanel();
-                var ic = new Path { Data = (Geometry)FindResource(p.Icon), Width = 26, Height = 26, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left };
-                ic.SetResourceReference(Shape.FillProperty, "AccentBrush");
-                sp.Children.Add(ic);
-                sp.Children.Add(new TextBlock { Text = p.Name, FontSize = 15, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 8, 0, 0) });
-                var bl = new TextBlock { Text = p.Blurb, FontSize = 10.5, TextTrimming = TextTrimming.CharacterEllipsis };
-                bl.SetResourceReference(TextBlock.ForegroundProperty, "Text2Brush");
-                sp.Children.Add(bl);
-                b.Child = sp;
-                b.MouseLeftButtonUp += (s, e) =>
+                cards.Children.Add(SoundTile(p.Icon, p.Name, p.Blurb, p.Id == c.TheaterProfile, () =>
                 {
-                    c.TheaterProfile = prof.Id;
-                    if (!c.TheaterOn) c.TheaterOn = true;
-                    Settings.Save(); Player.ApplyTheater();
-                    ShowToast("Home Theater · " + prof.Name);
-                    BuildTheater();
-                };
-                Bounce.Press(b);
-                cards.Children.Add(b);
+                    c.TheaterProfile = prof.Id; c.TheaterOn = true;
+                    Settings.Save(); Player.ApplyTheater(); ShowToast("JSLW Sound Engine · " + prof.Name); BuildTheater();
+                }));
             }
             body.Children.Add(cards);
+            var blurb = new TextBlock { Text = (Theater.Profiles.FirstOrDefault(p => p.Id == c.TheaterProfile) ?? Theater.Profiles[0]).Blurb, FontSize = 12 };
+            blurb.SetResourceReference(TextBlock.ForegroundProperty, "Text2Brush");
+            body.Children.Add(blurb);
 
-            // output: headphones or speakers
-            var outRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 6) };
-            foreach (var o in new[] { (true, "Headphones", "IcHeadphones"), (false, "Speakers", "IcSpeaker") })
+            // output
+            body.Children.Add(Section("Tune for", "IcBtLink"));
+            var outRow = new WrapPanel();
+            foreach (var o in Outputs)
             {
-                var hp = o.Item1;
-                bool on = c.TheaterHeadphones == hp;
-                var btn = new Button { Style = (Style)FindResource(on ? "PillButton" : "GhostPill"), Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(14, 6, 14, 6) };
+                var id = o.id;
+                bool on = OutputId() == id;
+                var btn = new Button { Style = (Style)FindResource(on ? "PillButton" : "GhostPill"), Margin = new Thickness(0, 0, 8, 8), Padding = new Thickness(14, 6, 14, 6) };
                 var bsp = new StackPanel { Orientation = Orientation.Horizontal };
-                var bi = new Path { Data = (Geometry)FindResource(o.Item3), Width = 14, Height = 14, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 8, 0) };
+                var bi = new Path { Data = (Geometry)FindResource(o.icon), Width = 14, Height = 14, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 8, 0) };
                 bi.SetResourceReference(Shape.FillProperty, on ? "OnAccentBrush" : "AccentBrush");
-                var bt = new TextBlock { Text = o.Item2 };
+                var bt = new TextBlock { Text = o.name };
                 bt.SetResourceReference(TextBlock.ForegroundProperty, on ? "OnAccentBrush" : "AccentBrush");
                 bsp.Children.Add(bi); bsp.Children.Add(bt); btn.Content = bsp;
-                btn.Click += (s, e) => { c.TheaterHeadphones = hp; Settings.Save(); Player.ApplyTheater(); BuildTheater(); };
+                btn.Click += (s, e) => { c.TheaterOutput = id; Settings.Save(); Player.OutputChanged(); BuildTheater(); };
                 outRow.Children.Add(btn);
             }
             body.Children.Add(outRow);
+            listeningLine = new TextBlock { FontSize = 12, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
+            listeningLine.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+            body.Children.Add(listeningLine);
 
-            // fine tuning (edits the Custom profile; touching a slider switches to Custom)
-            var cur = c.TheaterProfile == "custom" ? c.TheaterCustom : Theater.Profiles.First(p => p.Id == c.TheaterProfile);
-            var grid = new Grid { Margin = new Thickness(0, 8, 0, 0) };
-            grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) }); grid.ColumnDefinitions.Add(new ColumnDefinition());
-            var specs = new (string key, string label, double min, double max, double val, Func<double, string> fmt)[]
+            // room
+            body.Children.Add(Section("Room", "IcRoomHall"));
+            var rooms = new WrapPanel();
+            foreach (var r in Theater.Rooms)
             {
-                ("width", "Surround width", 1, 2, cur.Width, v => v <= 1.01 ? "Off" : "+" + Math.Round((v - 1) * 100) + "%"),
-                ("room", "Room ambience", 0, 1, cur.Room, v => Math.Round(v * 100) + "%"),
-                ("dialogue", "Dialogue enhancer", 0, 8, cur.Dialogue, v => v < 0.1 ? "Off" : "+" + v.ToString("0.0") + " dB"),
-                ("leveler", "Volume leveller", 0, 1, cur.Leveler, v => v < 0.01 ? "Off" : Math.Round(v * 100) + "%"),
-                ("bass", "Bass", -6, 9, cur.Bass, v => (v > 0 ? "+" : "") + v.ToString("0.0") + " dB"),
-                ("treble", "Treble", -6, 9, cur.Treble, v => (v > 0 ? "+" : "") + v.ToString("0.0") + " dB"),
+                var room = r;
+                rooms.Children.Add(SoundTile(r.Icon, r.Name, r.Id == "auto" ? "Chosen by the sound profile" : null, r.Id == c.TheaterRoom, () =>
+                {
+                    c.TheaterRoom = room.Id;
+                    if (room.Amount >= 0) c.TheaterRoomAmount = room.Amount;
+                    c.TheaterOn = true; Settings.Save(); Player.ApplyTheater(); ShowToast("Room · " + room.Name); BuildTheater();
+                }));
+            }
+            body.Children.Add(rooms);
+
+            // fine tuning: one compact card, folded to a summary line until opened
+            body.Children.Add(Section("Fine tuning", "IcRoomStudio"));
+            var cur = c.TheaterProfile == "custom" ? c.TheaterCustom : Theater.Profiles.First(p => p.Id == c.TheaterProfile);
+            double roomVal = c.TheaterRoom == "auto" ? cur.Room : c.TheaterRoom == "off" ? 0 : c.TheaterRoomAmount;
+            var tune = new Border { CornerRadius = new CornerRadius(14), Padding = new Thickness(14, 12, 14, 12), BorderThickness = new Thickness(1) };
+            tune.SetResourceReference(Border.BackgroundProperty, "BgBrush");
+            tune.SetResourceReference(Border.BorderBrushProperty, "DividerBrush");
+            var tb = new StackPanel(); tune.Child = tb;
+            var th = new Grid { Cursor = Cursors.Hand, Background = Brushes.Transparent };
+            th.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); th.ColumnDefinitions.Add(new ColumnDefinition()); th.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            th.Children.Add(IconTile("IcRoomStudio", 34, false));
+            var tht = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            tht.Children.Add(new TextBlock { Text = "Bass, treble, surround & more", FontSize = 14, FontWeight = FontWeights.Bold });
+            var summary = new TextBlock { FontSize = 11.5, TextTrimming = TextTrimming.CharacterEllipsis };
+            summary.SetResourceReference(TextBlock.ForegroundProperty, "Text2Brush");
+            Action sum = () => summary.Text = $"Surround {(cur.Width <= 1.01 ? "off" : "+" + Math.Round((cur.Width - 1) * 100) + "%")} · Room {Math.Round(roomVal * 100)}% · Dialogue {cur.Dialogue:0.0} dB · Leveller {Math.Round(cur.Leveler * 100)}% · Bass {cur.Bass:+0.0;-0.0;0} dB · Treble {cur.Treble:+0.0;-0.0;0} dB";
+            sum();
+            tht.Children.Add(summary);
+            Grid.SetColumn(tht, 1); th.Children.Add(tht);
+            var chev = new Path { Data = (Geometry)FindResource("IcChevronDown"), Width = 14, Height = 14, Stretch = Stretch.Uniform, RenderTransformOrigin = new Point(0.5, 0.5), RenderTransform = new RotateTransform(c.TuningOpen ? 180 : 0) };
+            chev.SetResourceReference(Shape.FillProperty, "Text2Brush");
+            Grid.SetColumn(chev, 2); th.Children.Add(chev);
+            tb.Children.Add(th);
+
+            var grid = new Grid { Margin = new Thickness(0, 10, 0, 0), Visibility = c.TuningOpen ? Visibility.Visible : Visibility.Collapsed };
+            th.MouseLeftButtonUp += (s, e) =>
+            {
+                c.TuningOpen = !c.TuningOpen; Settings.Save();
+                grid.Visibility = c.TuningOpen ? Visibility.Visible : Visibility.Collapsed;
+                ((RotateTransform)chev.RenderTransform).BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(c.TuningOpen ? 180 : 0, TimeSpan.FromMilliseconds(220)));
+                if (c.TuningOpen && !Settings.Current.ReduceMotion) grid.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260)));
+            };
+            grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) }); grid.ColumnDefinitions.Add(new ColumnDefinition());
+            var specs = new (string key, string label, string icon, double min, double max, double val, Func<double, string> fmt)[]
+            {
+                ("width", "Surround width", "IcEqSurround", 1, 2, cur.Width, v => v <= 1.01 ? "Off" : "+" + Math.Round((v - 1) * 100) + "%"),
+                ("room", "Room amount", "IcRoomHall", 0, 1, roomVal, v => Math.Round(v * 100) + "%"),
+                ("dialogue", "Dialogue clarity", "IcEqVocal", 0, 8, cur.Dialogue, v => v < 0.1 ? "Off" : "+" + v.ToString("0.0") + " dB"),
+                ("leveler", "Volume leveller", "IcEqLoud", 0, 1, cur.Leveler, v => v < 0.01 ? "Off" : Math.Round(v * 100) + "%"),
+                ("bass", "Bass", "IcEqBass", -6, 9, cur.Bass, v => (v > 0 ? "+" : "") + v.ToString("0.0") + " dB"),
+                ("treble", "Treble", "IcEqTreble", -6, 9, cur.Treble, v => (v > 0 ? "+" : "") + v.ToString("0.0") + " dB"),
             };
             for (int i = 0; i < specs.Length; i++)
             {
@@ -267,7 +359,11 @@ namespace GenZ
                 if (i % 2 == 0) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 var cell = new StackPanel { Margin = new Thickness(0, 4, 0, 6) };
                 var top = new Grid();
-                top.Children.Add(new TextBlock { Text = sp.label, FontSize = 12.5 });
+                var lab = new StackPanel { Orientation = Orientation.Horizontal };
+                var li = new Path { Data = (Geometry)FindResource(sp.icon), Width = 14, Height = 14, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 8, 0) };
+                li.SetResourceReference(Shape.FillProperty, "AccentBrush");
+                lab.Children.Add(li); lab.Children.Add(new TextBlock { Text = sp.label, FontSize = 12.5 });
+                top.Children.Add(lab);
                 var val = new TextBlock { Text = sp.fmt(sp.val), FontSize = 12, HorizontalAlignment = HorizontalAlignment.Right };
                 val.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
                 top.Children.Add(val);
@@ -278,6 +374,14 @@ namespace GenZ
                 {
                     val.Text = fmt(e.NewValue);
                     if (theaterUpdating) return;
+                    if (key == "room" && c.TheaterRoom != "auto")
+                    {
+                        // a room preset is chosen: the slider sets how much of that room you hear
+                        if (c.TheaterRoom == "off" && e.NewValue > 0) c.TheaterRoom = "auto";
+                        else c.TheaterRoomAmount = e.NewValue;
+                        roomVal = e.NewValue;
+                        if (c.TheaterRoom != "auto") { if (!c.TheaterOn) { c.TheaterOn = true; sw.IsChecked = true; } Player.ApplyTheater(); sum(); return; }
+                    }
                     if (c.TheaterProfile != "custom")
                     {
                         // start the custom mix from the profile you were on
@@ -289,35 +393,114 @@ namespace GenZ
                     switch (key)
                     {
                         case "width": t.Width = e.NewValue; break;
-                        case "room": t.Room = e.NewValue; break;
+                        case "room": t.Room = e.NewValue; roomVal = e.NewValue; break;
                         case "dialogue": t.Dialogue = e.NewValue; break;
                         case "leveler": t.Leveler = e.NewValue; break;
                         case "bass": t.Bass = e.NewValue; break;
                         case "treble": t.Treble = e.NewValue; break;
                     }
+                    cur = t;
                     if (!c.TheaterOn) { c.TheaterOn = true; sw.IsChecked = true; }
-                    Player.ApplyTheater();
+                    Player.ApplyTheater(); sum();
                 };
-                sl.PreviewMouseLeftButtonUp += (s, e) => { Settings.Save(); if (cards.Children.Count > 0) RefreshTheaterCards(cards); };
+                sl.PreviewMouseLeftButtonUp += (s, e) => { Settings.Save(); if (c.TheaterProfile == "custom") RefreshTheaterCards(cards); };
                 theaterSliders[key] = sl;
                 cell.Children.Add(sl);
                 Grid.SetRow(cell, i / 2); Grid.SetColumn(cell, (i % 2) * 2);
                 grid.Children.Add(cell);
             }
-            body.Children.Add(grid);
+            tb.Children.Add(grid);
+            body.Children.Add(tune);
             TheaterPanel.Children.Add(card);
+            RefreshDevice();
         }
 
         void RefreshTheaterCards(WrapPanel cards)
         {
             var c = Settings.Current;
             int i = 0;
-            foreach (Border b in cards.Children)
+            foreach (FrameworkElement el in cards.Children)
             {
-                bool on = Theater.Profiles[i++].Id == c.TheaterProfile;
-                b.SetResourceReference(Border.BackgroundProperty, on ? "AccentSoftBrush" : "BgBrush");
-                b.SetResourceReference(Border.BorderBrushProperty, on ? "AccentBrush" : "DividerBrush");
-                b.BorderThickness = new Thickness(on ? 2 : 1);
+                if (!(el is StackPanel sp) || i >= Theater.Profiles.Count) break;
+                var p = Theater.Profiles[i++];
+                bool on = p.Id == c.TheaterProfile;
+                sp.Children[0] = IconTile(p.Icon, 54, on);
+                ((Border)sp.Children[0]).HorizontalAlignment = HorizontalAlignment.Center;
+                if (sp.Children[1] is TextBlock l) { l.FontWeight = on ? FontWeights.Bold : FontWeights.Normal; l.SetResourceReference(TextBlock.ForegroundProperty, on ? "TextBrush" : "Text2Brush"); }
+            }
+        }
+
+        // ---------------------------------------------------------------- "Playing on" strip
+        Border MakeDeviceStrip(bool compact)
+        {
+            var b = new Border { CornerRadius = new CornerRadius(16), Padding = new Thickness(12, 9, 14, 9), Margin = compact ? new Thickness(0, 12, 0, 0) : new Thickness(0, 0, 0, 14), BorderThickness = new Thickness(1), Visibility = Visibility.Collapsed };
+            b.SetResourceReference(Border.BackgroundProperty, compact ? "AccentSoftBrush" : "SurfaceBrush");
+            b.SetResourceReference(Border.BorderBrushProperty, "AccentSoftBrush");
+            return b;
+        }
+
+        void StartDeviceTimer()
+        {
+            if (deviceTimer != null) return;
+            deviceTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+            deviceTimer.Tick += (s, e) => { if (IsVisible && WindowState != WindowState.Minimized) RefreshDevice(); };
+            deviceTimer.Start();
+        }
+
+        string lastEndpoint;
+
+        /// <summary>Reads the output device in the background and fills both strips (Sound page and Now Playing).</summary>
+        async void RefreshDevice()
+        {
+            AudioDevice.Info i;
+            try { i = await Task.Run(() => AudioDevice.Read()); } catch { return; }
+            if (i.Endpoint != lastEndpoint) { bool first = lastEndpoint == null; lastEndpoint = i.Endpoint; if (!first) Player.OutputChanged(); }
+            if (listeningLine != null)
+            {
+                var kind = i.Kind == AudioDevice.Kind.Soundbar ? "soundbar / home theatre" : i.Kind == AudioDevice.Kind.Headphones ? "headphones" : "speakers";
+                var tuned = Player.OutputKind() == AudioDevice.Kind.Soundbar ? "soundbar" : Player.OutputKind() == AudioDevice.Kind.Headphones ? "headphones" : "speakers";
+                listeningLine.Text = "Listening on: " + (i.Name ?? i.Endpoint ?? "this PC") + " (" + kind + ")" + (OutputId() == "auto" ? "" : " · tuned for " + tuned);
+            }
+            FillStrip(deviceStrip, i, false);
+            if (npDeviceStrip == null && NpInfo != null) { npDeviceStrip = MakeDeviceStrip(true); NpInfo.Children.Add(npDeviceStrip); StartDeviceTimer(); }
+            FillStrip(npDeviceStrip, i, true);
+        }
+
+        void FillStrip(Border b, AudioDevice.Info i, bool compact)
+        {
+            if (b == null) return;
+            // only for a soundbar, Bluetooth or HDMI device – not the PC's own speakers or sound card
+            if (i.Name == null) { b.Visibility = Visibility.Collapsed; return; }
+            var row = new Grid();
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); row.ColumnDefinitions.Add(new ColumnDefinition());
+            var dot = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(17), VerticalAlignment = VerticalAlignment.Center };
+            dot.SetResourceReference(Border.BackgroundProperty, "HeaderBrush");
+            dot.Child = new Path { Data = (Geometry)FindResource(i.Kind == AudioDevice.Kind.Headphones ? "IcHeadphones" : i.Kind == AudioDevice.Kind.Soundbar ? "IcSoundbar" : "IcSpeakerSmall"), Fill = Brushes.White, Stretch = Stretch.Uniform, Margin = new Thickness(8) };
+            row.Children.Add(dot);
+            var col = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            var title = new TextBlock { Text = "Playing on " + i.Name, FontSize = 13, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis };
+            title.SetResourceReference(TextBlock.ForegroundProperty, compact ? "NpTextBrush" : "TextBrush");
+            col.Children.Add(title);
+            var stats = new WrapPanel { Margin = new Thickness(0, 2, 0, 0) };
+            void Stat(string icon, string text, bool warn = false)
+            {
+                var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 12, 0) };
+                var p = new Path { Data = (Geometry)FindResource(icon), Width = 12, Height = 12, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, 4, 0) };
+                var t = new TextBlock { Text = text, FontSize = 11.5 };
+                if (warn) { p.Fill = t.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B)); }
+                else { p.SetResourceReference(Shape.FillProperty, "AccentBrush"); t.SetResourceReference(TextBlock.ForegroundProperty, compact ? "NpText2Brush" : "Text2Brush"); }
+                sp.Children.Add(p); sp.Children.Add(t); stats.Children.Add(sp);
+            }
+            Stat("IcBattery", i.DeviceBattery.HasValue ? i.DeviceBattery + "%" : "Battery not reported", i.DeviceBattery.HasValue && i.DeviceBattery <= 15);
+            Stat("IcBtLink", i.Hdmi ? "HDMI" : i.Kind == AudioDevice.Kind.Soundbar ? "Soundbar" : "Connected");
+            if (i.PcBattery >= 0) Stat("IcBattery", "PC " + i.PcBattery + "%" + (i.Charging ? " ⚡" : ""), i.PcBattery <= 15 && !i.Charging);
+            col.Children.Add(stats);
+            Grid.SetColumn(col, 1); row.Children.Add(col);
+            b.Child = row;
+            if (b.Visibility != Visibility.Visible)
+            {
+                b.Visibility = Visibility.Visible;
+                if (!Settings.Current.ReduceMotion) b.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(320)));
             }
         }
 

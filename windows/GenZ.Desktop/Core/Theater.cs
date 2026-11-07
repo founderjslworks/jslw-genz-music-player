@@ -25,7 +25,24 @@ namespace GenZ.Core
             new TheaterProfile { Id = "music", Name = "Music", Icon = "IcNote", Blurb = "Wider stereo stage with warm bass and airy highs", Width = 1.35, Room = 0.15, Dialogue = 0, Leveler = 0.25, Bass = 3, Treble = 2 },
             new TheaterProfile { Id = "game", Name = "Game", Icon = "IcGame", Blurb = "Very wide and punchy – hear where things are", Width = 1.8, Room = 0.25, Dialogue = 2, Leveler = 0, Bass = 4, Treble = 3 },
             new TheaterProfile { Id = "voice", Name = "Voice", Icon = "IcVoice", Blurb = "Podcasts, talks and devotional speech, crystal clear", Width = 1.0, Room = 0, Dialogue = 6, Leveler = 0.8, Bass = -2, Treble = 1 },
+            new TheaterProfile { Id = "night", Name = "Night", Icon = "IcMoon", Blurb = "Quiet listening: even volume, soft bass", Width = 1.15, Room = 0.05, Dialogue = 3, Leveler = 0.85, Bass = -1, Treble = -0.5 },
             new TheaterProfile { Id = "custom", Name = "Custom", Icon = "IcSettings", Blurb = "Your own mix – move the sliders", Width = 1.4, Room = 0.2, Dialogue = 2, Leveler = 0.3, Bass = 2, Treble = 1 },
+        };
+
+        /// <summary>Room presets: how big the space sounds (reflection delays ×scale) and a starting amount.</summary>
+        public class RoomPreset { public string Id, Name, Icon; public double Scale, Amount; }
+
+        public static readonly List<RoomPreset> Rooms = new List<RoomPreset>
+        {
+            new RoomPreset { Id = "auto", Name = "Auto", Icon = "IcSpark", Scale = 1, Amount = -1 },
+            new RoomPreset { Id = "off", Name = "Off", Icon = "IcClose", Scale = 1, Amount = 0 },
+            new RoomPreset { Id = "bedroom", Name = "Bedroom", Icon = "IcRoomBed", Scale = 0.6, Amount = 0.25 },
+            new RoomPreset { Id = "living", Name = "Living room", Icon = "IcRoomSofa", Scale = 1.0, Amount = 0.35 },
+            new RoomPreset { Id = "studio", Name = "Studio", Icon = "IcRoomStudio", Scale = 0.45, Amount = 0.3 },
+            new RoomPreset { Id = "theatre", Name = "Home theatre", Icon = "IcRoomTheatre", Scale = 1.5, Amount = 0.5 },
+            new RoomPreset { Id = "club", Name = "Club", Icon = "IcRoomClub", Scale = 1.3, Amount = 0.45 },
+            new RoomPreset { Id = "hall", Name = "Concert hall", Icon = "IcRoomHall", Scale = 2.2, Amount = 0.55 },
+            new RoomPreset { Id = "stadium", Name = "Stadium", Icon = "IcRoomStadium", Scale = 3.0, Amount = 0.85 },
         };
 
         readonly ISampleSource src;
@@ -38,7 +55,7 @@ namespace GenZ.Core
         // live parameters (set from the UI thread, read on the audio thread)
         public volatile bool Enabled;
         public volatile bool Headphones;
-        double width = 1, room, dialogueDb, leveler, bassDb, trebleDb;
+        double width = 1, room, dialogueDb, leveler, bassDb, trebleDb, roomScale = 1;
 
         Biquad[] bass, treble;
         Biquad dlg1, dlg2;
@@ -61,9 +78,17 @@ namespace GenZ.Core
             Set(Profiles[1], false, false);
         }
 
-        public void Set(TheaterProfile p, bool on, bool headphones)
+        public void Set(TheaterProfile p, bool on, bool headphones, double roomSize = 1, bool soundbar = false)
         {
             width = p.Width; room = p.Room; dialogueDb = p.Dialogue; leveler = p.Leveler; bassDb = p.Bass; trebleDb = p.Treble;
+            roomScale = Math.Max(0.3, Math.Min(3.5, roomSize));
+            if (soundbar)
+            {
+                // soundbar / home theatre in front of you: voices always lifted for TV and films, a firm leveller for
+                // late-night viewing, wider stage, and bass left to the bar's subwoofer
+                headphones = false;
+                width = Math.Max(width, 1.35); dialogueDb = Math.Max(dialogueDb, 2.5); leveler = Math.Max(leveler, 0.3); bassDb *= 0.6;
+            }
             Headphones = headphones;
             var b = new Biquad[ch]; var t = new Biquad[ch];
             for (int c = 0; c < ch; c++) { b[c] = Biquad.LowShelf(fs, 110, bassDb); t[c] = Biquad.HighShelf(fs, 7500, trebleDb); }
@@ -89,7 +114,8 @@ namespace GenZ.Core
             var b = bass; var t = treble;
             int frames = n / ch;
             bool stereo = ch == 2;
-            int d7 = fs * 7 / 1000, d13 = fs * 13 / 1000, d23 = fs * 23 / 1000, d15 = fs * 15 / 1000, dx = Math.Max(1, fs * 3 / 10000);
+            double rs = roomScale;
+            int d7 = (int)(fs * 7 * rs / 1000), d13 = (int)(fs * 13 * rs / 1000), d23 = Math.Min(dlen - 1, (int)(fs * 23 * rs / 1000)), d15 = fs * 15 / 1000, dx = Math.Max(1, fs * 3 / 10000);
             double attack = Math.Exp(-1.0 / (0.02 * fs)), release = Math.Exp(-1.0 / (0.5 * fs)), smooth = Math.Exp(-1.0 / (0.25 * fs));
             double xa = Math.Exp(-2 * Math.PI * 700.0 / fs); // crossfeed low-pass
             for (int f = 0; f < frames; f++)

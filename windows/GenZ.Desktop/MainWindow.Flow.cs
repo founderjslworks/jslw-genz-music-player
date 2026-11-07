@@ -9,6 +9,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
+using GenZ.Controls;
 using GenZ.Core;
 
 namespace GenZ
@@ -24,8 +25,8 @@ namespace GenZ
         {
             public GeometryModel3D Cover, Refl;
             public DiffuseMaterial CoverMat, ReflMat;
-            public AxisAngleRotation3D Rot;
-            public ScaleTransform3D Scale;
+            public AxisAngleRotation3D Rot, RotX, RotZ;
+            public ScaleTransform3D Scale, ReflScale;
             public TranslateTransform3D Move;
             public bool Loading;
         }
@@ -47,6 +48,22 @@ namespace GenZ
         TimeSpan flowLast;
         Color flowBg;
         static int flowRemember;
+        string flowStyle = "classic";
+        DateTime flowPopAt = DateTime.MinValue;
+        int flowPlayingIdx = -1;
+
+        /// <summary>Extra size for the centre cover: a pop when it arrives and a gentle breath while its album plays.</summary>
+        double FlowLife(int i, int center)
+        {
+            if (i != center || Settings.Current.ReduceMotion || Core.Perf.Light) return 1;
+            double extra = 0, pt = (DateTime.Now - flowPopAt).TotalSeconds;
+            if (pt < 0.45) extra += 0.055 * Math.Sin(pt / 0.45 * Math.PI);
+            if (i == flowPlayingIdx && Player.IsPlaying) extra += 0.014 * (1 + Math.Sin(DateTime.Now.TimeOfDay.TotalSeconds * 4.4)) / 2;
+            return 1 + extra;
+        }
+
+        bool FlowAlive() => !Settings.Current.ReduceMotion && !Core.Perf.Light &&
+            ((DateTime.Now - flowPopAt).TotalSeconds < 0.5 || (flowPlayingIdx >= 0 && flowPlayingIdx == flowCenter && Player.IsPlaying));
         static readonly MeshGeometry3D FlowQuad = MakeQuad(0, 1, false), FlowReflQuad = MakeQuad(-0.42, 0, true);
 
         static MeshGeometry3D MakeQuad(double y0, double y1, bool refl)
@@ -91,7 +108,11 @@ namespace GenZ
             var shuf = PillWithIcon("Shuffle", "IcShuffle", false);
             shuf.Margin = new Thickness(10, 0, 0, 0);
             shuf.Click += (s, e) => { var a = FlowAlbum(); if (a != null) { var r = new Random(); Player.PlayList(a.Songs.OrderBy(_ => r.Next()).ToList(), 0); } };
-            tools.Children.Add(play); tools.Children.Add(shuf);
+            var style = PillWithIcon("Style", "IcPalette", false);
+            style.Margin = new Thickness(10, 0, 0, 0);
+            style.ToolTip = "Album Flow style";
+            style.Click += (s, e) => FlowStyleMenu(style);
+            tools.Children.Add(play); tools.Children.Add(shuf); tools.Children.Add(style);
             Grid.SetColumn(tools, 1); head.Children.Add(tools);
             pageFlow.Children.Add(head);
 
@@ -340,12 +361,59 @@ namespace GenZ
             flowHint.Visibility = flowAlbums.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             flowTrack.Visibility = flowAlbums.Count > 1 ? Visibility.Visible : Visibility.Hidden;
             if (flowFlipped) { flowFlipped = false; flowFlip.Visibility = Visibility.Collapsed; flowFlipAngle = flowFlipGoal = 0; }
+            flowStyle = FlowStyles.Current;
             ShowPage(pageFlow);
             FlowNowPlaying();
             FitFlowCamera();
             FlowUpdate();
             FlowHook();
             flowVp.Focus();
+        }
+
+        void FlowStyleMenu(FrameworkElement anchor)
+        {
+            var m = new ContextMenu { PlacementTarget = anchor, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+            var themeItem = Item("Theme default (" + FlowStyles.NameOf(ThemeManager.Current?.FlowStyle) + ")", null, () => SetFlowStyle("theme"));
+            themeItem.IsChecked = Settings.Current.FlowStyle == "theme" || string.IsNullOrEmpty(Settings.Current.FlowStyle);
+            m.Items.Add(themeItem);
+            m.Items.Add(new Separator());
+            foreach (var st in FlowStyles.All)
+            {
+                var id = st.Id;
+                var mi = Item(st.Name, null, () => SetFlowStyle(id));
+                mi.IsChecked = Settings.Current.FlowStyle == id;
+                m.Items.Add(mi);
+            }
+            m.IsOpen = true;
+        }
+
+        /// <summary>Covers glide from the old layout into the new one.</summary>
+        void SetFlowStyle(string choice)
+        {
+            Settings.Current.FlowStyle = choice; Settings.Save();
+            var to = FlowStyles.Current;
+            if (to == flowStyle) return;
+            if (Settings.Current.ReduceMotion || pageFlow == null || !pageFlow.IsVisible) { flowStyle = to; FlowUpdate(); return; }
+            var from = flowStyle;
+            var start = DateTime.Now;
+            EventHandler tick = null;
+            tick = (s, e) =>
+            {
+                double t = Math.Min(1, (DateTime.Now - start).TotalMilliseconds / 520), k = 1 - Math.Pow(1 - t, 3);
+                foreach (var kv in flowItems)
+                {
+                    var it = kv.Value; double d = kv.Key - flowPos;
+                    var a = FlowStyles.Place(from, d); var b = FlowStyles.Place(to, d);
+                    double L(double x, double y) => x + (y - x) * k;
+                    it.Rot.Angle = L(a.RotY, b.RotY); it.RotX.Angle = L(a.RotX, b.RotX); it.RotZ.Angle = L(a.RotZ, b.RotZ);
+                    it.Move.OffsetX = L(a.X, b.X); it.Move.OffsetY = L(a.Y, b.Y); it.Move.OffsetZ = L(a.Z, b.Z);
+                    double sc = L(a.Scale, b.Scale); it.Scale.ScaleX = it.Scale.ScaleY = it.Scale.ScaleZ = sc;
+                    double rs = L(a.Reflection ? 1 : 0, b.Reflection ? 1 : 0); it.ReflScale.ScaleX = it.ReflScale.ScaleY = it.ReflScale.ScaleZ = rs;
+                }
+                if (t >= 1) { CompositionTarget.Rendering -= tick; flowStyle = to; FlowUpdate(); }
+            };
+            CompositionTarget.Rendering += tick;
+            ShowToast("Album Flow · " + FlowStyles.NameOf(to));
         }
 
         AlbumInfo FlowAlbum() => flowAlbums.Count == 0 ? null : flowAlbums[(int)Math.Max(0, Math.Min(flowAlbums.Count - 1, Math.Round(flowTarget)))];
@@ -370,6 +438,7 @@ namespace GenZ
         void FlowNowPlaying()
         {
             var s = Player.Current;
+            flowPlayingIdx = FlowPlayingIndex();
             flowNow.Visibility = s == null ? Visibility.Collapsed : Visibility.Visible;
             if (s != null) flowNowText.Text = "Now playing · " + s.Title + (string.IsNullOrEmpty(s.Artist) ? "" : " – " + s.Artist);
         }
@@ -437,7 +506,7 @@ namespace GenZ
                 FlowSetKnob(flowKnobFrom * (1 - ease), Math.Max(1, kc.ActualWidth - flowKnob.Width));
                 if (p >= 1) flowKnobBackT = -1;
             }
-            if (moving || flowDragging) FlowUpdate();
+            if (moving || flowDragging || FlowAlive()) FlowUpdate();
             else if (!flowKnobDrag && flowFlipAngle == flowFlipGoal) { /* idle: nothing to redraw */ }
         }
 
@@ -454,24 +523,25 @@ namespace GenZ
             for (int i = lo; i <= hi; i++)
             {
                 if (!flowItems.TryGetValue(i, out var it)) it = FlowMake(i);
-                double d = i - flowPos, ad = Math.Abs(d), cl = Math.Max(-1, Math.Min(1, d));
-                // spaced so neighbouring covers never touch or cut through each other (that was the flicker)
-                double x = Math.Sign(d) * (ad <= 1 ? ad * 0.98 : 0.98 + (ad - 1) * 0.7);
-                double z = -Math.Min(ad, 1) * 0.55 - Math.Max(0, ad - 1) * 0.02;
-                double angle = cl * 55;
+                double d = i - flowPos, ad = Math.Abs(d);
+                var pose = FlowStyles.Place(flowStyle, d);
+                double angle = pose.RotY;
                 if (i == center && flowFlipAngle > 0) angle -= flowFlipAngle;
-                it.Rot.Angle = angle;
-                it.Move.OffsetX = x; it.Move.OffsetZ = z;
+                it.Rot.Angle = angle; it.RotX.Angle = pose.RotX; it.RotZ.Angle = pose.RotZ;
+                it.Move.OffsetX = pose.X; it.Move.OffsetY = pose.Y; it.Move.OffsetZ = pose.Z;
+                double rs = pose.Reflection ? 1 : 0;
+                if (it.ReflScale.ScaleX != rs) { it.ReflScale.ScaleX = rs; it.ReflScale.ScaleY = rs; it.ReflScale.ScaleZ = rs; }
                 byte lum = (byte)(255 * Math.Max(0.35, 1 - 0.32 * Math.Min(ad, 1) - 0.1 * Math.Max(0, ad - 1)));
                 var c = Color.FromRgb(lum, lum, lum);
                 if (it.CoverMat.AmbientColor != c) { it.CoverMat.AmbientColor = c; it.ReflMat.AmbientColor = c; }
                 bool hide = i == center && flowFlipAngle >= 89.9;
-                var want = hide ? 0.0 : 1.0;
+                var want = hide ? 0.0 : pose.Scale * FlowLife(i, center);
                 if (it.Scale.ScaleX != want) { it.Scale.ScaleX = want; it.Scale.ScaleY = want; it.Scale.ScaleZ = want; }
             }
             if (center != flowCenter && center >= 0 && center < flowAlbums.Count)
             {
-                flowCenter = center; flowRemember = center;
+                flowCenter = center; flowRemember = center; flowPopAt = DateTime.Now;
+                flowPlayingIdx = FlowPlayingIndex();
                 var a = flowAlbums[center];
                 flowTitle.Text = a.Title;
                 flowArtist.Text = string.Join(" · ", new[] { a.Artist, a.Year > 0 ? a.Year.ToString() : null, a.Songs.Count + (a.Songs.Count == 1 ? " song" : " songs") }.Where(t => !string.IsNullOrEmpty(t)));
@@ -491,16 +561,26 @@ namespace GenZ
 
         FlowItem FlowMake(int i)
         {
-            var it = new FlowItem { Rot = new AxisAngleRotation3D(new Vector3D(0, 1, 0), 0), Scale = new ScaleTransform3D(1, 1, 1), Move = new TranslateTransform3D() };
+            var it = new FlowItem
+            {
+                Rot = new AxisAngleRotation3D(new Vector3D(0, 1, 0), 0), RotX = new AxisAngleRotation3D(new Vector3D(1, 0, 0), 0),
+                RotZ = new AxisAngleRotation3D(new Vector3D(0, 0, 1), 0), Scale = new ScaleTransform3D(1, 1, 1),
+                ReflScale = new ScaleTransform3D(1, 1, 1), Move = new TranslateTransform3D(),
+            };
             var tg = new Transform3DGroup();
             tg.Children.Add(it.Scale);
+            tg.Children.Add(new RotateTransform3D(it.RotX));
+            tg.Children.Add(new RotateTransform3D(it.RotZ));
             tg.Children.Add(new RotateTransform3D(it.Rot));
             tg.Children.Add(it.Move);
+            var rtg = new Transform3DGroup();
+            rtg.Children.Add(it.ReflScale);
+            rtg.Children.Add(tg);
             var placeholder = new ImageBrush(FlowPlaceholder(flowAlbums[i]));
             it.CoverMat = new DiffuseMaterial(placeholder);
             it.ReflMat = new DiffuseMaterial(new SolidColorBrush(flowBg));
             it.Cover = new GeometryModel3D(FlowQuad, it.CoverMat) { BackMaterial = it.CoverMat, Transform = tg };
-            it.Refl = new GeometryModel3D(FlowReflQuad, it.ReflMat) { BackMaterial = it.ReflMat, Transform = tg };
+            it.Refl = new GeometryModel3D(FlowReflQuad, it.ReflMat) { BackMaterial = it.ReflMat, Transform = rtg };
             flowGroup.Children.Add(it.Cover); flowGroup.Children.Add(it.Refl);
             flowItems[i] = it;
             FlowLoadCover(i, it);

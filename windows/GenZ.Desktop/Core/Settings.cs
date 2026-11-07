@@ -66,6 +66,15 @@ namespace GenZ.Core
         public string TheaterProfile { get; set; } = "music";
         public bool TheaterHeadphones { get; set; } = true;
         public TheaterProfile TheaterCustom { get; set; }
+        public string TheaterOutput { get; set; } = "";               // auto, headphones, speakers, soundbar ("" = from TheaterHeadphones)
+        public string TheaterRoom { get; set; } = "auto";             // see Theater.Rooms
+        public double TheaterRoomAmount { get; set; } = 0.3;
+        public bool TuningOpen { get; set; } = false;
+        public string FlowStyle { get; set; } = "theme";             // see Controls.FlowStyles
+        public bool HideCallRecordings { get; set; } = true;
+        public bool HideWhatsAppAudio { get; set; } = true;
+        public List<string> HiddenFolders { get; set; } = new List<string>();
+        public List<string> HiddenNav { get; set; } = new List<string>();
 
         // optional online features (off unless the user switches them on)
         public bool OnlineCovers { get; set; } = false;
