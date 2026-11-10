@@ -1,0 +1,59 @@
+name: EQ silence test
+
+# Temporary (branch test/eq-silence): plays a tone on an emulator, toggles the equalizer and
+# Sound Engine, and meters the real output after each switch. "old" = before the fix (b060eb8).
+on:
+  push:
+    branches: [test/eq-silence]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { api: 29, code: old }
+          - { api: 29, code: new }
+          - { api: 33, code: new }
+    name: Android API ${{ matrix.api }} – ${{ matrix.code }} code
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 10 }
+      - name: Use pre-fix audio code
+        if: matrix.code == 'old'
+        run: git checkout b060eb8 -- app/src/main/java/com/jslw/genz/audio/AudioFx.kt app/src/main/java/com/jslw/genz/playback/MusicService.kt
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build app + test APKs
+        run: chmod +x gradlew && ./gradlew -q assembleDebug assembleDebugAndroidTest
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-boot-timeout: 1200
+          emulator-options: -no-window -no-snapshot-save -no-boot-anim -camera-back none -gpu swiftshader_indirect
+          script: |
+            adb install -r -g app/build/outputs/apk/debug/app-debug.apk
+            adb install -r -g app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell pm grant com.jslw.genz android.permission.RECORD_AUDIO || true
+            adb logcat -c
+            adb shell am instrument -w -e class com.jslw.genz.EqSilenceTest com.jslw.genz.test/androidx.test.runner.AndroidJUnitRunner | tee instrument.txt || true
+            adb logcat -d -s GENZTEST:I > results.txt || true
+            adb logcat -d | grep -iE "AudioTrack|AudioFlinger|DynamicsProc|EffectHAL|genz" | tail -n 150 > audio-log.txt || true
+      - name: Report
+        if: always()
+        run: |
+          { echo "## API ${{ matrix.api }} – ${{ matrix.code }} code"; echo '```'; grep -h "GENZTEST" results.txt || echo "no results"; tail -n 15 instrument.txt 2>/dev/null; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          echo "=== RESULTS ==="; cat results.txt 2>/dev/null; echo "=== INSTRUMENT ==="; cat instrument.txt 2>/dev/null; echo "=== AUDIO LOG ==="; cat audio-log.txt 2>/dev/null

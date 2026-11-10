@@ -16,6 +16,7 @@ android {
         versionCode = 11
         versionName = "1.9.2"
         multiDexEnabled = true
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Leave vector PNG generation ON for API < 21 (notifications/widgets on KitKat need PNGs).
     }
 
@@ -68,4 +69,6 @@ dependencies {
     implementation("androidx.media:media:1.6.0")
     implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("androidx.multidex:multidex:2.0.1")
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
 }
