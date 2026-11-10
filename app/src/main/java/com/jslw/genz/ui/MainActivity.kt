@@ -123,12 +123,6 @@ class MainActivity : BaseActivity(), Player.Listener {
     /** "Go to album / artist" from Now Playing or a song menu. */
     private fun handleIntent(i: Intent?) {
         if (i == null) return
-        if (i.hasExtra("fxdiag")) {
-            // field diagnostics: rebuild the sound effects with only some of them allowed (see AudioFx.diagMask)
-            val m = i.getIntExtra("fxdiag", -1)
-            i.removeExtra("fxdiag")
-            Player.with(this) { s -> com.jslw.genz.audio.AudioFx.diagMask = m; s.fx.rebuild(); s.effectsChanged() }
-        }
         if (i.hasExtra(EXTRA_ALBUM)) {
             val id = i.getLongExtra(EXTRA_ALBUM, 0)
             i.removeExtra(EXTRA_ALBUM)
