@@ -52,19 +52,26 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
     private fun create() {
         if (created) return
         created = true
-        if (Build.VERSION.SDK_INT >= 28) createDp()
-        if (dp == null) try {
+        if (Build.VERSION.SDK_INT >= 28 && allowed(DIAG_DP)) createDp()
+        if (dp == null && allowed(DIAG_EQ)) try {
             val e = Equalizer(0, sessionId)
             eq = e
             bandFreqs = IntArray(e.numberOfBands.toInt()) { e.getCenterFreq(it.toShort()) / 1000 }
             val r = e.bandLevelRange
             minLevel = r[0].toInt(); maxLevel = r[1].toInt()
         } catch (_: Throwable) {}
-        try { bass = BassBoost(0, sessionId) } catch (_: Throwable) {}
-        try { virt = Virtualizer(0, sessionId) } catch (_: Throwable) {}
-        try { loud = LoudnessEnhancer(sessionId) } catch (_: Throwable) {}
-        try { reverb = PresetReverb(0, 0) } catch (_: Throwable) {}
+        if (allowed(DIAG_BASS)) try { bass = BassBoost(0, sessionId) } catch (_: Throwable) {}
+        if (allowed(DIAG_VIRT)) try { virt = Virtualizer(0, sessionId) } catch (_: Throwable) {}
+        if (allowed(DIAG_LOUD)) try { loud = LoudnessEnhancer(sessionId) } catch (_: Throwable) {}
+        if (allowed(DIAG_REVERB)) try { reverb = PresetReverb(0, 0) } catch (_: Throwable) {}
+        android.util.Log.i("GENZFX", "effects created: mask=$diagMask dp=${dp != null} full=$dpFull eq=${eq != null} " +
+            "bass=${bass != null} virt=${virt != null} loud=${loud != null} reverb=${reverb != null}")
     }
+
+    private fun allowed(bit: Int) = diagMask and bit != 0
+
+    /** Diagnostics: drop every effect so the next [applyAll] builds the chain again under [diagMask]. */
+    fun rebuild() = destroy()
 
     /** Releases every effect so nothing of GEN-Z's sits on the audio path. */
     private fun destroy() {
@@ -80,7 +87,7 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
         // full chain: 10-band EQ → 3-band leveller → 6-band tone → limiter; fall back to EQ + limiter
         // Android 9/10 builds of DynamicsProcessing are unreliable with the multi-band stage, so those
         // phones use EQ + limiter and the engine's legacy leveller (LoudnessEnhancer) instead.
-        for (full in if (Build.VERSION.SDK_INT >= 30) listOf(true, false) else listOf(false)) {
+        for (full in if (Build.VERSION.SDK_INT >= 30 && allowed(DIAG_DP_FULL)) listOf(true, false) else listOf(false)) {
             try {
                 val cfg = DynamicsProcessing.Config.Builder(
                     DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION, 2,
@@ -135,7 +142,7 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
                 val engine = v?.let { (it.surround * 1000).toInt() } ?: 0
                 val strength = maxOf(user, engine)
                 // force real virtualisation for Bluetooth and wired headphones alike (Android 8+)
-                if (Build.VERSION.SDK_INT >= 26 && strength > 0) try {
+                if (Build.VERSION.SDK_INT >= 26 && strength > 0 && allowed(DIAG_VIRT_FORCE)) try {
                     it.forceVirtualizationMode(
                         if (v?.headphones != false) Virtualizer.VIRTUALIZATION_MODE_BINAURAL else Virtualizer.VIRTUALIZATION_MODE_TRANSAURAL
                     )
@@ -326,6 +333,13 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
     fun release() = destroy()
 
     companion object {
+        /**
+         * Field diagnostics (adb: am start -n com.jslw.genz/.ui.MainActivity --ei fxdiag <mask>): which effects GEN-Z
+         * may create. -1 (default) = all. Lets us find which effect a phone's audio system silences.
+         */
+        @JvmStatic var diagMask = -1
+        const val DIAG_DP = 1; const val DIAG_DP_FULL = 2; const val DIAG_VIRT = 4; const val DIAG_VIRT_FORCE = 8
+        const val DIAG_BASS = 16; const val DIAG_LOUD = 32; const val DIAG_REVERB = 64; const val DIAG_EQ = 128
         val STD_FREQS = intArrayOf(31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
         val REVERBS = listOf("None", "Small room", "Medium room", "Large room", "Medium hall", "Large hall", "Plate")
 
