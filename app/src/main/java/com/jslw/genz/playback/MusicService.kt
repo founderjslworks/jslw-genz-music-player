@@ -439,21 +439,65 @@ class MusicService : MediaBrowserServiceCompat() {
             }
         }.also { handler.postDelayed(it, 12_000) }
         engineExec.execute {
-            var e: Engine? = null
-            var ok = false
-            try {
-                e = Engine.create(this, s, sid)
-                ok = e.prepare(this, s)
-                if (!ok && s.ext == "wav" && e is MediaPlayerEngine) {
-                    // e.g. 32-bit float or 24-bit WAV on an old phone: use our own decoder
-                    e.release()
-                    e = PcmEngine(this, sid)
-                    ok = e.prepare(this, s)
-                }
-            } catch (_: Throwable) { ok = false }
-            if (!ok) { try { e?.release() } catch (_: Throwable) {}; e = null }
-            val ready = e
+            val ready = openEngine(s, sid)
             handler.post { onEngineLoaded(gen, i, s, ready, seekMs) }
+        }
+    }
+
+    /** Opens [s] on a new engine (off the main thread). Falls back to GEN-Z's own decoder for WAVs Android can't play. */
+    private fun openEngine(s: Song, sid: Int): Engine? {
+        var e: Engine? = null
+        var ok = false
+        try {
+            e = Engine.create(this, s, sid)
+            ok = e.prepare(this, s)
+            if (!ok && s.ext == "wav" && e is MediaPlayerEngine) {
+                // e.g. 32-bit float or 24-bit WAV on an old phone: use our own decoder
+                e.release()
+                e = PcmEngine(this, sid)
+                ok = e.prepare(this, s)
+            }
+        } catch (_: Throwable) { ok = false }
+        if (!ok) { try { e?.release() } catch (_: Throwable) {}; e = null }
+        return e
+    }
+
+    /**
+     * Equalizer / Sound Engine switched on or off: the effect chain was added or removed, so move the current
+     * song onto a fresh track at the same position (the old track keeps playing until the new one takes over).
+     * Without this, Android 10 phones went silent when the equalizer or Sound Engine was turned on.
+     */
+    private fun reopenCurrent() {
+        if (xfade != null) finishCrossfade()
+        val old = cur ?: return
+        val s = current ?: return
+        if (loading) return                      // a song is already being opened on the new chain
+        val gen = loadGen
+        val i = index
+        dropPreparedNext()
+        val sid = audioSessionId
+        engineExec.execute {
+            val n = openEngine(s, sid)
+            handler.post {
+                if (n == null || gen != loadGen || index != i || current !== s || cur !== old) {
+                    releaseAsync(n)
+                    if (cur === old) prepareNext()   // couldn't reopen: keep the current track
+                    return@post
+                }
+                wire(n)
+                val pos = old.position()
+                if (pos > 0) n.seekTo(pos)
+                val wasPlaying = isPlaying
+                try { old.setVolume(0f); old.pause() } catch (_: Throwable) {}
+                cur = n
+                releaseAsync(old)
+                if (wasPlaying) {
+                    applyVolume()
+                    n.start()
+                } else afterStateChange()
+                prepareNext()
+                Player.dispatch()
+            }
         }
     }
 
@@ -820,8 +864,9 @@ class MusicService : MediaBrowserServiceCompat() {
     }
 
     fun effectsChanged() {
-        fx.applyAll()
+        val chainChanged = fx.applyAll()
         applyVolume()
+        if (chainChanged) { reopenCurrent(); return }
         val id = fx.reverbEffectId
         val send = fx.reverbSend()
         val on = send > 0f && id != 0

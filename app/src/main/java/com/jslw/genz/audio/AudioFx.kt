@@ -78,7 +78,9 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
     @androidx.annotation.RequiresApi(28)
     private fun createDp() {
         // full chain: 10-band EQ → 3-band leveller → 6-band tone → limiter; fall back to EQ + limiter
-        for (full in listOf(true, false)) {
+        // Android 9/10 builds of DynamicsProcessing are unreliable with the multi-band stage, so those
+        // phones use EQ + limiter and the engine's legacy leveller (LoudnessEnhancer) instead.
+        for (full in if (Build.VERSION.SDK_INT >= 30) listOf(true, false) else listOf(false)) {
             try {
                 val cfg = DynamicsProcessing.Config.Builder(
                     DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION, 2,
@@ -109,8 +111,14 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
     private val engineOn get() = Prefs.seOn
     private val eqOn get() = Prefs.eqEnabled
 
-    fun applyAll() {
-        if (!eqOn && !engineOn) { destroy(); return }
+    /**
+     * Applies every setting. Returns true when the effect chain itself was just added or removed:
+     * a track that is already playing may not pick that up (Android 10 and several vendor ROMs leave it
+     * silent), so the caller must reopen the current song on a fresh track.
+     */
+    fun applyAll(): Boolean {
+        val had = created
+        if (!eqOn && !engineOn) { destroy(); return had }
         create()
         val v = if (engineOn) SoundEngine.values(ctx) else null
         applyEq()
@@ -152,6 +160,7 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
                 it.enabled = preset > 0
             }
         } catch (_: Throwable) {}
+        return !had
     }
 
     private fun reverbPreset(v: SoundEngine.Values?): Int = when {
