@@ -20,10 +20,7 @@ import com.jslw.genz.ui.views.EqBandView
 import com.jslw.genz.ui.views.EqCurveView
 import com.jslw.genz.util.toast
 
-/**
- * Sound: one switch for everything – JSLW Sound Engine profile and output, the graphic equalizer
- * (10-band on Android 9+) with presets, and six tuning sliders.
- */
+/** Graphic equalizer (10-band on Android 9+), presets, bass boost, 3D surround, loudness and reverb. */
 class EqualizerActivity : BaseActivity() {
     private lateinit var fx: AudioFx
     private lateinit var svc: MusicService
@@ -39,116 +36,27 @@ class EqualizerActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_equalizer)
         setupScreen(findViewById(R.id.root))
-        header("Sound")
-        val strip = com.jslw.genz.ui.views.DeviceStrip(this, skin.text, skin.accent)
-        val contentBox = findViewById<View>(R.id.eqGraph).parent as LinearLayout
-        contentBox.addView(strip, 0, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            .apply { bottomMargin = (10 * resources.displayMetrics.density).toInt() })
+        header("Equalizer")
         bandsBox = findViewById(R.id.eqBands)
         curve = findViewById(R.id.eqCurve)
         presetGroup = findViewById(R.id.eqPresets)
         Player.with(this) { s -> svc = s; fx = s.fx; build() }
     }
 
-    private var tuning: SoundTuning? = null
-    private var classicWired = false
-    private var engineOpen = false
-
-    /**
-     * The JSLW Sound Engine as one optional card at the end: its own switch, and its options (profile, output,
-     * room, fine tuning) folded away until opened, so the screen stays simple.
-     */
-    private fun engineCard(t: SoundTuning): View {
-        val d = resources.displayMetrics.density
-        val sk = com.jslw.genz.skin.SkinManager.current
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            tag = "skin_surface_round"
-            setPadding((16 * d).toInt(), (14 * d).toInt(), (16 * d).toInt(), (14 * d).toInt())
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                .apply { topMargin = (14 * d).toInt() }
-        }
-        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
-        val icon = android.widget.ImageView(this).apply {
-            setImageResource(R.drawable.ic_eq_surround); setColorFilter(0xFFFFFFFF.toInt())
-            val p = (9 * d).toInt(); setPadding(p, p, p, p)
-            background = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR, intArrayOf(sk.header, sk.headerEnd)).apply { cornerRadius = 12 * d }
-        }
-        head.addView(icon, LinearLayout.LayoutParams((40 * d).toInt(), (40 * d).toInt()))
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding((12 * d).toInt(), 0, (8 * d).toInt(), 0) }
-        col.addView(TextView(this).apply { text = "JSLW Sound Engine"; tag = "skin_text"; textSize = 16f; setTypeface(typeface, android.graphics.Typeface.BOLD) })
-        col.addView(TextView(this).apply {
-            text = "Optional extras for Bluetooth, soundbars and films. Leave it off for the classic GEN-Z sound."
-            tag = "skin_text2"; textSize = 12f
-        })
-        head.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        val sw = SwitchCompat(this).apply { isChecked = Prefs.seOn; tag = "skin_switch" }
-        head.addView(sw)
-        card.addView(head)
-        val more = TextView(this).apply {
-            tag = "skin_accent_text"; textSize = 13f; setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(0, (10 * d).toInt(), 0, (2 * d).toInt())
-        }
-        card.addView(more)
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        for (v in t.profileViews()) body.addView(v)
-        for (v in t.sliderViews()) body.addView(v)
-        card.addView(body)
-        fun show() {
-            body.visibility = if (engineOpen && Prefs.seOn) View.VISIBLE else View.GONE
-            more.visibility = if (Prefs.seOn) View.VISIBLE else View.GONE
-            more.text = if (engineOpen) "Hide engine settings ▴" else "Engine settings ▾"
-        }
-        more.setOnClickListener {
-            engineOpen = !engineOpen; show()
-            if (engineOpen && !com.jslw.genz.util.Perf.light) { body.alpha = 0f; body.animate().alpha(1f).setDuration(240).start() }
-        }
-        sw.setOnCheckedChangeListener { _, on ->
-            Prefs.seOn = on; svc.effectsChanged(); t.setEnabled(on)
-            if (on) engineOpen = true
-            show()
-        }
-        t.setEnabled(Prefs.seOn)
-        show()
-        return card
-    }
-
     private fun build() {
-        // 1.9.3: back to the classic GEN-Z sound. The equalizer and its effects work on their own again (as in 1.8);
-        // the JSLW Sound Engine is an optional extra with its own switch, off unless you turn it on.
-        if (!Prefs.classicSound) {
-            Prefs.seOn = false
-            Prefs.classicSound = true
-            svc.effectsChanged()
-        }
         val enable = findViewById<SwitchCompat>(R.id.eqEnable)
         val info = findViewById<TextView>(R.id.eqInfo)
         val note = findViewById<TextView>(R.id.eqNote)
         if (!fx.available) {
             info.text = "This device doesn't provide audio effects to apps."
             enable.isEnabled = false
-        } else info.text = if (fx.tenBand) "10-band graphic equalizer · bass boost · 3D surround · loudness · reverb" else "${fx.bandFreqs.size}-band equalizer (device) · bass boost · 3D surround · loudness · reverb"
+        } else info.text = if (fx.tenBand) "10-band graphic equalizer" else "${fx.bandFreqs.size}-band equalizer (device)"
         note.text = buildString {
-            append("Works on the music GEN-Z plays – wired and Bluetooth headphones, speakers, DSD and AIFF. ")
-            append("Switched off, GEN-Z adds nothing to the sound, so your phone's own sound enhancement applies.")
+            append("Effects work on the music GEN-Z plays, including DSD and AIFF.")
             if (Prefs.bitPerfect) append("\nBit-perfect USB output is on: Android bypasses all effects in that mode.")
         }
         enable.isChecked = Prefs.eqEnabled
         enable.setOnCheckedChangeListener { _, on -> Prefs.eqEnabled = on; svc.effectsChanged(); setEnabled(on) }
-
-        // the classic effect cards (bass boost, 3D surround, loudness, reverb) – as in GEN-Z 1.8
-        if (!classicWired) {
-            classicWired = true
-            slider(R.id.eqBass, R.id.eqBassVal, Prefs.bassStrength) { Prefs.bassStrength = it }
-            slider(R.id.eqVirt, R.id.eqVirtVal, Prefs.virtStrength) { Prefs.virtStrength = it }
-            slider(R.id.eqLoud, R.id.eqLoudVal, Prefs.loudness) { Prefs.loudness = it }
-        }
-        if (tuning == null) {
-            val t = SoundTuning(this) { svc.effectsChanged() }
-            tuning = t
-            val content = findViewById<View>(R.id.eqGraph).parent as LinearLayout
-            content.addView(engineCard(t), content.indexOfChild(findViewById(R.id.eqNote)))
-        }
 
         // faders
         levels = fx.currentLevels()
@@ -176,7 +84,6 @@ class EqualizerActivity : BaseActivity() {
             Sheets.askText(this, "Save preset", "My sound", "Save") { name ->
                 fx.saveCustom(name, levels)
                 Prefs.eqPreset = name
-                category = "Mine"
                 buildPresets()
                 toast("Saved \"$name\"")
             }
@@ -190,6 +97,9 @@ class EqualizerActivity : BaseActivity() {
         }
         findViewById<MaterialButton>(R.id.eqReset).setOnClickListener { applyPreset("Flat", IntArray(levels.size)) }
 
+        slider(R.id.eqBass, R.id.eqBassVal, Prefs.bassStrength) { Prefs.bassStrength = it }
+        slider(R.id.eqVirt, R.id.eqVirtVal, Prefs.virtStrength) { Prefs.virtStrength = it }
+        slider(R.id.eqLoud, R.id.eqLoudVal, Prefs.loudness) { Prefs.loudness = it }
 
         val reverb = findViewById<ChipGroup>(R.id.eqReverb)
         reverb.removeAllViews()
@@ -297,17 +207,6 @@ class EqualizerActivity : BaseActivity() {
         val n = name.lowercase()
         return when {
             "flat" in n || "normal" in n -> R.drawable.ic_eq_flat
-            "bollywood" in n || "tv" in n -> R.drawable.ic_se_movie
-            "bhangra" in n || "indian" in n -> R.drawable.ic_cat_dhol
-            "sufi" in n || "devotional" in n -> R.drawable.ic_diya
-            "lo-fi" in n -> R.drawable.ic_cat_chill
-            "piano" in n -> R.drawable.ic_piano
-            "gaming" in n -> R.drawable.ic_se_game
-            "car" == n -> R.drawable.ic_car
-            "small" in n -> R.drawable.ic_speaker_small
-            "podcast" in n -> R.drawable.ic_eq_vocal
-            "r&b" in n -> R.drawable.ic_se_music
-            "dance" in n -> R.drawable.ic_room_club
             "bass" in n -> R.drawable.ic_eq_bass
             "rock" in n || "metal" in n -> R.drawable.ic_eq_rock
             "pop" in n || "dance" in n -> R.drawable.ic_star
@@ -335,55 +234,10 @@ class EqualizerActivity : BaseActivity() {
         }
     }
 
-    private var category: String? = null
-    private var catGroup: ChipGroup? = null
-
-    private fun categoryIcon(c: String) = when (c) {
-        "Popular" -> R.drawable.ic_star; "Indian" -> R.drawable.ic_cat_dhol; "Chill" -> R.drawable.ic_cat_chill
-        "Tone" -> R.drawable.ic_room_studio; "Situations" -> R.drawable.ic_cat_scene; "Mine" -> R.drawable.ic_eq_custom
-        else -> R.drawable.ic_eq_device
-    }
-
-    /** Presets sorted into categories: a row of category chips, then that category's presets. */
     private fun buildPresets() {
         presets = fx.presets()
-        val mine = fx.customPresets().keys
-        val catOf = presets.keys.associateWith { n ->
-            AudioFx.CATEGORIES.firstOrNull { n in it.second }?.first ?: if (n in mine) "Mine" else "Device"
-        }
-        val cats = AudioFx.CATEGORIES.map { it.first } +
-            listOfNotNull("Device".takeIf { "Device" in catOf.values }, "Mine".takeIf { "Mine" in catOf.values })
-        if (category !in cats) category = catOf[Prefs.eqPreset]?.takeIf { it in cats } ?: cats.first()
-        val cg = catGroup ?: ChipGroup(this).apply { isSingleLine = true; isSingleSelection = true; isSelectionRequired = true }.also { g ->
-            catGroup = g
-            val scroll = presetGroup.parent as View
-            val box = scroll.parent as android.view.ViewGroup
-            box.addView(android.widget.HorizontalScrollView(this).apply {
-                isHorizontalScrollBarEnabled = false; addView(g)
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                    .apply { topMargin = dp(10f).toInt() }
-            }, box.indexOfChild(scroll))
-        }
-        cg.removeAllViews()
-        for (c in cats) {
-            val chip = Chip(this)
-            chip.text = c
-            chip.isCheckable = true
-            chip.id = View.generateViewId()
-            SkinPainter.styleChip(chip)
-            chipIcon(chip, categoryIcon(c))
-            chip.isChecked = c == category
-            chip.setOnClickListener { category = c; fillPresets(catOf) }
-            Sheets.pressFeedback(chip)
-            cg.addView(chip)
-        }
-        fillPresets(catOf)
-    }
-
-    private fun fillPresets(catOf: Map<String, String>) {
         presetGroup.removeAllViews()
         for ((name, vals) in presets) {
-            if (catOf[name] != category) continue
             val c = Chip(this)
             c.text = name
             c.isCheckable = true
@@ -393,12 +247,7 @@ class EqualizerActivity : BaseActivity() {
             c.isChecked = name == Prefs.eqPreset
             c.setOnClickListener { applyPreset(name, vals) }
             presetGroup.addView(c)
-            if (!com.jslw.genz.util.Perf.light) {
-                c.alpha = 0f; c.translationX = dp(16f)
-                c.animate().alpha(1f).translationX(0f).setStartDelay(presetGroup.childCount * 30L).setDuration(260).start()
-            }
         }
-        (presetGroup.parent as? android.widget.HorizontalScrollView)?.scrollTo(0, 0)
     }
 
     private fun selectPresetChip(name: String?) {
@@ -423,20 +272,9 @@ class EqualizerActivity : BaseActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        tuning?.showOutput()
-    }
-
     private fun setEnabled(on: Boolean) {
         val a = if (on) 1f else 0.45f
         findViewById<View>(R.id.eqGraph).animate().alpha(a).setDuration(200).start()
         bands.forEach { it.isEnabled = on }
-        // the classic effects follow the equalizer switch, as in 1.8
-        for (id in listOf(R.id.eqBass, R.id.eqVirt, R.id.eqLoud)) {
-            findViewById<View>(id).isEnabled = on
-            (findViewById<View>(id).parent as View).animate().alpha(a).setDuration(200).start()
-        }
-        (findViewById<View>(R.id.eqReverb).parent as View).animate().alpha(a).setDuration(200).start()
     }
 }

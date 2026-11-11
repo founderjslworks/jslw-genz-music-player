@@ -144,7 +144,7 @@ class MusicService : MediaBrowserServiceCompat() {
             // KitKat: reserve a session by keeping one idle MediaPlayer around.
             MediaPlayer().also { sessionHolder = it }.audioSessionId
         }
-        fx = AudioFx(audioSessionId, this)
+        fx = AudioFx(audioSessionId)
         // re-tune the JSLW Sound Engine when headphones / Bluetooth / speaker change
         if (Build.VERSION.SDK_INT >= 23) try { am.registerAudioDeviceCallback(routeCallback as android.media.AudioDeviceCallback, handler) } catch (_: Throwable) {}
         sendBroadcast(Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
@@ -544,8 +544,7 @@ class MusicService : MediaBrowserServiceCompat() {
         e.onCompletion = { onEngineCompleted(e) }
         e.onError = { msg -> handler.post { if (e === cur) { toastShort(msg); onEngineCompleted(e) } } }
         e.setSpeedPitch(Prefs.speed, Prefs.pitch)
-        val send = fx.reverbSend()
-        if (fx.reverbEffectId != 0 && send > 0f) e.attachAux(fx.reverbEffectId, send)
+        if (fx.reverbEffectId != 0 && Prefs.eqEnabled && Prefs.reverb > 0) e.attachAux(fx.reverbEffectId, 1f)
     }
 
     private fun startPlayback() {
@@ -864,14 +863,12 @@ class MusicService : MediaBrowserServiceCompat() {
     }
 
     fun effectsChanged() {
-        val chainChanged = fx.applyAll()
+        fx.applyAll()
         applyVolume()
-        if (chainChanged) { reopenCurrent(); return }
         val id = fx.reverbEffectId
-        val send = fx.reverbSend()
-        val on = send > 0f && id != 0
-        cur?.attachAux(if (on) id else 0, if (on) send else 0f)
-        next?.attachAux(if (on) id else 0, if (on) send else 0f)
+        val on = Prefs.eqEnabled && Prefs.reverb > 0 && id != 0
+        cur?.attachAux(if (on) id else 0, if (on) 1f else 0f)
+        next?.attachAux(if (on) id else 0, if (on) 1f else 0f)
     }
 
     private val routeCallback: Any? = if (Build.VERSION.SDK_INT >= 23) object : android.media.AudioDeviceCallback() {
