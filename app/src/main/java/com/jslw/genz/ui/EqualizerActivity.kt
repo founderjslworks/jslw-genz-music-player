@@ -51,16 +51,74 @@ class EqualizerActivity : BaseActivity() {
     }
 
     private var tuning: SoundTuning? = null
+    private var classicWired = false
+    private var engineOpen = false
+
+    /**
+     * The JSLW Sound Engine as one optional card at the end: its own switch, and its options (profile, output,
+     * room, fine tuning) folded away until opened, so the screen stays simple.
+     */
+    private fun engineCard(t: SoundTuning): View {
+        val d = resources.displayMetrics.density
+        val sk = com.jslw.genz.skin.SkinManager.current
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            tag = "skin_surface_round"
+            setPadding((16 * d).toInt(), (14 * d).toInt(), (16 * d).toInt(), (14 * d).toInt())
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = (14 * d).toInt() }
+        }
+        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
+        val icon = android.widget.ImageView(this).apply {
+            setImageResource(R.drawable.ic_eq_surround); setColorFilter(0xFFFFFFFF.toInt())
+            val p = (9 * d).toInt(); setPadding(p, p, p, p)
+            background = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR, intArrayOf(sk.header, sk.headerEnd)).apply { cornerRadius = 12 * d }
+        }
+        head.addView(icon, LinearLayout.LayoutParams((40 * d).toInt(), (40 * d).toInt()))
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding((12 * d).toInt(), 0, (8 * d).toInt(), 0) }
+        col.addView(TextView(this).apply { text = "JSLW Sound Engine"; tag = "skin_text"; textSize = 16f; setTypeface(typeface, android.graphics.Typeface.BOLD) })
+        col.addView(TextView(this).apply {
+            text = "Optional extras for Bluetooth, soundbars and films. Leave it off for the classic GEN-Z sound."
+            tag = "skin_text2"; textSize = 12f
+        })
+        head.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val sw = SwitchCompat(this).apply { isChecked = Prefs.seOn; tag = "skin_switch" }
+        head.addView(sw)
+        card.addView(head)
+        val more = TextView(this).apply {
+            tag = "skin_accent_text"; textSize = 13f; setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, (10 * d).toInt(), 0, (2 * d).toInt())
+        }
+        card.addView(more)
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        for (v in t.profileViews()) body.addView(v)
+        for (v in t.sliderViews()) body.addView(v)
+        card.addView(body)
+        fun show() {
+            body.visibility = if (engineOpen && Prefs.seOn) View.VISIBLE else View.GONE
+            more.visibility = if (Prefs.seOn) View.VISIBLE else View.GONE
+            more.text = if (engineOpen) "Hide engine settings ▴" else "Engine settings ▾"
+        }
+        more.setOnClickListener {
+            engineOpen = !engineOpen; show()
+            if (engineOpen && !com.jslw.genz.util.Perf.light) { body.alpha = 0f; body.animate().alpha(1f).setDuration(240).start() }
+        }
+        sw.setOnCheckedChangeListener { _, on ->
+            Prefs.seOn = on; svc.effectsChanged(); t.setEnabled(on)
+            if (on) engineOpen = true
+            show()
+        }
+        t.setEnabled(Prefs.seOn)
+        show()
+        return card
+    }
 
     private fun build() {
-        // one-time move from the separate Equalizer + Advanced audio screens: one switch, overlapping effects folded
-        if (!Prefs.soundMerged) {
-            val on = Prefs.eqEnabled || Prefs.seOn
-            Prefs.eqEnabled = on; Prefs.seOn = on
-            if (Prefs.bassStrength > 0 && Prefs.seBass == 35) Prefs.seBass = (Prefs.bassStrength / 10).coerceIn(0, 100)
-            if (Prefs.virtStrength > 0) Prefs.seSurround = maxOf(Prefs.seSurround, Prefs.virtStrength / 10)
-            Prefs.bassStrength = 0; Prefs.virtStrength = 0; Prefs.loudness = 0; Prefs.reverb = 0
-            Prefs.soundMerged = true
+        // 1.9.3: back to the classic GEN-Z sound. The equalizer and its effects work on their own again (as in 1.8);
+        // the JSLW Sound Engine is an optional extra with its own switch, off unless you turn it on.
+        if (!Prefs.classicSound) {
+            Prefs.seOn = false
+            Prefs.classicSound = true
             svc.effectsChanged()
         }
         val enable = findViewById<SwitchCompat>(R.id.eqEnable)
@@ -69,28 +127,27 @@ class EqualizerActivity : BaseActivity() {
         if (!fx.available) {
             info.text = "This device doesn't provide audio effects to apps."
             enable.isEnabled = false
-        } else info.text = if (fx.tenBand) "10-band graphic equalizer" else "${fx.bandFreqs.size}-band equalizer (device)"
+        } else info.text = if (fx.tenBand) "10-band graphic equalizer · bass boost · 3D surround · loudness · reverb" else "${fx.bandFreqs.size}-band equalizer (device) · bass boost · 3D surround · loudness · reverb"
         note.text = buildString {
             append("Works on the music GEN-Z plays – wired and Bluetooth headphones, speakers, DSD and AIFF. ")
             append("Switched off, GEN-Z adds nothing to the sound, so your phone's own sound enhancement applies.")
             if (Prefs.bitPerfect) append("\nBit-perfect USB output is on: Android bypasses all effects in that mode.")
         }
         enable.isChecked = Prefs.eqEnabled
-        enable.setOnCheckedChangeListener { _, on -> Prefs.eqEnabled = on; Prefs.seOn = on; svc.effectsChanged(); setEnabled(on) }
+        enable.setOnCheckedChangeListener { _, on -> Prefs.eqEnabled = on; svc.effectsChanged(); setEnabled(on) }
 
-        // the old separate effect cards are replaced by the Sound Engine sliders
-        for (id in listOf(R.id.eqBass, R.id.eqVirt, R.id.eqLoud)) (findViewById<View>(id).parent as View).visibility = View.GONE
-        (findViewById<View>(R.id.eqReverbIcon).parent as View).visibility = View.GONE
-        (findViewById<View>(R.id.eqReverb).parent as View).visibility = View.GONE
+        // the classic effect cards (bass boost, 3D surround, loudness, reverb) – as in GEN-Z 1.8
+        if (!classicWired) {
+            classicWired = true
+            slider(R.id.eqBass, R.id.eqBassVal, Prefs.bassStrength) { Prefs.bassStrength = it }
+            slider(R.id.eqVirt, R.id.eqVirtVal, Prefs.virtStrength) { Prefs.virtStrength = it }
+            slider(R.id.eqLoud, R.id.eqLoudVal, Prefs.loudness) { Prefs.loudness = it }
+        }
         if (tuning == null) {
             val t = SoundTuning(this) { svc.effectsChanged() }
             tuning = t
             val content = findViewById<View>(R.id.eqGraph).parent as LinearLayout
-            // profile right under the switch, sliders after the equalizer
-            var at = content.indexOfChild(findViewById(R.id.eqInfo)) + 1
-            for (v in t.profileViews()) content.addView(v, at++)
-            var end = content.indexOfChild(findViewById(R.id.eqNote))
-            for (v in t.sliderViews()) content.addView(v, end++)
+            content.addView(engineCard(t), content.indexOfChild(findViewById(R.id.eqNote)))
         }
 
         // faders
@@ -372,9 +429,14 @@ class EqualizerActivity : BaseActivity() {
     }
 
     private fun setEnabled(on: Boolean) {
-        tuning?.setEnabled(on)
         val a = if (on) 1f else 0.45f
         findViewById<View>(R.id.eqGraph).animate().alpha(a).setDuration(200).start()
         bands.forEach { it.isEnabled = on }
+        // the classic effects follow the equalizer switch, as in 1.8
+        for (id in listOf(R.id.eqBass, R.id.eqVirt, R.id.eqLoud)) {
+            findViewById<View>(id).isEnabled = on
+            (findViewById<View>(id).parent as View).animate().alpha(a).setDuration(200).start()
+        }
+        (findViewById<View>(R.id.eqReverb).parent as View).animate().alpha(a).setDuration(200).start()
     }
 }

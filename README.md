@@ -22,6 +22,11 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.3
+
+- **The classic GEN-Z sound is back**: the equalizer works exactly as in 1.8 again, with its own Bass boost, 3D surround, Loudness and Reverb controls
+- The JSLW Sound Engine is now an optional extra with its own switch at the end of the Sound screen (off by default); its settings stay folded away until you open them
+
 ## What's new in 1.9.2
 
 - **Playing on your soundbar**: Now Playing and Sound show the connected soundbar / Bluetooth device by name, its battery (when it reports one), the Bluetooth codec, and your phone's battery

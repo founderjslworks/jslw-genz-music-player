@@ -135,7 +135,8 @@ class AudioFx(private val sessionId: Int, private val ctx: android.content.Conte
                 val engine = v?.let { (it.surround * 1000).toInt() } ?: 0
                 val strength = maxOf(user, engine)
                 // force real virtualisation for Bluetooth and wired headphones alike (Android 8+)
-                if (Build.VERSION.SDK_INT >= 26 && strength > 0) try {
+                // (only for the Sound Engine – the classic 3D surround lets the phone choose, as in 1.8)
+                if (Build.VERSION.SDK_INT >= 26 && strength > 0 && v != null) try {
                     it.forceVirtualizationMode(
                         if (v?.headphones != false) Virtualizer.VIRTUALIZATION_MODE_BINAURAL else Virtualizer.VIRTUALIZATION_MODE_TRANSAURAL
                     )

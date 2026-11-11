@@ -176,6 +176,11 @@ object Prefs {
         get() = s("flow_style", "theme")
         set(v) = put { putString("flow_style", v) }
 
+    /** 1.9.3: equalizer back to the 1.8 behaviour, Sound Engine made optional (one-time). */
+    var classicSound: Boolean
+        get() = b("classic_sound", false)
+        set(v) = put { putBoolean("classic_sound", v) }
+
     /** One-time move to the combined Sound screen (EQ + JSLW Sound Engine, one switch). */
     var soundMerged: Boolean
         get() = b("sound_merged", false)
