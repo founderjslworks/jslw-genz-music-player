@@ -176,6 +176,15 @@ object Prefs {
         get() = s("flow_style", "theme")
         set(v) = put { putString("flow_style", v) }
 
+    /** High-quality album art from the internet: "off", "missing" (songs without art) or "all". */
+    var onlineArt: String
+        get() = s("online_art", "off")
+        set(v) = put { putString("online_art", v) }
+    /** Also download covers over mobile data (otherwise Wi-Fi / unmetered only). */
+    var onlineArtMobile: Boolean
+        get() = b("online_art_mobile", false)
+        set(v) = put { putBoolean("online_art_mobile", v) }
+
     /** 1.9.3: equalizer back to the 1.8 behaviour, Sound Engine made optional (one-time). */
     var classicSound: Boolean
         get() = b("classic_sound", false)

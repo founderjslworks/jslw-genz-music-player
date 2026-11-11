@@ -32,6 +32,9 @@ object Library {
     fun addListener(l: () -> Unit) { listeners += l }
     fun removeListener(l: () -> Unit) { listeners -= l }
 
+    /** Ask every screen to redraw (e.g. new album art arrived). */
+    fun notifyListeners() { main.post { listeners.forEach { it() } } }
+
     @Volatile private var again = false
     @Volatile var lastLoad = 0L; private set
 

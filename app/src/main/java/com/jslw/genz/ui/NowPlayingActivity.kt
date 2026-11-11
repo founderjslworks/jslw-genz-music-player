@@ -297,12 +297,20 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         super.onStop()
     }
 
+    private var shownArtVersion = 0
+
     override fun onPlayerChanged() {
         val svc = Player.service ?: return
         val s = svc.current
         if (s == null) { finish(); return }
+        if (shownSongId == s.id && shownArtVersion != ArtLoader.version) {
+            // a high-quality cover just arrived for this song
+            shownArtVersion = ArtLoader.version
+            ArtLoader.load(art, s, dpi(360).coerceAtMost(900), large = true) { bmp -> onArt(bmp); coverFx.setArt(bmp) }
+        }
         if (shownSongId != s.id) {
             shownSongId = s.id
+            shownArtVersion = ArtLoader.version
             titleTv.text = s.title
             titleTv.isSelected = true // marquee
             artistTv.text = listOf(s.artist, s.album).filter { it.isNotBlank() }.joinToString(" — ")

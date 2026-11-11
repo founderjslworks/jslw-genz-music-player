@@ -147,6 +147,33 @@ class SettingsActivity : BaseActivity() {
 
         items += Item.Section("Appearance")
         items += Item.Action("Theme", { SkinManager.current.name }) { startActivity(Intent(this, ThemesActivity::class.java)) }
+        val artModes = listOf("off", "missing", "all")
+        fun artLabel(m: String) = when (m) {
+            "missing" -> "For songs without art"
+            "all" -> "High quality for every album"
+            else -> "Off"
+        }
+        items += Item.Action("Album art online", {
+            if (Prefs.onlineArt == "off") "Off – GEN-Z stays fully offline"
+            else artLabel(Prefs.onlineArt) + " · " + (if (Prefs.onlineArtMobile) "Wi-Fi and mobile data" else "Wi-Fi only") +
+                " · ${com.jslw.genz.util.OnlineArt.cachedCount(this)} covers saved"
+        }) {
+            choose("Fetch high-quality album art", artModes, ::artLabel, Prefs.onlineArt) { m ->
+                Prefs.onlineArt = m
+                com.jslw.genz.util.ArtLoader.clearMemory()
+                com.jslw.genz.data.Library.notifyListeners()
+                if (m != "off") toast("Covers download in the background while you're online")
+            }
+        }
+        items += Item.Toggle("Album art over mobile data", "Off = download covers on Wi-Fi only (about 200 KB each)",
+            { Prefs.onlineArtMobile }, { Prefs.onlineArtMobile = it })
+        items += Item.Action("Delete downloaded album art", { "${com.jslw.genz.util.OnlineArt.cachedCount(this)} covers on this phone" }) {
+            com.jslw.genz.util.OnlineArt.clear(this)
+            com.jslw.genz.util.ArtLoader.clearMemory()
+            com.jslw.genz.data.Library.notifyListeners()
+            adapter.notifyDataSetChanged()
+            toast("Downloaded album art deleted")
+        }
         items += Item.Toggle("Album-art colours on Now Playing", "Background follows the cover (for themes that allow it)",
             { Prefs.npDynamicColors }, { Prefs.npDynamicColors = it })
         items += Item.Toggle("Progress bar follows the song", "Colours of the bar change with each song's cover",

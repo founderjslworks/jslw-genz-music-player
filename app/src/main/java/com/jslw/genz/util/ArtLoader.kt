@@ -42,9 +42,24 @@ object ArtLoader {
     private val exec = Executors.newFixedThreadPool(3)
     private val main = Handler(Looper.getMainLooper())
 
-    private fun key(song: Song, size: Int) = "${song.albumId}:${song.id.takeIf { it < 0 } ?: 0}:$size"
+    // songs without a real album get their own entry, so each can show its own (online) cover
+    private fun key(song: Song, size: Int) =
+        "${song.albumId}:${song.id.takeIf { it < 0 || (OnlineArt.enabled && OnlineArt.ownCover(song)) } ?: 0}:$size"
+
+    /** Bumped whenever a downloaded cover arrives, so open screens can redraw. */
+    @Volatile var version = 0; private set
+
+    private fun onlineArrived(song: Song) {
+        invalidate(song.albumId)
+        version++
+        com.jslw.genz.data.Library.notifyListeners()
+        com.jslw.genz.playback.Player.dispatch()
+    }
 
     fun customCoverFile(ctx: Context, albumId: Long) = File(File(ctx.filesDir, "covers").apply { mkdirs() }, "$albumId.jpg")
+
+    /** Forget every decoded picture (e.g. the album-art source changed). */
+    fun clearMemory() { cache.evictAll(); synchronized(missing) { missing.clear() }; version++ }
 
     fun invalidate(albumId: Long) {
         val snapshot = cache.snapshot().keys.filter { it.startsWith("$albumId:") }
@@ -104,6 +119,17 @@ object ArtLoader {
         customCoverFile(ctx, song.albumId).takeIf { it.exists() }?.let { f ->
             return decodeBytes(f.readBytes(), size)
         }
+        // high-quality cover downloaded earlier (Settings › Album art online)
+        if (OnlineArt.enabled) OnlineArt.file(ctx, song).takeIf { it.exists() }?.let { f ->
+            decodeBytes(f.readBytes(), size)?.let { return it }
+        }
+        if (OnlineArt.preferOnline) OnlineArt.request(ctx, song) { onlineArrived(song) }
+        val local = decodeLocal(ctx, song, size)
+        if (local == null && OnlineArt.enabled) OnlineArt.request(ctx, song) { onlineArrived(song) }
+        return local
+    }
+
+    private fun decodeLocal(ctx: Context, song: Song, size: Int): Bitmap? {
         if (song.id > 0) {
             if (Build.VERSION.SDK_INT >= 29) {
                 try { return ctx.contentResolver.loadThumbnail(song.uri, Size(size, size), null) } catch (_: Exception) {}

@@ -89,7 +89,7 @@ class DeviceStrip(context: Context, private var fg: Int, private var accent: Int
 
     private fun show(i: DeviceStatus.Info?) {
         if (i == null) { if (visibility != GONE) animate().alpha(0f).setDuration(180).withEndAction { visibility = GONE }.start(); return }
-        icon.setImageDrawable(AppCompatResources.getDrawable(context, if (i.soundbar) R.drawable.ic_soundbar else R.drawable.ic_headphones))
+        icon.setImageDrawable(AppCompatResources.getDrawable(context, when { i.soundbar -> R.drawable.ic_soundbar; i.name?.contains("speaker", true) == true || i.name?.contains("boombox", true) == true -> R.drawable.ic_speaker_small; else -> R.drawable.ic_headphones }))
         title.text = "Playing on " + (i.name ?: if (i.soundbar) "soundbar" else "Bluetooth")
         stats.removeAllViews()
         when {

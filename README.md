@@ -22,6 +22,11 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.5
+
+- **Album art online** (Settings, off by default): when you're connected, GEN-Z fetches high-quality 1200 × 1200 covers for songs without art – or for every album – and keeps them on the phone. Wi-Fi only unless you allow mobile data
+- Sharper sheets: Up next and the song menu are solid on every theme (no washed-out grey), song lengths no longer cut off at the edge
+
 ## What's new in 1.9.4
 
 - **Sound is exactly as in 1.8**: the 1.8 equalizer, presets, Bass boost, 3D surround, Loudness and Reverb, with the 1.8 Sound screen. The JSLW Sound Engine has been removed.

@@ -119,8 +119,27 @@ object Sheets {
         for (o in opts) optionView(a, box, o) { d.dismiss() }
         SkinPainter.apply(v)
         d.setContentView(v)
+        crisp(d, v)
         d.setOnShowListener { animateIn(v.findViewById<View>(R.id.optArt)?.parent as? View, box) }
         d.show()
+    }
+
+    /**
+     * Sheets look sharp on every theme: a solid sheet in the theme's surface colour (themes with see-through
+     * "glass" surfaces used to show the dialog's own grey through them, which looked washed out and blurry),
+     * rounded top corners, and a lighter dim behind.
+     */
+    fun crisp(d: BottomSheetDialog, v: View) {
+        val sk = com.jslw.genz.skin.SkinManager.current
+        val base = if (android.graphics.Color.alpha(sk.background) == 255) sk.background
+            else androidx.core.graphics.ColorUtils.compositeColors(sk.background, 0xFF101010.toInt())
+        val solid = androidx.core.graphics.ColorUtils.compositeColors(sk.surface, base)
+        val r = 22 * v.resources.displayMetrics.density
+        v.background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(solid); cornerRadii = floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f)
+        }
+        d.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.setBackgroundColor(0)
+        d.window?.setDimAmount(0.45f)
     }
 
     fun openInMain(a: Activity, key: String, value: Any) {
@@ -252,6 +271,7 @@ object Sheets {
         d.setOnDismissListener { Player.remove(listener) }
         SkinPainter.apply(v)
         d.setContentView(v)
+        crisp(d, v)
         d.behavior.state = BottomSheetBehavior.STATE_EXPANDED
         d.show()
         list.scrollToPosition((svc.index - 2).coerceAtLeast(0))
