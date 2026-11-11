@@ -22,6 +22,10 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.6
+
+- Two racing themes, made to match the JSLW watch faces: **Race One Carbon** (carbon black, racing red, silver chronograph speedometer controls) and **Race Telemetry** (black dashboard, turquoise and orange, tuner controls and a telemetry LCD)
+
 ## What's new in 1.9.5
 
 - **Album art online** (Settings, off by default): when you're connected, GEN-Z fetches high-quality 1200 × 1200 covers for songs without art – or for every album – and keeps them on the phone. Wi-Fi only unless you allow mobile data
@@ -81,7 +85,7 @@ with no internet permission at all.
   GEN-Z's own decoder
 
 **Look and feel**
-- **42 built-in themes**: turntable, click wheel, radio deck, tuner, analog dial, devotional, Bollywood, lo-fi, EDM neon, synthwave, hip-hop, rock, jazz,
+- **44 built-in themes**: Race One Carbon and Race Telemetry (racing), turntable, click wheel, radio deck, tuner, analog dial, devotional, Bollywood, lo-fi, EDM neon, synthwave, hip-hop, rock, jazz,
   classical, K-pop, glass, dot-matrix, soft UI, neo-brutalist and more
 - Every theme has its own Google Fonts, its own animated progress bar (sparkle, neon, wave, spectrum,
   8-bit, fire, bubbles, petals, hearts, notes, snow, tape, classic, dot matrix) and its own cover effect
