@@ -62,7 +62,7 @@ namespace GenZ.Core
         static readonly string[] Order = {
             "vivid_genz", "dot_matrix", "glass_aurora", "soft_ui", "neo_brutal", "swiss_mono", "mesh_gradient", "clay_pastel",
             "midnight_minimal", "chrome_y2k", "wheel_noir", "cream_wheel", "pocket_recorder", "turntable_rose", "retro_deck",
-            "radio_deck", "tuner_orange", "analog_dial", "bollywood_nights", "bhakti_diya", "romantic_rose", "bhangra_beat",
+            "radio_deck", "tuner_orange", "analog_dial", "race_one_carbon", "race_telemetry", "bollywood_nights", "bhakti_diya", "romantic_rose", "bhangra_beat",
             "lofi_chill", "edm_neon", "synthwave_84", "hiphop_mixtape", "rock_arena", "jazz_lounge", "classical_symphony",
             "kpop_candy", "ocean_ambient", "indie_acoustic", "arcade_8bit", "modern_dark", "modern_light", "pure_black",
             "retro_clickwheel", "retro_amp", "cassette_84", "vinyl_hifi", "glossy_2002", "terminal_green" };
