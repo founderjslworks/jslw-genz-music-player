@@ -22,6 +22,10 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.7
+
+- **Landscape Now Playing fixed**: cover on the left, title, "Playing on", seek bar and controls on the right – the right side scrolls on short screens so nothing is cut off
+
 ## What's new in 1.9.6
 
 - Two racing themes, made to match the JSLW watch faces: **Race One Carbon** (carbon black, racing red, silver chronograph speedometer controls) and **Race Telemetry** (black dashboard, turquoise and orange, tuner controls and a telemetry LCD)

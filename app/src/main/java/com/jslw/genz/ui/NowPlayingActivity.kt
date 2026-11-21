@@ -117,7 +117,9 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         // "Playing on <soundbar>" strip under the top bar – only while on Bluetooth / HDMI
         deviceStrip = com.jslw.genz.ui.views.DeviceStrip(this, skin.npText, skin.accent).also { st ->
             val side = resources.getDimensionPixelSize(R.dimen.np_side)
-            (content as android.view.ViewGroup).addView(st, 1, android.widget.LinearLayout.LayoutParams(
+            // portrait: under the top bar; landscape: in the right-hand column, under the top bar there too
+            val host = (findViewById<View>(R.id.npSide) ?: content) as android.view.ViewGroup
+            host.addView(st, 1, android.widget.LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = side; marginEnd = side; bottomMargin = (6 * resources.displayMetrics.density).toInt() })
         }
         art = findViewById(R.id.npArt)

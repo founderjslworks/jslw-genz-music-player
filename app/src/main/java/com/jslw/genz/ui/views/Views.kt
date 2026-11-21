@@ -68,6 +68,10 @@ class DragDismissLayout @JvmOverloads constructor(ctx: Context, attrs: Attribute
                 val dy = ev.rawY - downY
                 val dx = ev.rawX - downX
                 if (dy > slop && dy > abs(dx) * 1.3f) {
+                    // landscape: a scrolled-down side panel scrolls back up first, then the swipe closes the player
+                    findViewById<View>(com.jslw.genz.R.id.npSideScroll)?.let { sc ->
+                        if (sc.canScrollVertically(-1)) { downY = Float.NaN; return false }
+                    }
                     dragging = true
                     downY = ev.rawY
                     return true
