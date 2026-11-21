@@ -92,6 +92,11 @@ class HomeFragment : BaseListFragment() {
             onClick = { open(SongsFragment.forSource(Source.Favorites)) }) }
         add("playlists") { Row("Playlists", icon = R.drawable.ic_playlist, iconColor = 0xFFFF9500.toInt(), chevron = true, extra = n(LibraryDb.playlists().size),
             onClick = { open(BrowseFragment.of("playlists")) }) }
+        add("added") {
+            val n = com.jslw.genz.data.FirstSeen.recentCount(Library.songs)
+            Row("Recently added", if (n > 0) plural(n, "new song") + " this week" else "Newest songs first", icon = R.drawable.ic_playlist_add,
+                iconColor = 0xFF30D158.toInt(), chevron = true, onClick = { open(SongsFragment.forSource(Source.RecentlyAdded)) })
+        }
         add("recent") { Row("Recently played", icon = R.drawable.ic_history, iconColor = 0xFF64D2FF.toInt(), chevron = true, onClick = { open(SongsFragment.forSource(Source.Recent)) }) }
         add("most") { Row("Most played", icon = R.drawable.ic_star, iconColor = 0xFFFFD60A.toInt(), chevron = true, onClick = { open(SongsFragment.forSource(Source.MostPlayed)) }) }
         add("artists") { Row("Artists", icon = R.drawable.ic_artist, iconColor = 0xFFAF52DE.toInt(), chevron = true, extra = n(Library.artists.size), onClick = { open(BrowseFragment.of("artists")) }) }
@@ -110,7 +115,7 @@ class HomeFragment : BaseListFragment() {
         add("refresh") { Row("Refresh library", subtitle = "Find newly added songs", icon = R.drawable.ic_refresh, iconColor = 0xFF64D2FF.toInt(), onClick = {
             val c = requireContext()
             c.toast("Looking for new songs…")
-            Library.refresh(c) { n -> c.toast(if (n > 0) "Found $n new ${if (n == 1) "song" else "songs"}" else "Library is up to date") }
+            Library.refresh(c) { n -> c.toast(if (n > 0) "Found $n new ${if (n == 1) "song" else "songs"} – see Recently added" else "Library is up to date") }
         }) }
         rows += Row.section("Extras")
         add("sound") { Row("Sound & equalizer", subtitle = "JSLW Sound Engine" + if (Prefs.eqEnabled) " · on" else "", icon = R.drawable.ic_equalizer,

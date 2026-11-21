@@ -73,6 +73,14 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
         charging = findViewById(R.id.lockCharging)
         charging.accent = SkinManager.current.accent
         charging.typeface = SkinManager.current.boldTypeface
+        val styles = com.jslw.genz.ui.views.ChargingDoodleView.STYLES.map { it.first }
+        charging.style = com.jslw.genz.data.Prefs.chargingStyle.let { if (it == "random") styles.random() else it }
+        // tap the charging picture to try the next animation (remembered)
+        charging.setOnClickListener {
+            val next = styles[(styles.indexOf(charging.style) + 1) % styles.size]
+            charging.style = next
+            if (com.jslw.genz.data.Prefs.chargingStyle != "random") com.jslw.genz.data.Prefs.chargingStyle = next
+        }
         coverFx.setThemeColors(SkinManager.current.accent, SkinManager.current.headerEnd)
         coverFx.setEffect(SkinManager.current.activeCoverEffect)
         com.jslw.genz.util.SystemBars.setup(this, findViewById(R.id.lockRoot), 0xFF000000.toInt(), 0xFF000000.toInt())

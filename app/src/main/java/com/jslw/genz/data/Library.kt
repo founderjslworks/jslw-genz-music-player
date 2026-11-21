@@ -16,6 +16,8 @@ import java.util.concurrent.Executors
 /** In-memory music library, built in the background and grouped for classic browsing. */
 object Library {
     @Volatile var songs: List<Song> = emptyList(); private set
+    /** Songs that were new in the last scan (for "N new songs" after a refresh). */
+    @Volatile var lastNew = 0; private set
     @Volatile var albums: List<Album> = emptyList(); private set
     @Volatile var artists: List<Artist> = emptyList(); private set
     @Volatile var genres: List<Genre> = emptyList(); private set
@@ -81,7 +83,7 @@ object Library {
             try { walk(android.os.Environment.getExternalStorageDirectory(), 0) } catch (_: Exception) {}
             val finish = Runnable {
                 val once = object : () -> Unit {
-                    override fun invoke() { removeListener(this); done((songs.size - before).coerceAtLeast(0)) }
+                    override fun invoke() { removeListener(this); done(maxOf(lastNew, (songs.size - before).coerceAtLeast(0))) }
                 }
                 addListener(once)
                 load(app)
@@ -146,6 +148,7 @@ object Library {
             .map { (p, list) -> Folder(p, p.substringAfterLast('/').ifEmpty { "/" }, list.sortedWith(compareBy<Song>({ it.track }, { it.title.lowercase(Locale.ROOT) }))) }
             .sortedWith(compareBy(byTitle) { it.name })
 
+        lastNew = FirstSeen.update(ctx, all)
         songs = all
         albums = albumList
         artists = artistList
@@ -176,7 +179,7 @@ object Library {
         is Source.Favorites -> songs(LibraryDb.favoriteIds())
         is Source.Recent -> songs(LibraryDb.recentIds())
         is Source.MostPlayed -> songs(LibraryDb.mostPlayedIds())
-        is Source.RecentlyAdded -> songs.sortedByDescending { it.dateAdded }.take(200)
+        is Source.RecentlyAdded -> songs.sortedByDescending { FirstSeen.of(it) }.take(200)
         is Source.OfAlbum -> album(source.albumId)?.songs ?: emptyList()
         is Source.OfArtist -> artist(source.artist)?.songs ?: emptyList()
         is Source.OfGenre -> genres.firstOrNull { it.name == source.genre }?.songs ?: emptyList()

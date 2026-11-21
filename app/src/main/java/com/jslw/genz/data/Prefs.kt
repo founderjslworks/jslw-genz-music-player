@@ -176,6 +176,11 @@ object Prefs {
         get() = s("flow_style", "theme")
         set(v) = put { putString("flow_style", v) }
 
+    /** Lock-screen charging animation (see ui.views.ChargingDoodleView.STYLES); "random" picks one each time. */
+    var chargingStyle: String
+        get() = s("charging_style", "liquid")
+        set(v) = put { putString("charging_style", v) }
+
     /** High-quality album art from the internet: "off", "missing" (songs without art) or "all". */
     var onlineArt: String
         get() = s("online_art", "off")

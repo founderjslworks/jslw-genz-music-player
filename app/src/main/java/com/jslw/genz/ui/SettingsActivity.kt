@@ -153,6 +153,10 @@ class SettingsActivity : BaseActivity() {
             "all" -> "High quality for every album"
             else -> "Off"
         }
+        val chg = com.jslw.genz.ui.views.ChargingDoodleView.STYLES + ("random" to "Surprise me (a different one each time)")
+        items += Item.Action("Charging animation", { chg.firstOrNull { it.first == Prefs.chargingStyle }?.second ?: "Liquid battery" }) {
+            choose("Charging animation (lock-screen player)", chg.map { it.first }, { id -> chg.first { it.first == id }.second }, Prefs.chargingStyle) { Prefs.chargingStyle = it }
+        }
         items += Item.Action("Album art online", {
             if (Prefs.onlineArt == "off") "Off – GEN-Z stays fully offline"
             else artLabel(Prefs.onlineArt) + " · " + (if (Prefs.onlineArtMobile) "Wi-Fi and mobile data" else "Wi-Fi only") +
@@ -282,7 +286,7 @@ class SettingsActivity : BaseActivity() {
         items += Item.Action("Extra folders", { if (Prefs.extraFolders.isEmpty()) "None" else "${Prefs.extraFolders.size} folder(s) – tap to remove" }) { manageFolders() }
         items += Item.Action("Refresh library", { "${Library.songs.size} songs · finds newly added music" }) {
             toast("Looking for new songs…")
-            Library.refresh(this) { n -> toast(if (n > 0) "Found $n new ${if (n == 1) "song" else "songs"}" else "Library is up to date"); adapter.notifyDataSetChanged() }
+            Library.refresh(this) { n -> toast(if (n > 0) "Found $n new ${if (n == 1) "song" else "songs"} – see Recently added" else "Library is up to date"); adapter.notifyDataSetChanged() }
         }
 
         items += Item.Section("Utilities")

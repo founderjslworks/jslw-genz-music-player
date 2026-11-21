@@ -22,6 +22,12 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.8
+
+- **Recently added** on Home: newly scanned songs always come first (GEN-Z remembers when it first found each song), with a count of this week's new songs; after Refresh, GEN-Z says how many are new
+- **Find cover & details online** (song menu, or Edit tags › Find online): pick the right match and GEN-Z fills in title, artist, album, genre, year, track and a 1200 px cover – saved in GEN-Z, and into the file itself for MP3s
+- **Five more charging animations** on the lock-screen player – Glow ring, Power pulse, Battery bars, Orbiting sparks, Energy wave (Settings, or tap the battery to switch)
+
 ## What's new in 1.9.7
 
 - **Landscape Now Playing fixed**: cover on the left, title, "Playing on", seek bar and controls on the right – the right side scrolls on short screens so nothing is cut off

@@ -88,10 +88,106 @@ class TagEditorActivity : BaseActivity() {
         writeFile.isEnabled = mp3
         if (!mp3) writeFile.text = "Writing into the file is available for MP3 (edits are still saved in GEN-Z)"
         findViewById<android.view.View>(R.id.tagPickArt).setOnClickListener { pickImage.launch(arrayOf("image/*")) }
+        findViewById<android.view.View>(R.id.tagFindOnline).setOnClickListener { findOnline(null) }
+        if (intent.getBooleanExtra("online", false) && savedInstanceState == null) findOnline(null)
         findViewById<android.view.View>(R.id.tagClearArt).setOnClickListener {
             newCover = null; clearCover = true
             ArtLoader.placeholder(art, true)
         }
+    }
+
+    // ---------------------------------------------------------------- find details & cover online
+    private fun findOnline(query: String?) {
+        val wait = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Searching online…").setMessage(query ?: (song.title + if (song.artist.isNotBlank()) " – " + song.artist else ""))
+            .setCancelable(true).show()
+        Thread {
+            val found = try { com.jslw.genz.util.OnlineTags.search(song, query) } catch (_: Exception) { null }
+            runOnUiThread {
+                wait.dismiss()
+                if (isFinishing) return@runOnUiThread
+                when {
+                    found == null -> toast("Couldn't reach the internet – check your connection")
+                    found.isEmpty() -> askQuery("Nothing found. Try other words:")
+                    else -> pickMatch(found)
+                }
+            }
+        }.start()
+    }
+
+    private fun askQuery(title: String) {
+        Sheets.askText(this, title, fTitle.text.toString() + " " + fArtist.text.toString(), "Search") { q -> findOnline(q) }
+    }
+
+    private fun pickMatch(list: List<com.jslw.genz.util.OnlineTags.Match>) {
+        val d = resources.displayMetrics.density
+        val thumbs = HashMap<Int, Bitmap>()
+        val sk = com.jslw.genz.skin.SkinManager.current
+        val adapter = object : android.widget.BaseAdapter() {
+            override fun getCount() = list.size
+            override fun getItem(i: Int) = list[i]
+            override fun getItemId(i: Int) = i.toLong()
+            override fun getView(i: Int, cv: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val m = list[i]
+                val row = (cv as? android.widget.LinearLayout) ?: android.widget.LinearLayout(this@TagEditorActivity).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding((20 * d).toInt(), (8 * d).toInt(), (16 * d).toInt(), (8 * d).toInt())
+                    addView(ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP }, android.widget.LinearLayout.LayoutParams((56 * d).toInt(), (56 * d).toInt()))
+                    addView(android.widget.TextView(context).apply { setPadding((14 * d).toInt(), 0, 0, 0); textSize = 14f },
+                        android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                }
+                val iv = row.getChildAt(0) as ImageView
+                val tv = row.getChildAt(1) as android.widget.TextView
+                tv.text = android.text.SpannableStringBuilder().apply {
+                    append(m.title, android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0)
+                    append("\n" + m.artist + "\n" + m.album + (if (m.year > 0) " · ${m.year}" else ""))
+                }
+                tv.setTextColor(sk.text)
+                iv.tag = i
+                val b = thumbs[i]
+                if (b != null) iv.setImageBitmap(b) else {
+                    iv.setImageDrawable(null); iv.setBackgroundColor(sk.surface)
+                    m.thumbUrl?.let { url ->
+                        Thread {
+                            val bmp = com.jslw.genz.util.OnlineTags.get(url)?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                            if (bmp != null) runOnUiThread { thumbs[i] = bmp; if (iv.tag == i) iv.setImageBitmap(bmp) }
+                        }.start()
+                    }
+                }
+                return row
+            }
+        }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Pick the right one")
+            .setAdapter(adapter) { _, i -> apply(list[i]) }
+            .setNeutralButton("Search again") { _, _ -> askQuery("Search for:") }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun apply(m: com.jslw.genz.util.OnlineTags.Match) {
+        if (m.title.isNotBlank()) fTitle.setText(m.title)
+        if (m.artist.isNotBlank()) fArtist.setText(m.artist)
+        if (m.album.isNotBlank()) fAlbum.setText(m.album)
+        if (m.albumArtist.isNotBlank()) fAlbumArtist.setText(m.albumArtist)
+        if (m.genre.isNotBlank()) fGenre.setText(m.genre)
+        if (m.year > 0) fYear.setText(m.year.toString())
+        if (m.track > 0) fTrack.setText(m.track.toString())
+        val url = m.coverUrl ?: run { toast("Details filled in – tap ✓ to save"); return }
+        toast("Downloading the cover…")
+        Thread {
+            val bytes = com.jslw.genz.util.OnlineTags.get(url)
+            val bmp = bytes?.let { ArtLoader.decodeBytes(it, 1200) }
+            val out = ByteArrayOutputStream()
+            bmp?.let { scaleDown(it, 1200).compress(Bitmap.CompressFormat.JPEG, 92, out) }
+            runOnUiThread {
+                if (isFinishing) return@runOnUiThread
+                if (bmp == null) { toast("Details filled in, but the cover couldn't be downloaded"); return@runOnUiThread }
+                newCover = out.toByteArray(); clearCover = false
+                art.setImageBitmap(bmp); art.scaleType = ImageView.ScaleType.CENTER_CROP
+                toast("Cover and details filled in – tap ✓ to save" + if (writeFile.isEnabled) " (tick \"write into file\" to keep them in the song)" else "")
+            }
+        }.start()
     }
 
     private fun scaleDown(b: Bitmap, max: Int): Bitmap {

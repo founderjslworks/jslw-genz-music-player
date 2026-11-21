@@ -104,6 +104,9 @@ object Sheets {
         opts += Option(R.drawable.ic_edit, "Edit tags & cover") {
             a.startActivity(Intent(a, TagEditorActivity::class.java).putExtra("song", s.id))
         }
+        opts += Option(R.drawable.ic_search, "Find cover & details online") {
+            a.startActivity(Intent(a, TagEditorActivity::class.java).putExtra("song", s.id).putExtra("online", true))
+        }
         opts += Option(R.drawable.ic_cut, "Make ringtone") {
             a.startActivity(Intent(a, RingtoneCutterActivity::class.java).putExtra("song", s.id))
         }

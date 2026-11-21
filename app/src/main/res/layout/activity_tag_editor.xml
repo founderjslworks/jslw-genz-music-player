@@ -53,6 +53,13 @@
                         android:layout_height="wrap_content"
                         android:tag="skin_button_tonal"
                         android:text="Reset cover" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/tagFindOnline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:tag="skin_button"
+                        android:text="Find online" />
                 </LinearLayout>
             </LinearLayout>
 

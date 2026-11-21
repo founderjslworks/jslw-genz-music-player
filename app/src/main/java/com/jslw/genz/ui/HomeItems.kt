@@ -8,7 +8,7 @@ import com.jslw.genz.playback.Player
 /** What the Home screen shows – chosen with check boxes in Settings. Settings itself is always shown. */
 object HomeItems {
     val ALL = listOf(
-        "flow" to "Album Flow", "favs" to "Favourites", "playlists" to "Playlists", "recent" to "Recently played",
+        "flow" to "Album Flow", "favs" to "Favourites", "playlists" to "Playlists", "added" to "Recently added", "recent" to "Recently played",
         "most" to "Most played", "artists" to "Artists", "albums" to "Albums", "songs" to "Songs", "genres" to "Genres",
         "folders" to "Folders", "shuffle" to "Shuffle Songs", "nowplaying" to "Now Playing", "refresh" to "Refresh library",
         "sound" to "Sound & equalizer", "themes" to "Themes", "sleep" to "Sleep Timer",
@@ -17,8 +17,11 @@ object HomeItems {
 
     fun visible(): Set<String> {
         val saved = Prefs.homeItems
-        return if (saved.isBlank()) ALL.map { it.first }.filter { it !in DEFAULT_OFF }.toSet()
-        else saved.split(',').filter { it.isNotBlank() }.toSet()
+        if (saved.isBlank()) return ALL.map { it.first }.filter { it !in DEFAULT_OFF }.toSet()
+        val set = saved.split(',').filter { it.isNotBlank() }.toMutableSet()
+        // items added in later versions appear once for people who already picked their Home items
+        if ("v:added" !in set) { set += "added"; set += "v:added"; Prefs.homeItems = set.joinToString(",") }
+        return set
     }
 
     fun summary(): String {
@@ -33,7 +36,7 @@ object HomeItems {
             .setTitle("Show on Home")
             .setMultiChoiceItems(ALL.map { it.second }.toTypedArray(), checked) { _, i, on -> checked[i] = on }
             .setPositiveButton("Save") { _, _ ->
-                Prefs.homeItems = ALL.filterIndexed { i, _ -> checked[i] }.joinToString(",") { it.first }.ifEmpty { "," }
+                Prefs.homeItems = ALL.filterIndexed { i, _ -> checked[i] }.joinToString(",") { it.first } + ",v:added"
                 Player.dispatch()
                 done()
             }
