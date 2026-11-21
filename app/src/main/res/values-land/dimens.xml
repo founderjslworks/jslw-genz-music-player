@@ -5,4 +5,5 @@
     <dimen name="play_btn">60dp</dimen>
     <dimen name="np_btn">46dp</dimen>
     <dimen name="np_side">16dp</dimen>
+    <dimen name="eq_graph_h">200dp</dimen>
 </resources>

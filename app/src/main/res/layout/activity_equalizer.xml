@@ -78,7 +78,7 @@
             <FrameLayout
                 android:id="@+id/eqGraph"
                 android:layout_width="match_parent"
-                android:layout_height="260dp"
+                android:layout_height="@dimen/eq_graph_h"
                 android:layout_marginTop="12dp"
                 android:tag="skin_surface_round">
 

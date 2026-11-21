@@ -143,6 +143,13 @@ object Sheets {
         }
         d.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)?.setBackgroundColor(0)
         d.window?.setDimAmount(0.45f)
+        // landscape: open fully (no half-peek on a short screen) and keep the sheet a readable width
+        val res = v.resources
+        if (res.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            d.behavior.skipCollapsed = true
+            d.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+            d.behavior.maxWidth = (560 * res.displayMetrics.density).toInt()
+        }
     }
 
     fun openInMain(a: Activity, key: String, value: Any) {

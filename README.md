@@ -25,6 +25,10 @@ with no internet permission at all.
 ## What's new in 1.9.11
 
 - Album Flow in landscape: much bigger covers, a slimmer caption and a centred, narrower "slide to album" bar
+- Lock-screen player in landscape: cover on the left, clock and controls on the right (swipe up still closes it)
+- Menus and the queue open fully in landscape and keep a comfortable width instead of stretching edge to edge
+- Sound screen: the graphic EQ fits a landscape screen
+- Ringtone cutter keeps your chosen clip when you rotate the phone
 
 ## What's new in 1.9.10
 

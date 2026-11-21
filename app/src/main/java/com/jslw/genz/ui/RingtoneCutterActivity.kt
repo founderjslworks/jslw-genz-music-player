@@ -70,7 +70,9 @@ class RingtoneCutterActivity : BaseActivity() {
         range.valueTo = dur
         range.minSeparation = 1000f
         val start = (dur * 0.3f).coerceAtMost(dur - 1000f)
-        range.values = listOf(start, (start + 30_000f).coerceAtMost(dur))
+        // keep the chosen clip when the screen rotates
+        val saved = savedInstanceState?.getFloatArray("rtRange")?.takeIf { it.size == 2 && it[0] >= 0f && it[1] <= dur && it[1] - it[0] >= 1000f }
+        range.values = saved?.toList() ?: listOf(start, (start + 30_000f).coerceAtMost(dur))
         range.addOnChangeListener { _, _, _ -> updateRange() }
         updateRange()
 
@@ -168,6 +170,11 @@ class RingtoneCutterActivity : BaseActivity() {
                 }
             }
         }.start()
+    }
+
+    override fun onSaveInstanceState(out: Bundle) {
+        super.onSaveInstanceState(out)
+        if (::range.isInitialized) out.putFloatArray("rtRange", range.values.toFloatArray())
     }
 
     override fun onDestroy() {

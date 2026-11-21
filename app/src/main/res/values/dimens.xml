@@ -24,4 +24,5 @@
     <dimen name="row_art_w">46dp</dimen>
     <dimen name="row_art_h">46dp</dimen>
     <dimen name="brand_logo">150dp</dimen>
+    <dimen name="eq_graph_h">260dp</dimen>
 </resources>
