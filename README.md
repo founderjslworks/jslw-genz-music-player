@@ -22,6 +22,12 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.10
+
+- Landscape: the "Playing on" box is a single slim line again (it had grown into a big empty box)
+- Covers and details found online show up instantly after saving, and songs without a real album each keep their own cover
+- Settings › Lock-screen player check: shows what the phone is blocking and opens the right permission screen
+
 ## What's new in 1.9.9
 
 - **Find cover & details online** now searches Apple Music, Deezer (strong on Bollywood and devotional music) and MusicBrainz / Cover Art Archive together; each match shows where it's from

@@ -68,6 +68,40 @@ class SettingsActivity : BaseActivity() {
 
     private fun canOverlay() = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
 
+    private fun canFullScreen(): Boolean = if (Build.VERSION.SDK_INT >= 34)
+        (getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager).canUseFullScreenIntent() else true
+
+    /** Summary + whether everything the lock-screen player needs is allowed. */
+    private fun lockStatus(): Pair<String, Boolean> {
+        if (!Prefs.lockScreenPlayer) return "Lock-screen player is off" to true
+        val missing = listOfNotNull(
+            "display over other apps".takeIf { Build.VERSION.SDK_INT >= 29 && !canOverlay() },
+            "full-screen notifications".takeIf { !canFullScreen() },
+        )
+        return if (missing.isEmpty()) "All set – also allow \"Show on lock screen\" on realme / OPPO / Xiaomi" to true
+        else "Not working: allow " + missing.joinToString(" and ") to false
+    }
+
+    /** Walks through every permission the phone may want before it shows a player over the lock screen. */
+    private fun lockCheck() {
+        val steps = ArrayList<Pair<String, () -> Unit>>()
+        if (Build.VERSION.SDK_INT >= 29 && !canOverlay()) steps += "Allow \"Display over other apps\"" to {
+            pendingOverlay = "lock"
+            overlay.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+        }
+        if (!canFullScreen() && Build.VERSION.SDK_INT >= 34) steps += "Allow \"Full-screen notifications\"" to {
+            try { startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName"))) } catch (_: Exception) {}
+        }
+        steps += "Open App info (realme / OPPO / Xiaomi: Other permissions › Show on lock screen, Pop-up windows)" to {
+            try { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) } catch (_: Exception) {}
+        }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Lock-screen player")
+            .setItems(steps.map { it.first }.toTypedArray()) { _, w -> Prefs.lockScreenPlayer = true; steps[w].second() }
+            .setNegativeButton("Close", null)
+            .show()
+    }
+
     private fun askOverlay(feature: String, why: String) {
         Sheets.explainPermission(this, Sheets.OVERLAY_TITLE, why) {
             pendingOverlay = feature
@@ -255,6 +289,7 @@ class SettingsActivity : BaseActivity() {
                     "and the screen is locked. It is never used for anything else.")
             } else Prefs.lockScreenPlayer = on
         }
+        items += Item.Action("Lock-screen player check", { lockStatus().first }) { lockCheck() }
         items += Item.Action("Lock-screen media controls", { "Always on: cover, title and controls on every Android version" }) {}
         items += Item.Action("Add a widget to the home screen", {
             if (com.jslw.genz.widget.Widgets.canPin(this)) "Wide 4×1 · Cover 2×2 · Large 4×2"

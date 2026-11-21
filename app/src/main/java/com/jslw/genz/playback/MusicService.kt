@@ -1114,6 +1114,13 @@ class MusicService : MediaBrowserServiceCompat() {
 
     @Volatile private var curFav = false
 
+    /** The current song's details or cover were edited: refresh the notification, lock screen and car. */
+    fun refreshCurrent() {
+        art = null
+        updateMetadata()
+        updateNotification()
+    }
+
     private fun updateMetadata() {
         val s = current ?: return
         val b = MediaMetadataCompat.Builder()

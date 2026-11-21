@@ -215,7 +215,11 @@ class TagEditorActivity : BaseActivity() {
             fTrack.text.toString().trim().toIntOrNull()?.let { t -> (song.track / 1000) * 1000 + t },
         )
         LibraryDb.saveTagOverride(o)
-        val cover = ArtLoader.customCoverFile(this, song.albumId)
+        // show the new details everywhere at once; the full library rebuild follows in the background
+        o.title?.let { song.title = it }; o.artist?.let { song.artist = it }; o.album?.let { song.album = it }
+        o.albumArtist?.let { song.albumArtist = it }; o.genre?.let { song.genre = it }
+        o.year?.let { song.year = it }; o.track?.let { song.track = it }
+        val cover = ArtLoader.customCoverFile(this, song)
         if (newCover != null) cover.writeBytes(newCover!!)
         if (clearCover) cover.delete()
         if (newCover != null || clearCover) ArtLoader.invalidate(song.albumId)
@@ -259,8 +263,9 @@ class TagEditorActivity : BaseActivity() {
 
     private fun finishSave(ok: Boolean) {
         if (ok) toast("Saved")
-        Library.load(this)
+        Player.service?.refreshCurrent()
         Player.dispatch()
+        Library.load(this)
         finish()
     }
 }

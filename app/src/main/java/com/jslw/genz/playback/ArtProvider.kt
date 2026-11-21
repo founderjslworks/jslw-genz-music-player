@@ -28,7 +28,7 @@ class ArtProvider : ContentProvider() {
         val dir = File(ctx.cacheDir, "auto_art").apply { mkdirs() }
         // one file per album (or per song for scanner-only tracks), refreshed when the cover is edited
         val key = if (song.id < 0) "s${-song.id}" else "a${song.albumId}"
-        val custom = ArtLoader.customCoverFile(ctx, song.albumId)
+        val custom = ArtLoader.customCoverFile(ctx, song)
         val file = File(dir, "$key.jpg")
         if (!file.exists() || (custom.exists() && custom.lastModified() > file.lastModified())) {
             val bmp = ArtLoader.loadSync(ctx, song, 480) ?: throw FileNotFoundException()

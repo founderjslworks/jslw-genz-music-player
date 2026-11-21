@@ -61,9 +61,8 @@ class DeviceStrip(context: Context, private var fg: Int, private var accent: Int
             val sz = ((if (v) 26 else 34) * d).toInt()
             icon.layoutParams = LayoutParams(sz, sz)
             val ip = ((if (v) 5 else 7) * d).toInt(); icon.setPadding(ip, ip, ip, ip)
-            (stats.parent as? LinearLayout)?.orientation = if (v) HORIZONTAL else VERTICAL
-            (stats.parent as? LinearLayout)?.gravity = Gravity.CENTER_VERTICAL
-            stats.setPadding(if (v) (12 * d).toInt() else 0, 0, 0, 0)
+            // one line: the name becomes the first item of the figures row
+            title.visibility = if (v) GONE else VISIBLE
         }
 
     fun setColors(fg: Int, accent: Int) { this.fg = fg; this.accent = accent; paint(); refresh() }
@@ -104,8 +103,14 @@ class DeviceStrip(context: Context, private var fg: Int, private var accent: Int
     private fun show(i: DeviceStatus.Info?) {
         if (i == null) { if (visibility != GONE) animate().alpha(0f).setDuration(180).withEndAction { visibility = GONE }.start(); return }
         icon.setImageDrawable(AppCompatResources.getDrawable(context, when { i.soundbar -> R.drawable.ic_soundbar; i.name?.contains("speaker", true) == true || i.name?.contains("boombox", true) == true -> R.drawable.ic_speaker_small; else -> R.drawable.ic_headphones }))
-        title.text = (if (compact) "" else "Playing on ") + (i.name ?: if (i.soundbar) "soundbar" else "Bluetooth")
+        title.text = "Playing on " + (i.name ?: if (i.soundbar) "soundbar" else "Bluetooth")
         stats.removeAllViews()
+        if (compact) stats.addView(TextView(context).apply {
+            text = i.name ?: if (i.soundbar) "Soundbar" else "Bluetooth"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f); setTypeface(typeface, Typeface.BOLD); setTextColor(fg)
+            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, (2 * d).toInt(), (12 * d).toInt(), 0)
+        })
         when {
             i.deviceBattery != null -> stat(R.drawable.ic_battery, "${i.deviceBattery}%", i.deviceBattery <= 15)
             i.bluetooth && !i.needsPermission -> stat(R.drawable.ic_battery, "Not reported")

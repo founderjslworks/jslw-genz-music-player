@@ -44,7 +44,7 @@ object ArtLoader {
 
     // songs without a real album get their own entry, so each can show its own (online) cover
     private fun key(song: Song, size: Int) =
-        "${song.albumId}:${song.id.takeIf { it < 0 || (OnlineArt.enabled && OnlineArt.ownCover(song)) } ?: 0}:$size"
+        "${song.albumId}:${song.id.takeIf { it < 0 || OnlineArt.ownCover(song) } ?: 0}:$size"
 
     /** Bumped whenever a downloaded cover arrives, so open screens can redraw. */
     @Volatile var version = 0; private set
@@ -58,6 +58,11 @@ object ArtLoader {
 
     fun customCoverFile(ctx: Context, albumId: Long) = File(File(ctx.filesDir, "covers").apply { mkdirs() }, "$albumId.jpg")
 
+    /** The song's own cover when it has no real album (singles, "Unknown album"), otherwise its album's. */
+    fun customCoverFile(ctx: Context, song: Song): File =
+        if (OnlineArt.ownCover(song)) File(File(ctx.filesDir, "covers").apply { mkdirs() }, "s${song.id}.jpg")
+        else customCoverFile(ctx, song.albumId)
+
     /** Forget every decoded picture (e.g. the album-art source changed). */
     fun clearMemory() { cache.evictAll(); synchronized(missing) { missing.clear() }; version++ }
 
@@ -65,6 +70,7 @@ object ArtLoader {
         val snapshot = cache.snapshot().keys.filter { it.startsWith("$albumId:") }
         snapshot.forEach { cache.remove(it) }
         synchronized(missing) { missing.removeAll { it.startsWith("$albumId:") } }
+        version++   // open screens redraw the new picture straight away
     }
 
     /** Loads into an ImageView with a soft cross-fade. */
@@ -116,7 +122,7 @@ object ArtLoader {
     }
 
     private fun decode(ctx: Context, song: Song, size: Int): Bitmap? {
-        customCoverFile(ctx, song.albumId).takeIf { it.exists() }?.let { f ->
+        customCoverFile(ctx, song).takeIf { it.exists() }?.let { f ->
             return decodeBytes(f.readBytes(), size)
         }
         // high-quality cover downloaded earlier (Settings › Album art online)
