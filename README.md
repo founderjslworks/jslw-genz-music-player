@@ -22,6 +22,11 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.12
+
+- Paste a song's YouTube link in "Find online" (it's filled in for you if you just copied it): the video's HD thumbnail becomes the cover, cropped square for the player, with its title and channel
+- Titles in two scripts keep both, e.g. "64 योगिनी स्तोत्रम् (Chaunsath Yogini Stotram)"
+
 ## What's new in 1.9.11
 
 - Album Flow in landscape: much bigger covers, a slimmer caption and a centred, narrower "slide to album" bar

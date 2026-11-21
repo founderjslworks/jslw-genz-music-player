@@ -18,6 +18,11 @@ object YouTubeMeta {
     private val idInName = Regex("""[\[(]([A-Za-z0-9_-]{11})[\])]""")
     private val idInUrl = Regex("""(?:youtu\.be/|youtube\.com/(?:watch\?(?:.*&)?v=|shorts/|embed/)|music\.youtube\.com/watch\?v=)([A-Za-z0-9_-]{11})""")
 
+    /** A video id from a pasted YouTube / YouTube Music link (or a bare id), or null. */
+    fun idFromText(t: String): String? =
+        idInUrl.find(t)?.groupValues?.get(1)
+            ?: t.trim().takeIf { it.length == 11 && it.matches(Regex("[A-Za-z0-9_-]{11}")) && it.any { c -> c.isDigit() || c == '_' || c == '-' } }
+
     /** The YouTube video id this song came from, or null. Reads only the start and end of the file. Background thread. */
     fun videoId(ctx: Context, s: Song): String? {
         idInUrl.find(s.path)?.let { return it.groupValues[1] }
@@ -49,7 +54,11 @@ object YouTubeMeta {
             ?.let { runCatching { JSONObject(String(it, Charsets.UTF_8)) }.getOrNull() }
         val rawTitle = j?.optString("title").orEmpty()
         val channel = cleanChannel(j?.optString("author_name").orEmpty())
-        val (artist, title) = split(rawTitle, channel)
+        var (artist, title) = split(rawTitle, channel)
+        // "64 योगिनी स्तोत्रम् | Chaunsath Yogini Stotram | …" → keep both scripts: "64 योगिनी स्तोत्रम् (Chaunsath Yogini Stotram)"
+        val parts = rawTitle.split(Regex("""\s*[|｜]\s*""")).map { tidy(it) }.filter { it.isNotBlank() }
+        if (parts.size >= 2 && title == parts[0] && parts[0].any { it.code > 0x24F && it.isLetter() } && parts[1].all { it.code < 0x250 })
+            title = "${parts[0]} (${parts[1]})"
         return OnlineTags.Match(
             title.ifEmpty { rawTitle }, artist, "", "", "", 0, 0,
             "yt:$id", "https://i.ytimg.com/vi/$id/mqdefault.jpg", "YouTube",

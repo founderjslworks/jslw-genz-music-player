@@ -108,7 +108,7 @@ class TagEditorActivity : BaseActivity() {
                 if (isFinishing) return@runOnUiThread
                 when {
                     found == null -> toast("Couldn't reach the music catalogues – check your internet connection")
-                    found.isEmpty() -> askQuery("Nothing found. Try other words:")
+                    found.isEmpty() -> askQuery("Nothing found. Try other words, or paste the song's YouTube link:")
                     else -> pickMatch(found)
                 }
             }
@@ -116,7 +116,13 @@ class TagEditorActivity : BaseActivity() {
     }
 
     private fun askQuery(title: String) {
-        Sheets.askText(this, title, com.jslw.genz.util.OnlineTags.defaultTerm(song), "Search") { q -> findOnline(q) }
+        // a YouTube link on the clipboard (copied from the YouTube app's Share › Copy link) is filled in for you
+        val clip = try {
+            (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).primaryClip
+                ?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
+        } catch (_: Exception) { null }
+        val link = clip?.takeIf { com.jslw.genz.util.YouTubeMeta.idFromText(it) != null }?.trim()
+        Sheets.askText(this, title, link ?: com.jslw.genz.util.OnlineTags.defaultTerm(song), "Search") { q -> findOnline(q) }
     }
 
     private fun pickMatch(list: List<com.jslw.genz.util.OnlineTags.Match>) {

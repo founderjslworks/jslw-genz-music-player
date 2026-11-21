@@ -31,6 +31,11 @@ object OnlineTags {
     fun search(s: Song, query: String? = null, ctx: android.content.Context? = null): List<Match> {
         // the video the song was saved from (YouTube downloads), looked up first: its real title and channel
         // also make a much better search than the file's noisy name
+        // a pasted YouTube link: use exactly that video
+        query?.let { YouTubeMeta.idFromText(it) }?.let { id ->
+            val m = runCatching { YouTubeMeta.match(id) }.getOrNull() ?: throw java.io.IOException("offline")
+            return listOf(m)
+        }
         val ytId = if (query == null && ctx != null) runCatching { YouTubeMeta.videoId(ctx, s) }.getOrNull() else null
         val yt = ytId?.let { runCatching { YouTubeMeta.match(it) }.getOrNull() }
         val term = query?.trim()?.ifEmpty { null } ?: defaultTerm(s, yt)
