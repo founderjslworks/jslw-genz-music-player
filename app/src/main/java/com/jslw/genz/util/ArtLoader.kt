@@ -44,7 +44,27 @@ object ArtLoader {
 
     // songs without a real album get their own entry, so each can show its own (online) cover
     private fun key(song: Song, size: Int) =
-        "${song.albumId}:${song.id.takeIf { it < 0 || OnlineArt.ownCover(song) } ?: 0}:$size"
+        "${song.albumId}:${song.id.takeIf { it < 0 || OnlineArt.ownCover(song) || it in songCovers } ?: 0}:$size"
+
+    /** Songs that have a cover of their own (covers/s<id>.jpg), so songs sharing an album id never swap pictures. */
+    private val songCovers: MutableSet<Long> = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap())
+    @Volatile private var primed = false
+    private fun prime(ctx: Context) {
+        if (primed) return
+        primed = true
+        File(ctx.filesDir, "covers").list()?.forEach { n ->
+            if (n.startsWith("s") && n.endsWith(".jpg")) n.substring(1, n.length - 4).toLongOrNull()?.let { songCovers += it }
+        }
+    }
+    private fun songCoverFile(ctx: Context, song: Song) = File(File(ctx.filesDir, "covers").apply { mkdirs() }, "s${song.id}.jpg")
+
+    /** Saves a cover for this one song only and shows it everywhere. Pass null to remove it. */
+    fun setSongCover(ctx: Context, song: Song, bytes: ByteArray?) {
+        prime(ctx)
+        val f = songCoverFile(ctx, song)
+        if (bytes != null) { f.writeBytes(bytes); songCovers += song.id } else { f.delete(); songCovers -= song.id }
+        invalidate(song.albumId)
+    }
 
     /** Bumped whenever a downloaded cover arrives, so open screens can redraw. */
     @Volatile var version = 0; private set
@@ -59,14 +79,22 @@ object ArtLoader {
     fun customCoverFile(ctx: Context, albumId: Long) = File(File(ctx.filesDir, "covers").apply { mkdirs() }, "$albumId.jpg")
 
     /** The song's own cover when it has no real album (singles, "Unknown album"), otherwise its album's. */
-    fun customCoverFile(ctx: Context, song: Song): File =
-        if (OnlineArt.ownCover(song)) File(File(ctx.filesDir, "covers").apply { mkdirs() }, "s${song.id}.jpg")
+    fun customCoverFile(ctx: Context, song: Song): File {
+        prime(ctx)
+        return if (song.id in songCovers || OnlineArt.ownCover(song)) songCoverFile(ctx, song)
         else customCoverFile(ctx, song.albumId)
+    }
 
     /** Forget every decoded picture (e.g. the album-art source changed). */
-    fun clearMemory() { cache.evictAll(); synchronized(missing) { missing.clear() }; version++ }
+    // Invalidation generations: a decode that started before an invalidate must not put the old picture back.
+    private val gens = java.util.concurrent.ConcurrentHashMap<Long, Int>()
+    @Volatile private var allGen = 0
+    private fun gen(song: Song) = allGen * 31 + (gens[song.albumId] ?: 0)
+
+    fun clearMemory() { allGen++; cache.evictAll(); synchronized(missing) { missing.clear() }; version++ }
 
     fun invalidate(albumId: Long) {
+        gens.merge(albumId, 1) { a, b -> a + b }
         val snapshot = cache.snapshot().keys.filter { it.startsWith("$albumId:") }
         snapshot.forEach { cache.remove(it) }
         synchronized(missing) { missing.removeAll { it.startsWith("$albumId:") } }
@@ -76,16 +104,20 @@ object ArtLoader {
     /** Loads into an ImageView with a soft cross-fade. */
     fun load(iv: ImageView, song: Song?, sizePx: Int, large: Boolean = false, onLoaded: ((Bitmap?) -> Unit)? = null) {
         iv.setTag(R.id.tag_art, song?.id)
+        prime(iv.context)
         if (song == null) { placeholder(iv, large); onLoaded?.invoke(null); return }
         val k = key(song, sizePx)
         cache.get(k)?.let { setBitmap(iv, it, false); onLoaded?.invoke(it); return }
         if (synchronized(missing) { k in missing }) { placeholder(iv, large); onLoaded?.invoke(null); return }
         placeholder(iv, large)
         val ctx = iv.context.applicationContext
+        val g0 = gen(song)
         exec.execute {
             val bmp = loadSync(ctx, song, sizePx)
             main.post {
                 if (iv.getTag(R.id.tag_art) != song.id) return@post
+                // the cover changed while this was loading: load the new one instead
+                if (gen(song) != g0) { load(iv, song, sizePx, large, onLoaded); return@post }
                 if (bmp != null) setBitmap(iv, bmp, true) else placeholder(iv, large)
                 onLoaded?.invoke(bmp)
             }
@@ -114,9 +146,12 @@ object ArtLoader {
 
     /** Synchronous load – call from a background thread. */
     fun loadSync(ctx: Context, song: Song, sizePx: Int): Bitmap? {
+        prime(ctx)
         val k = key(song, sizePx)
         cache.get(k)?.let { return it }
+        val g0 = gen(song)
         val bmp = try { decode(ctx, song, sizePx) } catch (e: Throwable) { null }
+        if (gen(song) != g0) return loadSync(ctx, song, sizePx) // invalidated meanwhile – decode again
         if (bmp != null) cache.put(k, bmp) else synchronized(missing) { missing += k }
         return bmp
     }
@@ -134,6 +169,10 @@ object ArtLoader {
         if (local == null && OnlineArt.enabled) OnlineArt.request(ctx, song) { onlineArrived(song) }
         return local
     }
+
+    /** True when the song has a picture of its own (custom cover, embedded art or the phone's album art). */
+    fun hasArt(ctx: Context, song: Song): Boolean =
+        customCoverFile(ctx, song).exists() || (try { decodeLocal(ctx, song, 48) } catch (_: Throwable) { null }) != null
 
     private fun decodeLocal(ctx: Context, song: Song, size: Int): Bitmap? {
         if (song.id > 0) {

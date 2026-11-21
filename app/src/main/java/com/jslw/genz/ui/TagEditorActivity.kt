@@ -102,7 +102,7 @@ class TagEditorActivity : BaseActivity() {
             .setTitle("Searching online…").setMessage(query ?: (song.title + if (song.artist.isNotBlank()) " – " + song.artist else ""))
             .setCancelable(true).show()
         Thread {
-            val found = try { com.jslw.genz.util.OnlineTags.search(song, query) } catch (_: Exception) { null }
+            val found = try { com.jslw.genz.util.OnlineTags.search(song, query, applicationContext) } catch (_: Exception) { null }
             runOnUiThread {
                 wait.dismiss()
                 if (isFinishing) return@runOnUiThread
@@ -116,7 +116,7 @@ class TagEditorActivity : BaseActivity() {
     }
 
     private fun askQuery(title: String) {
-        Sheets.askText(this, title, fTitle.text.toString() + " " + fArtist.text.toString(), "Search") { q -> findOnline(q) }
+        Sheets.askText(this, title, com.jslw.genz.util.OnlineTags.defaultTerm(song), "Search") { q -> findOnline(q) }
     }
 
     private fun pickMatch(list: List<com.jslw.genz.util.OnlineTags.Match>) {
@@ -181,11 +181,13 @@ class TagEditorActivity : BaseActivity() {
         if (m.genre.isNotBlank()) fGenre.setText(m.genre)
         if (m.year > 0) fYear.setText(m.year.toString())
         if (m.track > 0) fTrack.setText(m.track.toString())
-        val url = m.coverUrl ?: run { toast("Details filled in – tap ✓ to save"); return }
+        // opened from the song menu ("Find cover & details online"): save straight away
+        val quick = intent.getBooleanExtra("online", false)
+        val url = m.coverUrl ?: run { if (quick) save() else toast("Details filled in – tap ✓ to save"); return }
         toast("Downloading the cover…")
         Thread {
-            val bytes = com.jslw.genz.util.OnlineTags.get(url)
-            val bmp = bytes?.let { ArtLoader.decodeBytes(it, 1200) }
+            val bmp = if (url.startsWith("yt:")) com.jslw.genz.util.YouTubeMeta.cover(url.removePrefix("yt:"))
+                else com.jslw.genz.util.OnlineTags.get(url)?.let { ArtLoader.decodeBytes(it, 1200) }
             val out = ByteArrayOutputStream()
             bmp?.let { scaleDown(it, 1200).compress(Bitmap.CompressFormat.JPEG, 92, out) }
             runOnUiThread {
@@ -193,6 +195,7 @@ class TagEditorActivity : BaseActivity() {
                 if (bmp == null) { toast("Details filled in, but the cover couldn't be downloaded"); return@runOnUiThread }
                 newCover = out.toByteArray(); clearCover = false
                 art.setImageBitmap(bmp); art.scaleType = ImageView.ScaleType.CENTER_CROP
+                if (quick) { save(); return@runOnUiThread }
                 toast("Cover and details filled in – tap ✓ to save" + if (writeFile.isEnabled) " (tick \"write into file\" to keep them in the song)" else "")
             }
         }.start()
@@ -215,14 +218,20 @@ class TagEditorActivity : BaseActivity() {
             fTrack.text.toString().trim().toIntOrNull()?.let { t -> (song.track / 1000) * 1000 + t },
         )
         LibraryDb.saveTagOverride(o)
+        // a song that had no real album, or whose album is being changed here, keeps the cover to itself:
+        // otherwise it would land on the album id it shares with other songs and show up on them too
+        val ownCover = com.jslw.genz.util.OnlineArt.ownCover(song) || (o.album != null && !o.album.equals(song.album, true))
         // show the new details everywhere at once; the full library rebuild follows in the background
         o.title?.let { song.title = it }; o.artist?.let { song.artist = it }; o.album?.let { song.album = it }
         o.albumArtist?.let { song.albumArtist = it }; o.genre?.let { song.genre = it }
         o.year?.let { song.year = it }; o.track?.let { song.track = it }
-        val cover = ArtLoader.customCoverFile(this, song)
-        if (newCover != null) cover.writeBytes(newCover!!)
-        if (clearCover) cover.delete()
-        if (newCover != null || clearCover) ArtLoader.invalidate(song.albumId)
+        if (newCover != null && ownCover) ArtLoader.setSongCover(this, song, newCover)
+        else {
+            val cover = ArtLoader.customCoverFile(this, song)
+            if (newCover != null) cover.writeBytes(newCover!!)
+            if (clearCover) { cover.delete(); ArtLoader.setSongCover(this, song, null) }
+            if (newCover != null || clearCover) ArtLoader.invalidate(song.albumId)
+        }
 
         if (!(writeFile.isChecked && writeFile.isEnabled)) { finishSave(true); return }
         // Ask Android for permission to modify the file where needed

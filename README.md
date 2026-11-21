@@ -29,6 +29,11 @@ with no internet permission at all.
 - Menus and the queue open fully in landscape and keep a comfortable width instead of stretching edge to edge
 - Sound screen: the graphic EQ fits a landscape screen
 - Ringtone cutter keeps your chosen clip when you rotate the phone
+- Fixed: a cover found online sometimes didn't show after saving (an older picture could slip back in)
+- Fixed: songs sharing one "album" (e.g. Unknown) no longer swap covers – each keeps its own
+- YouTube downloads: "Find cover & details online" finds the video the song came from and offers its real title, channel and thumbnail, and tidies names like "Song (Official Video) | Label" before searching
+- Settings › Find missing covers (YouTube downloads): one tap gives every song without a picture a cover
+- "Find cover & details online" from the song menu saves as soon as you pick a match
 
 ## What's new in 1.9.10
 

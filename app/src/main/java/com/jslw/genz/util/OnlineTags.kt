@@ -28,9 +28,12 @@ object OnlineTags {
      * MusicBrainz / Cover Art Archive – and merges the answers, closest length first.
      * [query] defaults to the song's title and artist.
      */
-    fun search(s: Song, query: String? = null): List<Match> {
-        val term = query?.trim()?.ifEmpty { null }
-            ?: (clean(s.title) + if (s.artist.isNotBlank() && !s.artist.startsWith("unknown", true)) " " + clean(s.artist) else "")
+    fun search(s: Song, query: String? = null, ctx: android.content.Context? = null): List<Match> {
+        // the video the song was saved from (YouTube downloads), looked up first: its real title and channel
+        // also make a much better search than the file's noisy name
+        val ytId = if (query == null && ctx != null) runCatching { YouTubeMeta.videoId(ctx, s) }.getOrNull() else null
+        val yt = ytId?.let { runCatching { YouTubeMeta.match(it) }.getOrNull() }
+        val term = query?.trim()?.ifEmpty { null } ?: defaultTerm(s, yt)
         val results = arrayOfNulls<List<Match>>(3)
         val jobs = listOf(
             Thread { results[0] = runCatching { itunes(term) }.getOrNull() },
@@ -38,7 +41,23 @@ object OnlineTags {
             Thread { results[2] = runCatching { musicBrainz(term) }.getOrNull() },
         )
         jobs.forEach { it.start() }; jobs.forEach { it.join(16000) }
-        if (results.all { it == null }) throw java.io.IOException("offline")
+        if (results.all { it == null } && yt == null) throw java.io.IOException("offline")
+        val found = merge(s, results)
+        return if (yt != null) listOf(yt) + found else found
+    }
+
+    /** What to search for when the user didn't type anything – YouTube-style names are tidied first. */
+    fun defaultTerm(s: Song, yt: Match? = null): String {
+        if (yt != null) return (yt.artist + " " + yt.title).trim()
+        val artist = s.artist.takeIf { it.isNotBlank() && !it.startsWith("unknown", true) && !it.startsWith("<unknown") }
+        if (YouTubeMeta.looksLikeYouTube(s)) {
+            val (a, t) = YouTubeMeta.split(s.title, YouTubeMeta.cleanChannel(artist.orEmpty()))
+            return (t + " " + a).trim()
+        }
+        return clean(s.title) + (artist?.let { " " + clean(it) } ?: "")
+    }
+
+    private fun merge(s: Song, results: Array<List<Match>?>): List<Match> {
         // interleave so every source shows near the top, then closest duration first
         val merged = ArrayList<Match>()
         val lists = results.map { it ?: emptyList() }

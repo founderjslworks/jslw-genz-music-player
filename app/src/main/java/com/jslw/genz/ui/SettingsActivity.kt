@@ -23,6 +23,7 @@ import com.jslw.genz.data.Prefs
 import com.jslw.genz.playback.Player
 import com.jslw.genz.skin.SkinManager
 import com.jslw.genz.skin.SkinPainter
+import com.jslw.genz.util.dpi
 import com.jslw.genz.util.toast
 
 /** All settings, built in code so every row follows the active theme file. */
@@ -83,6 +84,28 @@ class SettingsActivity : BaseActivity() {
     }
 
     /** Walks through every permission the phone may want before it shows a player over the lock screen. */
+    private fun fixMissingCovers() {
+        val songs = Library.songs
+        if (songs.isEmpty()) { toast("No songs yet"); return }
+        val stop = java.util.concurrent.atomic.AtomicBoolean(false)
+        val msg = TextView(this).apply { setPadding(dpi(24), dpi(12), dpi(24), 0); text = "Checking 0 of ${songs.size}…" }
+        val dlg = MaterialAlertDialogBuilder(this).setTitle("Finding missing covers").setView(msg)
+            .setNegativeButton("Stop") { _, _ -> stop.set(true) }.setCancelable(false).show()
+        val app = applicationContext
+        Thread {
+            val n = try {
+                com.jslw.genz.util.YouTubeMeta.fixMissingCovers(app, songs, { stop.get() }) { done, total ->
+                    if (done % 5 == 0 || done == total) runOnUiThread { msg.text = "Checking $done of $total…" }
+                }
+            } catch (_: Exception) { -1 }
+            runOnUiThread {
+                if (dlg.isShowing) dlg.dismiss()
+                Library.notifyListeners(); Player.service?.refreshCurrent(); Player.dispatch()
+                toast(when { n < 0 -> "Couldn't finish – check your internet connection"; n == 0 -> "No new covers found"; else -> "$n songs got a cover" })
+            }
+        }.start()
+    }
+
     private fun lockCheck() {
         val steps = ArrayList<Pair<String, () -> Unit>>()
         if (Build.VERSION.SDK_INT >= 29 && !canOverlay()) steps += "Allow \"Display over other apps\"" to {
@@ -205,6 +228,9 @@ class SettingsActivity : BaseActivity() {
         }
         items += Item.Toggle("Album art over mobile data", "Off = download covers on Wi-Fi only (about 200 KB each)",
             { Prefs.onlineArtMobile }, { Prefs.onlineArtMobile = it })
+        items += Item.Action("Find missing covers (YouTube downloads)", { "Songs without a picture get the video's thumbnail or a matching cover" }) {
+            fixMissingCovers()
+        }
         items += Item.Action("Delete downloaded album art", { "${com.jslw.genz.util.OnlineArt.cachedCount(this)} covers on this phone" }) {
             com.jslw.genz.util.OnlineArt.clear(this)
             com.jslw.genz.util.ArtLoader.clearMemory()
