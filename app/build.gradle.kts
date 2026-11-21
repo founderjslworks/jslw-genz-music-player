@@ -13,8 +13,8 @@ android {
         minSdk = 19
         // Google Play: new apps must target Android 16 (API 36)
         targetSdk = 36
-        versionCode = 17
-        versionName = "1.9.8"
+        versionCode = 18
+        versionName = "1.9.9"
         multiDexEnabled = true
         // Leave vector PNG generation ON for API < 21 (notifications/widgets on KitKat need PNGs).
     }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Landscape phones are short: tighter player controls so title, seek bar and all buttons fit on one screen. -->
+<resources>
+    <dimen name="header_h">48dp</dimen>
+    <dimen name="play_btn">60dp</dimen>
+    <dimen name="np_btn">46dp</dimen>
+    <dimen name="np_side">16dp</dimen>
+</resources>

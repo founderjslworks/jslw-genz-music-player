@@ -52,6 +52,20 @@ class DeviceStrip(context: Context, private var fg: Int, private var accent: Int
         paint()
     }
 
+    /** One slim line (landscape): name and figures side by side. */
+    var compact = false
+        set(v) {
+            field = v
+            val p = ((if (v) 6 else 10) * d).toInt()
+            setPadding((10 * d).toInt(), p, (10 * d).toInt(), p)
+            val sz = ((if (v) 26 else 34) * d).toInt()
+            icon.layoutParams = LayoutParams(sz, sz)
+            val ip = ((if (v) 5 else 7) * d).toInt(); icon.setPadding(ip, ip, ip, ip)
+            (stats.parent as? LinearLayout)?.orientation = if (v) HORIZONTAL else VERTICAL
+            (stats.parent as? LinearLayout)?.gravity = Gravity.CENTER_VERTICAL
+            stats.setPadding(if (v) (12 * d).toInt() else 0, 0, 0, 0)
+        }
+
     fun setColors(fg: Int, accent: Int) { this.fg = fg; this.accent = accent; paint(); refresh() }
 
     private fun paint() {
@@ -90,7 +104,7 @@ class DeviceStrip(context: Context, private var fg: Int, private var accent: Int
     private fun show(i: DeviceStatus.Info?) {
         if (i == null) { if (visibility != GONE) animate().alpha(0f).setDuration(180).withEndAction { visibility = GONE }.start(); return }
         icon.setImageDrawable(AppCompatResources.getDrawable(context, when { i.soundbar -> R.drawable.ic_soundbar; i.name?.contains("speaker", true) == true || i.name?.contains("boombox", true) == true -> R.drawable.ic_speaker_small; else -> R.drawable.ic_headphones }))
-        title.text = "Playing on " + (i.name ?: if (i.soundbar) "soundbar" else "Bluetooth")
+        title.text = (if (compact) "" else "Playing on ") + (i.name ?: if (i.soundbar) "soundbar" else "Bluetooth")
         stats.removeAllViews()
         when {
             i.deviceBattery != null -> stat(R.drawable.ic_battery, "${i.deviceBattery}%", i.deviceBattery <= 15)

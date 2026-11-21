@@ -782,14 +782,42 @@ class MusicService : MediaBrowserServiceCompat() {
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context?, i: Intent?) {
             if (!isPlaying || !Prefs.lockScreenPlayer) return
-            // Android 10+ only lets apps open a screen from the background with "display over other apps".
-            if (Build.VERSION.SDK_INT >= 29 && !android.provider.Settings.canDrawOverlays(this@MusicService)) return
-            try {
-                startActivity(Intent(this@MusicService, com.jslw.genz.ui.LockScreenActivity::class.java).addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-                ))
-            } catch (_: Exception) {}
+            val i = Intent(this@MusicService, com.jslw.genz.ui.LockScreenActivity::class.java).addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+            )
+            // Android 10+ only lets apps open a screen from the background with "display over other apps" – and
+            // some phones (ColorOS, MIUI) still block it now and then. A silent full-screen notification is the
+            // way Android itself offers to show a screen over the lock screen, so it's sent as well.
+            if (Build.VERSION.SDK_INT < 29 || android.provider.Settings.canDrawOverlays(this@MusicService)) {
+                try { startActivity(i) } catch (_: Exception) {}
+            }
+            if (Build.VERSION.SDK_INT >= 29) lockFullScreen(i)
         }
+    }
+
+    @androidx.annotation.RequiresApi(29)
+    private fun lockFullScreen(i: Intent) {
+        try {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (nm.getNotificationChannel(LOCK_CHANNEL) == null)
+                nm.createNotificationChannel(NotificationChannel(LOCK_CHANNEL, "Lock-screen player", NotificationManager.IMPORTANCE_HIGH).apply {
+                    setSound(null, null); enableVibration(false); setShowBadge(false)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    description = "Opens the GEN-Z player when you lock the phone. Nothing is shown in the notification shade."
+                })
+            val pi = android.app.PendingIntent.getActivity(this, 77, i, android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+            val n = NotificationCompat.Builder(this, LOCK_CHANNEL)
+                .setSmallIcon(R.drawable.ic_stat_note)
+                .setContentTitle(current?.title ?: "GEN-Z Music")
+                .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setSilent(true)
+                .setFullScreenIntent(pi, true)
+                .setTimeoutAfter(4000)
+                .build()
+            nm.notify(LOCK_NOTIFICATION, n)
+            Handler(Looper.getMainLooper()).postDelayed({ try { nm.cancel(LOCK_NOTIFICATION) } catch (_: Exception) {} }, 4000)
+        } catch (_: Exception) {}
     }
 
     private fun setScreenReceiver(on: Boolean) {
@@ -1258,6 +1286,8 @@ class MusicService : MediaBrowserServiceCompat() {
     companion object {
         const val CHANNEL = "playback"
         const val NOTIF_ID = 42
+        const val LOCK_CHANNEL = "lockscreen"
+        const val LOCK_NOTIFICATION = 43
         const val REPEAT_OFF = 0
         const val REPEAT_ALL = 1
         const val REPEAT_ONE = 2

@@ -107,7 +107,7 @@ class TagEditorActivity : BaseActivity() {
                 wait.dismiss()
                 if (isFinishing) return@runOnUiThread
                 when {
-                    found == null -> toast("Couldn't reach the internet – check your connection")
+                    found == null -> toast("Couldn't reach the music catalogues – check your internet connection")
                     found.isEmpty() -> askQuery("Nothing found. Try other words:")
                     else -> pickMatch(found)
                 }
@@ -141,6 +141,7 @@ class TagEditorActivity : BaseActivity() {
                 tv.text = android.text.SpannableStringBuilder().apply {
                     append(m.title, android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0)
                     append("\n" + m.artist + "\n" + m.album + (if (m.year > 0) " · ${m.year}" else ""))
+                    append("\n" + m.source, android.text.style.ForegroundColorSpan(sk.accent), 0)
                 }
                 tv.setTextColor(sk.text)
                 iv.tag = i
@@ -166,6 +167,13 @@ class TagEditorActivity : BaseActivity() {
     }
 
     private fun apply(m: com.jslw.genz.util.OnlineTags.Match) {
+        if (m.source == "Deezer" && (m.year == 0 || m.genre.isEmpty())) {
+            // fetch the album's year and genre first
+            Thread { try { com.jslw.genz.util.OnlineTags.complete(m) } catch (_: Exception) {}; runOnUiThread { if (!isFinishing) fill(m) } }.start()
+        } else fill(m)
+    }
+
+    private fun fill(m: com.jslw.genz.util.OnlineTags.Match) {
         if (m.title.isNotBlank()) fTitle.setText(m.title)
         if (m.artist.isNotBlank()) fArtist.setText(m.artist)
         if (m.album.isNotBlank()) fAlbum.setText(m.album)

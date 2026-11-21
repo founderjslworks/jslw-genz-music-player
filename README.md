@@ -22,6 +22,12 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.9
+
+- **Find cover & details online** now searches Apple Music, Deezer (strong on Bollywood and devotional music) and MusicBrainz / Cover Art Archive together; each match shows where it's from
+- **Lock-screen player** opens reliably on phones that block apps from starting in the background (ColorOS, MIUI)
+- **Landscape**: tighter controls, slim "Playing on" line and smaller title, so the whole player fits
+
 ## What's new in 1.9.8
 
 - **Recently added** on Home: newly scanned songs always come first (GEN-Z remembers when it first found each song), with a count of this week's new songs; after Refresh, GEN-Z says how many are new

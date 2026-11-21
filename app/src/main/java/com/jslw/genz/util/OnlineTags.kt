@@ -14,7 +14,8 @@ import java.net.URL
 object OnlineTags {
     class Match(
         val title: String, val artist: String, val album: String, val albumArtist: String,
-        val genre: String, val year: Int, val track: Int, val coverUrl: String?, val thumbUrl: String?,
+        var genre: String, var year: Int, val track: Int, val coverUrl: String?, val thumbUrl: String?,
+        val source: String = "iTunes", val durationMs: Long = 0, val deezerAlbum: Long = 0,
     )
 
     private fun clean(t: String) = t
@@ -22,30 +23,86 @@ object OnlineTags {
         .replace(Regex("(?i)\\b(official|video|audio|lyrics?|lyrical|hd|4k|full song|remastered|slowed|reverb|lofi|lo-fi)\\b"), " ")
         .replace(Regex("[#_|]+"), " ").replace(Regex("\\s+"), " ").trim()
 
-    /** Runs on a background thread. [query] defaults to the song's title and artist. */
+    /**
+     * Runs on a background thread. Asks several catalogues at once – iTunes (Apple Music), Deezer and
+     * MusicBrainz / Cover Art Archive – and merges the answers, closest length first.
+     * [query] defaults to the song's title and artist.
+     */
     fun search(s: Song, query: String? = null): List<Match> {
         val term = query?.trim()?.ifEmpty { null }
             ?: (clean(s.title) + if (s.artist.isNotBlank() && !s.artist.startsWith("unknown", true)) " " + clean(s.artist) else "")
-        val json = get("https://itunes.apple.com/search?media=music&entity=song&limit=12&term=" + Uri.encode(term)) ?: return emptyList()
-        val arr = JSONObject(String(json, Charsets.UTF_8)).optJSONArray("results") ?: return emptyList()
-        val out = ArrayList<Match>()
-        for (i in 0 until arr.length()) {
+        val results = arrayOfNulls<List<Match>>(3)
+        val jobs = listOf(
+            Thread { results[0] = runCatching { itunes(term) }.getOrNull() },
+            Thread { results[1] = runCatching { deezer(term) }.getOrNull() },
+            Thread { results[2] = runCatching { musicBrainz(term) }.getOrNull() },
+        )
+        jobs.forEach { it.start() }; jobs.forEach { it.join(16000) }
+        if (results.all { it == null }) throw java.io.IOException("offline")
+        // interleave so every source shows near the top, then closest duration first
+        val merged = ArrayList<Match>()
+        val lists = results.map { it ?: emptyList() }
+        for (i in 0 until (lists.maxOfOrNull { it.size } ?: 0)) for (l in lists) l.getOrNull(i)?.let { merged += it }
+        if (s.duration <= 0) return merged
+        return merged.sortedBy { m -> if (m.durationMs > 0 && Math.abs(m.durationMs - s.duration) < 6000) 0 else 1 }
+    }
+
+    private fun json(url: String) = get(url)?.let { JSONObject(String(it, Charsets.UTF_8)) }
+
+    private fun itunes(term: String): List<Match> {
+        val arr = json("https://itunes.apple.com/search?media=music&entity=song&limit=8&term=" + Uri.encode(term))?.optJSONArray("results") ?: return emptyList()
+        return (0 until arr.length()).map { i ->
             val r = arr.getJSONObject(i)
             val art = r.optString("artworkUrl100").ifEmpty { null }
-            out += Match(
+            Match(
                 r.optString("trackName"), r.optString("artistName"), r.optString("collectionName"),
                 r.optString("collectionArtistName").ifEmpty { r.optString("artistName") },
                 r.optString("primaryGenreName"), r.optString("releaseDate").take(4).toIntOrNull() ?: 0,
                 r.optInt("trackNumber", 0), art?.replace("100x100bb", "1200x1200bb"), art?.replace("100x100bb", "200x200bb"),
+                "Apple Music", r.optLong("trackTimeMillis"),
             )
         }
-        // closest duration first when the catalogue has several versions
-        if (s.duration > 0) {
-            val dur = HashMap<Match, Long>()
-            for (i in 0 until arr.length()) dur[out[i]] = Math.abs(arr.getJSONObject(i).optLong("trackTimeMillis") - s.duration)
-            return out.sortedBy { if ((dur[it] ?: Long.MAX_VALUE) < 6000) 0 else 1 }
+    }
+
+    /** Deezer's open catalogue – strong on Indian film and devotional music. Covers are 1000 px. */
+    private fun deezer(term: String): List<Match> {
+        val arr = json("https://api.deezer.com/search?limit=8&q=" + Uri.encode(term))?.optJSONArray("data") ?: return emptyList()
+        return (0 until arr.length()).map { i ->
+            val r = arr.getJSONObject(i)
+            val al = r.optJSONObject("album"); val ar = r.optJSONObject("artist")
+            Match(
+                r.optString("title"), ar?.optString("name") ?: "", al?.optString("title") ?: "", ar?.optString("name") ?: "",
+                "", 0, 0, al?.optString("cover_xl")?.ifEmpty { null }, al?.optString("cover_medium")?.ifEmpty { null },
+                "Deezer", r.optLong("duration") * 1000, al?.optLong("id") ?: 0,
+            )
+        }
+    }
+
+    /** MusicBrainz recordings with their Cover Art Archive front covers. */
+    private fun musicBrainz(term: String): List<Match> {
+        val arr = json("https://musicbrainz.org/ws/2/recording/?fmt=json&limit=6&query=" + Uri.encode(term))?.optJSONArray("recordings") ?: return emptyList()
+        val out = ArrayList<Match>()
+        for (i in 0 until arr.length()) {
+            val r = arr.getJSONObject(i)
+            val rel = r.optJSONArray("releases")?.optJSONObject(0) ?: continue
+            val artist = r.optJSONArray("artist-credit")?.optJSONObject(0)?.optString("name") ?: ""
+            val id = rel.optString("id")
+            out += Match(
+                r.optString("title"), artist, rel.optString("title"), artist, "",
+                rel.optString("date").take(4).toIntOrNull() ?: 0, 0,
+                "https://coverartarchive.org/release/$id/front-1200", "https://coverartarchive.org/release/$id/front-250",
+                "MusicBrainz", r.optLong("length"),
+            )
         }
         return out
+    }
+
+    /** Year and genre for a Deezer match (its search doesn't include them). Background thread. */
+    fun complete(m: Match) {
+        if (m.source != "Deezer" || m.deezerAlbum == 0L) return
+        val a = json("https://api.deezer.com/album/" + m.deezerAlbum) ?: return
+        if (m.year == 0) m.year = a.optString("release_date").take(4).toIntOrNull() ?: 0
+        if (m.genre.isEmpty()) m.genre = a.optJSONObject("genres")?.optJSONArray("data")?.optJSONObject(0)?.optString("name") ?: ""
     }
 
     fun get(url: String): ByteArray? {

@@ -119,6 +119,10 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
             val side = resources.getDimensionPixelSize(R.dimen.np_side)
             // portrait: under the top bar; landscape: in the right-hand column, under the top bar there too
             val host = (findViewById<View>(R.id.npSide) ?: content) as android.view.ViewGroup
+            if (findViewById<View>(R.id.npSide) != null) {
+                st.compact = true
+                findViewById<android.widget.TextView>(R.id.npTitle)?.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 18f)
+            }
             host.addView(st, 1, android.widget.LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = side; marginEnd = side; bottomMargin = (6 * resources.displayMetrics.density).toInt() })
         }
