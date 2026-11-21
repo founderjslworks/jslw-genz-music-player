@@ -106,7 +106,10 @@ class AlbumFlowFragment : Fragment(), Refreshable {
                 }
             }
         })
-        rv.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> transform() }
+        rv.addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
+            // size changed (full screen on/off, split screen): rebuild the covers for the new space
+            if ((r - l != or - ol || b - t != ob - ot) && or - ol > 0) rv.post { setup() } else transform()
+        }
         rv.addItemDecoration(shineDecoration)
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backCb)
         addStyleButton(v as ViewGroup)
@@ -118,9 +121,18 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         rv.post { setup() }
     }
 
+    private val landscape get() = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    override fun onPause() {
+        (activity as? MainActivity)?.setFullScreen(false)
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
         (activity as? MainActivity)?.setScreenTitle("Album Flow")
+        // landscape: full-screen Cover Flow, like turning a classic iPod sideways
+        (activity as? MainActivity)?.setFullScreen(landscape)
         val st = FlowStyles.current()
         if (st != style) { style = st; if (::rv.isInitialized) transform() }
     }
@@ -159,9 +171,16 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         rv.setPadding(pad, top, pad, 0)
         rv.clipToPadding = false
         rv.adapter = CoverAdapter()
-        flip.layoutParams = flip.layoutParams.apply {
-            width = (cover * 1.25f).toInt().coerceAtMost(w - 24)
-            height = (cover * 1.15f).toInt().coerceAtMost(h)
+        flip.layoutParams = (flip.layoutParams as ViewGroup.MarginLayoutParams).apply {
+            if (portrait) {
+                width = (cover * 1.25f).toInt().coerceAtMost(w - 24)
+                height = (cover * 1.15f).toInt().coerceAtMost(h)
+            } else {
+                // landscape: a wide panel so the track list stays readable
+                width = maxOf((cover * 1.9f).toInt(), (w * 0.5f).toInt()).coerceAtMost(w - 48)
+                height = ((view?.height ?: h) * 0.9f).toInt()
+                bottomMargin = 0
+            }
         }
         // scrubber (slide-to-unlock style)
         view?.findViewById<com.jslw.genz.ui.views.SlideToUnlockBar>(R.id.flowScrub)?.let { bar ->

@@ -229,6 +229,28 @@ class MainActivity : BaseActivity(), Player.Listener {
         overridePendingTransition(R.anim.slide_up, R.anim.stay)
     }
 
+    /**
+     * Full-screen mode for Album Flow in landscape (like turning a classic iPod sideways): the header, mini player,
+     * footer and status bar step aside so the covers get the whole screen. Back or rotating returns to normal.
+     */
+    var fullScreen = false; private set
+    fun setFullScreen(on: Boolean) {
+        if (on == fullScreen) return
+        fullScreen = on
+        val root = findViewById<android.view.ViewGroup>(R.id.root)
+        val hide = if (on) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.header)?.visibility = hide
+        root.findViewWithTag<View>("skin_divider")?.visibility = hide
+        root.findViewWithTag<View>("india_badge")?.visibility = hide
+        if (on) mini.visibility = View.GONE
+        else if (Player.current != null) { mini.translationY = 0f; mini.visibility = View.VISIBLE }
+        val c = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
+        if (on) {
+            c.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            c.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        } else c.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+    }
+
     override fun onPlayerChanged() {
         val s = Player.current
         if (s == null) {
@@ -238,7 +260,7 @@ class MainActivity : BaseActivity(), Player.Listener {
             headerPlaying.visibility = View.INVISIBLE
             return
         }
-        if (mini.visibility != View.VISIBLE) {
+        if (mini.visibility != View.VISIBLE && !fullScreen) {
             mini.visibility = View.VISIBLE
             mini.translationY = dpi(70).toFloat()
             mini.animate().translationY(0f).setDuration(260).start()

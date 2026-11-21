@@ -25,6 +25,7 @@ with no internet permission at all.
 ## What's new in 1.9.12
 
 - Paste a song's YouTube link in "Find online" (it's filled in for you if you just copied it): the video's HD thumbnail becomes the cover, cropped square for the player, with its title and channel
+- Album Flow in landscape goes full screen (like a classic iPod turned sideways): header, mini player and status bar step aside, so covers and effects are about three times bigger; the album's track panel opens wide
 - Titles in two scripts keep both, e.g. "64 योगिनी स्तोत्रम् (Chaunsath Yogini Stotram)"
 
 ## What's new in 1.9.11
