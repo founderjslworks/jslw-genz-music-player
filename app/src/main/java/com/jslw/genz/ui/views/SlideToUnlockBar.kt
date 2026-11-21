@@ -73,7 +73,9 @@ class SlideToUnlockBar @JvmOverloads constructor(ctx: Context, attrs: AttributeS
     private fun knobFor(step: Int) = if (steps <= 1) minX() else minX() + (maxX() - minX()) * step / (steps - 1f)
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(View.MeasureSpec.getSize(widthMeasureSpec), resolveSize((58 * d).toInt(), heightMeasureSpec))
+        // landscape screens are short and wide: a slimmer bar (the width is capped by the layout)
+        val land = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        setMeasuredDimension(View.MeasureSpec.getSize(widthMeasureSpec), resolveSize(((if (land) 44 else 58) * d).toInt(), heightMeasureSpec))
     }
 
     override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {

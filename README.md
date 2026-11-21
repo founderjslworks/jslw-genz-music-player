@@ -22,6 +22,10 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.11
+
+- Album Flow in landscape: much bigger covers, a slimmer caption and a centred, narrower "slide to album" bar
+
 ## What's new in 1.9.10
 
 - Landscape: the "Playing on" box is a single slim line again (it had grown into a big empty box)

@@ -110,6 +110,7 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         rv.addItemDecoration(shineDecoration)
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, backCb)
         addStyleButton(v as ViewGroup)
+        fitLandscape(v)
         return v
     }
 
@@ -124,6 +125,21 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         if (st != style) { style = st; if (::rv.isInitialized) transform() }
     }
 
+    /** Landscape: slimmer caption and a centred, narrower slide bar, so the covers get the height. */
+    private fun fitLandscape(root: View) {
+        if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) return
+        val d = resources.displayMetrics.density
+        root.findViewById<android.widget.TextView>(R.id.flowTitle)?.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 18f)
+        root.findViewById<android.widget.TextView>(R.id.flowArtist)?.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
+        root.findViewById<View>(R.id.flowScrub)?.let { bar ->
+            val lp = bar.layoutParams as android.widget.LinearLayout.LayoutParams
+            lp.width = (440 * d).toInt().coerceAtMost(resources.displayMetrics.widthPixels - (32 * d).toInt())
+            lp.gravity = android.view.Gravity.CENTER_HORIZONTAL
+            lp.topMargin = (6 * d).toInt(); lp.bottomMargin = (8 * d).toInt()
+            bar.layoutParams = lp
+        }
+    }
+
     private fun setup() {
         if (view == null) return
         albums = Library.albums
@@ -134,7 +150,8 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         val refl = if (SkinManager.current.reflection) 1.37f else 1.05f
         // big covers: up to 74% of the width in portrait, height-limited in landscape / on tablets
         val portrait = h > w
-        cover = min(h * 0.92f / refl, w * (if (portrait) 0.74f else 0.42f)).toInt().coerceAtLeast(80)
+        // landscape: let the reflection run under the caption so the covers can use the full height
+        cover = min(h * (if (portrait) 0.92f / refl else 0.9f / minOf(refl, 1.12f)), w * (if (portrait) 0.74f else 0.36f)).toInt().coerceAtLeast(80)
         val pad = (w - cover) / 2
         // centre the covers (and their reflections) vertically instead of hugging the top
         val itemH = (cover * (if (SkinManager.current.reflection) 1.36f else 1f)).toInt()
