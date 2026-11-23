@@ -306,7 +306,7 @@ class MainActivity : BaseActivity(), Player.Listener {
     private fun tickProgress() {
         val svc = Player.service ?: return
         val d = svc.duration()
-        miniProgress.progress = if (d > 0) svc.position() * 1000f / d else 0f
+        miniProgress.progress = if (d > 0) svc.smoothPosition() * 1000f / d else 0f
         miniProgress.playing = svc.isPlaying
         if (svc.isPlaying && !isFinishing) progressFrames.start() else progressFrames.stop()
     }

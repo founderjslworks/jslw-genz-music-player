@@ -29,6 +29,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.animation.LinearInterpolator
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PendingIntentCompat
@@ -77,6 +78,8 @@ class MusicService : MediaBrowserServiceCompat() {
     private val engineExec = Executors.newCachedThreadPool { r -> Thread(r, "genz-engine").apply { isDaemon = true } }
     private var loadGen = 0
     private var loading = false
+    private var loadingSince = 0L
+    private var retriedSongId: Long? = null
     private var loadPlay = false
     private var loadWatchdog: Runnable? = null
 
@@ -367,6 +370,12 @@ class MusicService : MediaBrowserServiceCompat() {
     fun toggle() = if (isPlaying) pause() else play()
 
     fun play() {
+        if (loading && android.os.SystemClock.elapsedRealtime() - loadingSince > 4000 && index >= 0) {
+            // opening the song got stuck (seen after car / Bluetooth switches): start it again
+            loadGen++; loading = false
+            loadIndex(index, true, Prefs.queuePosition)
+            return
+        }
         if (loading) { loadPlay = true; Player.dispatch(); return }
         if (cur == null) {
             if (_queue.isEmpty()) {
@@ -410,6 +419,7 @@ class MusicService : MediaBrowserServiceCompat() {
     }
 
     fun seekTo(ms: Long) {
+        resetClock()
         cur?.seekTo(ms)
         if (xfade != null) finishCrossfade()
         updatePlaybackState()
@@ -417,15 +427,43 @@ class MusicService : MediaBrowserServiceCompat() {
     }
 
     fun position(): Long = cur?.position() ?: if (index >= 0) Prefs.queuePosition else 0
+
+    // Smooth clock for progress bars. Many phones report the playing position in steps of 100–500 ms, which makes
+    // bars stutter and the time label drift. Between reports we advance with the real clock (× speed) and only
+    // nudge toward each new report, snapping when the gap is big (seek, track change, buffering).
+    private var clkPos = -1L
+    private var clkAt = 0L
+    private var clkRaw = Long.MIN_VALUE
+    fun smoothPosition(): Long {
+        val raw = position()
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!isPlaying || clkPos < 0) { clkPos = raw; clkAt = now; clkRaw = raw; return raw }
+        val speed = if (canChangeSpeed) Prefs.speed.takeIf { it > 0f } ?: 1f else 1f
+        val predicted = clkPos + ((now - clkAt) * speed).toLong()
+        if (raw != clkRaw) {
+            clkRaw = raw
+            val gap = raw - predicted
+            clkPos = if (kotlin.math.abs(gap) > 600) raw else predicted + gap / 4
+            clkAt = now
+        }
+        val d = duration()
+        val out = clkPos + ((now - clkAt) * speed).toLong()
+        // never run more than one report-interval ahead of what the engine says
+        return out.coerceIn(0, if (d > 0) d else Long.MAX_VALUE).coerceAtMost(raw + 700)
+    }
+    /** Call after seeks / track changes so the clock snaps instead of easing. */
+    fun resetClock() { clkPos = -1L }
     fun duration(): Long = cur?.duration()?.takeIf { it > 0 } ?: current?.duration ?: 0
 
     // ================================================================ engine management
     private fun loadIndex(i: Int, play: Boolean, seekMs: Long = 0) {
         releaseEngines()
+        resetClock()
         index = i
         val s = current ?: return
         val gen = ++loadGen
         loading = true
+        loadingSince = android.os.SystemClock.elapsedRealtime()
         loadPlay = play
         Player.dispatch()
         val sid = audioSessionId
@@ -508,6 +546,7 @@ class MusicService : MediaBrowserServiceCompat() {
         val play = loadPlay
         if (e == null) { engineFailed(i, s, play); return }
         errorsInRow = 0
+        if (retriedSongId != s.id) retriedSongId = null
         cur = e
         wire(e)
         if (seekMs > 0) e.seekTo(seekMs)
@@ -542,7 +581,19 @@ class MusicService : MediaBrowserServiceCompat() {
 
     private fun wire(e: Engine) {
         e.onCompletion = { onEngineCompleted(e) }
-        e.onError = { msg -> handler.post { if (e === cur) { toastShort(msg); onEngineCompleted(e) } } }
+        e.onError = { msg ->
+            handler.post {
+                if (e !== cur) return@post
+                // A Bluetooth / car route change can kill the decoder mid-song. Reopen the same song where it
+                // was (once) before treating it as broken and skipping.
+                val pos = try { e.position() } catch (_: Throwable) { position() }
+                val sid = current?.id
+                if (sid != null && sid != retriedSongId && index >= 0) {
+                    retriedSongId = sid
+                    loadIndex(index, isPlaying || loadPlay, pos.coerceAtLeast(0))
+                } else { toastShort(msg); onEngineCompleted(e) }
+            }
+        }
         e.setSpeedPitch(Prefs.speed, Prefs.pitch)
         if (fx.reverbEffectId != 0 && Prefs.eqEnabled && Prefs.reverb > 0) e.attachAux(fx.reverbEffectId, 1f)
     }
@@ -551,7 +602,13 @@ class MusicService : MediaBrowserServiceCompat() {
         val e = cur ?: return
         if (!requestFocus()) { toastShort("Another app is using audio"); return }
         if (!started) {
-            try { startService(Intent(this, MusicService::class.java)); started = true } catch (_: Exception) {}
+            try {
+                // from the car or a locked phone the app is in the background: Android 8+ only allows a
+                // foreground start here (afterStateChange() below goes foreground straight away)
+                ContextCompat.startForegroundService(this, Intent(this, MusicService::class.java)); started = true
+            } catch (_: Exception) {
+                try { startService(Intent(this, MusicService::class.java)); started = true } catch (_: Exception) {}
+            }
         }
         handler.removeCallbacks(autoStop)
         fadeAnim?.cancel()
@@ -900,9 +957,30 @@ class MusicService : MediaBrowserServiceCompat() {
     }
 
     private val routeCallback: Any? = if (Build.VERSION.SDK_INT >= 23) object : android.media.AudioDeviceCallback() {
-        override fun onAudioDevicesAdded(added: Array<out android.media.AudioDeviceInfo>?) { if (Prefs.seOn) handler.postDelayed({ effectsChanged() }, 300) }
+        override fun onAudioDevicesAdded(added: Array<out android.media.AudioDeviceInfo>?) {
+            if (Prefs.seOn) handler.postDelayed({ effectsChanged() }, 300)
+            val car = added?.any {
+                it.isSink && (it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                    (Build.VERSION.SDK_INT >= 31 && (it.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET || it.type == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER)) ||
+                    it.type == android.media.AudioDeviceInfo.TYPE_USB_DEVICE)
+            } == true
+            if (car) handler.postDelayed({ refreshForCar() }, 1200)
+        }
         override fun onAudioDevicesRemoved(removed: Array<out android.media.AudioDeviceInfo>?) { if (Prefs.seOn) handler.postDelayed({ effectsChanged() }, 300) }
     } else null
+
+    /** A car / Bluetooth unit connected: make sure it finds a live, up-to-date session it can control. */
+    private fun refreshForCar() {
+        if (current == null) return
+        if (loading && android.os.SystemClock.elapsedRealtime() - loadingSince > 4000 && index >= 0) {
+            loadGen++; loading = false
+            loadIndex(index, loadPlay, Prefs.queuePosition)
+        }
+        session.isActive = true
+        updateMetadata()
+        updatePlaybackState()
+        if (cur != null || isPlaying) updateNotification()
+    }
 
     fun applyBitPerfect() {
         bitPerfectStatus = BitPerfect.apply(this, Prefs.bitPerfect, formatInfo)

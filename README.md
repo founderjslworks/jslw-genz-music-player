@@ -22,6 +22,16 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.13
+
+- Album Flow: a black stage with just a soft light in the album's colour behind the centre cover
+- Album Flow: the open album's track card takes the cover's colour, with light text
+- Album Flow in landscape: a "now playing" pill (cover, song, play/pause; tap for the player) since the mini player steps aside
+- Always-on player (AOD): when the lock-screen player sits untouched it dims to a black clock-and-song screen instead of switching off; tap to wake. Settings › Always-on player: Off / While charging / While music plays
+- Progress bars glide smoothly and the time stays in sync (Now Playing, mini player, lock screen); the lock screen now shows elapsed / remaining time
+- Car & Bluetooth: playback recovers by itself after a route switch instead of stopping, a stuck song load is restarted, starting from the car with the phone locked works, the car gets fresh song info when it reconnects, and phone-maker car / Bluetooth apps (OPPO, Realme …) can browse the library
+- Search and other text fields stay above the keyboard, in landscape too
+
 ## What's new in 1.9.12
 
 - Paste a song's YouTube link in "Find online" (it's filled in for you if you just copied it): the video's HD thumbnail becomes the cover, cropped square for the player, with its title and channel

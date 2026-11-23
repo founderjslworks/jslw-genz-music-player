@@ -316,6 +316,12 @@ class SettingsActivity : BaseActivity() {
             } else Prefs.lockScreenPlayer = on
         }
         items += Item.Action("Lock-screen player check", { lockStatus().first }) { lockCheck() }
+        val aodNames = arrayOf("Off", "While charging", "While music plays")
+        items += Item.Action("Always-on player (AOD)", { aodNames[Prefs.aodMode.coerceIn(0, 2)] + " – the lock-screen player dims to a black clock & song screen instead of switching off" }) {
+            MaterialAlertDialogBuilder(this).setTitle("Always-on player (AOD)")
+                .setSingleChoiceItems(aodNames, Prefs.aodMode.coerceIn(0, 2)) { dlg, w -> Prefs.aodMode = w; dlg.dismiss(); adapter.notifyDataSetChanged() }
+                .setNegativeButton("Close", null).show()
+        }
         items += Item.Action("Lock-screen media controls", { "Always on: cover, title and controls on every Android version" }) {}
         items += Item.Action("Add a widget to the home screen", {
             if (com.jslw.genz.widget.Widgets.canPin(this)) "Wide 4×1 · Cover 2×2 · Large 4×2"

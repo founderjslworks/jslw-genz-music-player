@@ -362,7 +362,7 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
     private fun tick() {
         val svc = Player.service ?: return
         val dur = svc.duration().coerceAtLeast(1)
-        val pos = svc.position().coerceIn(0, dur)
+        val pos = svc.smoothPosition().coerceIn(0, dur)
         // Runs every display frame (60–144 Hz): only the slider moves per frame; text changes once a second.
         if (!userSeeking) {
             if (seek.max != dur.toFloat()) seek.max = dur.toFloat()

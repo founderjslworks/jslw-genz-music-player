@@ -44,10 +44,17 @@ object AutoBrowse {
         "com.google.android.googlequicksearchbox",     // Assistant
         "com.google.android.wearable.app", "com.google.android.apps.wearables.maestro.companion",
         "com.android.systemui", "com.android.bluetooth",
+        "com.google.android.bluetooth",               // Android 13+ Bluetooth (car stereos browse through it)
     )
 
     fun trusted(ctx: Context, pkg: String, uid: Int): Boolean =
-        pkg == ctx.packageName || pkg in TRUSTED || uid == android.os.Process.SYSTEM_UID
+        pkg == ctx.packageName || pkg in TRUSTED || uid == android.os.Process.SYSTEM_UID || isSystemApp(ctx, pkg)
+
+    /** Phone-maker car / Bluetooth apps (OPPO, Realme, Samsung …) are preinstalled system apps: let them browse too. */
+    private fun isSystemApp(ctx: Context, pkg: String): Boolean = try {
+        val ai = ctx.packageManager.getApplicationInfo(pkg, 0)
+        ai.flags and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+    } catch (_: Exception) { false }
 
     fun rootExtras() = Bundle().apply {
         putBoolean(STYLE_SUPPORTED, true)

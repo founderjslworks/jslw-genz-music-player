@@ -119,6 +119,11 @@ object Prefs {
         get() = b("lock_player", true)
         set(v) = put { putBoolean("lock_player", v) }
 
+    /** Always-on player on the lock screen: 0 off, 1 while charging, 2 whenever music plays. */
+    var aodMode: Int
+        get() = sp.getInt("aod_mode", 2)
+        set(v) = put { putInt("aod_mode", v) }
+
     /** Cover touch effect id, or "theme" to use the active theme's own effect. */
     var coverEffect: String
         get() = s("cover_fx", "theme")

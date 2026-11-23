@@ -74,6 +74,8 @@ class RowAdapter(rows: List<Row> = emptyList()) : RecyclerView.Adapter<RecyclerV
     var itemTouchHelper: ItemTouchHelper? = null
     /** Springy press feedback on rows (main menu, settings). */
     var bouncy = false
+    /** Rows drawn on a dark, coloured card (Album Flow): light text whatever the theme. */
+    var onDark = false
     private var playingId: Long? = Player.current?.id
 
     /** Refreshes the "now playing" indicators only when the track actually changed. */
@@ -117,6 +119,11 @@ class RowAdapter(rows: List<Row> = emptyList()) : RecyclerView.Adapter<RecyclerV
         h.subtitle.text = r.subtitle
         h.subtitle.visibility = if (r.subtitle.isNullOrEmpty()) View.GONE else View.VISIBLE
         h.extra.text = r.extra
+        if (onDark) {
+            h.title.setTextColor(0xFFFFFFFF.toInt())
+            h.subtitle.setTextColor(0xB3FFFFFF.toInt()); h.extra.setTextColor(0xB3FFFFFF.toInt())
+            h.more.setColorFilter(0xCCFFFFFF.toInt())
+        }
         h.extra.visibility = if (r.extra.isNullOrEmpty()) View.GONE else View.VISIBLE
         if (r.icon != 0) {
             com.jslw.genz.skin.Icons.set(h.icon, r.icon)

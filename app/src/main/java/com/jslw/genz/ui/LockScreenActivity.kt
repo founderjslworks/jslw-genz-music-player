@@ -15,6 +15,7 @@ import com.jslw.genz.playback.Player
 import com.jslw.genz.skin.Icons
 import com.jslw.genz.skin.SkinManager
 import com.jslw.genz.util.ArtLoader
+import com.jslw.genz.util.formatTime
 import com.jslw.genz.util.FrameTicker
 import com.jslw.genz.util.dpi
 import kotlin.math.abs
@@ -43,12 +44,14 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
             val scale = i.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100)
             if (lvl >= 0 && scale > 0) charging.level = lvl / scale.toFloat()
             charging.visibility = if (plugged) View.VISIBLE else View.GONE
+            if (::aod.isInitialized) aod.charging = plugged
         }
     }
     private val artLoc = IntArray(2)
     private val rootLoc = IntArray(2)
     private var shown: Long? = null
     private val frames = FrameTicker { tick() }
+    private lateinit var aod: AodMode
 
     override fun themeRes() = R.style.Theme_GenZ_Dark
 
@@ -62,12 +65,14 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
         }
         setContentView(R.layout.activity_lock)
         IndiaBadge.attach(findViewById(R.id.lockRoot), 0xFFFFFFFF.toInt())
+        aod = AodMode(this, findViewById(R.id.lockRoot), onEnter = { frames.stop() }, onExit = { onPlayerChanged() })
         bg = findViewById(R.id.lockBg)
         art = findViewById(R.id.lockArt)
         titleTv = findViewById(R.id.lockTitle)
         artist = findViewById(R.id.lockArtist)
         play = findViewById(R.id.lockPlay)
         progress = findViewById(R.id.lockProgress)
+        times = findViewById(R.id.lockTimes)
         content = findViewById(R.id.lockContent)
         coverFx = findViewById(R.id.lockCoverFx)
         charging = findViewById(R.id.lockCharging)
@@ -148,7 +153,9 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
     override fun onStart() {
         super.onStart()
         Player.add(this)
+        Player.connect(this)
         onPlayerChanged()
+        aod.poke()
         registerReceiver(batteryReceiver, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
     }
 
@@ -156,6 +163,7 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
         Player.remove(this)
         try { unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
         frames.stop()
+        aod.stop()
         super.onStop()
     }
 
@@ -169,7 +177,7 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
             ArtLoader.load(art, s, dpi(320), large = true) { bmp -> setBackdrop(bmp); coverFx.setArt(bmp) }
         }
         Icons.set(play, if (svc.isPlaying) R.drawable.ic_pause_large else R.drawable.ic_play_large)
-        if (svc.isPlaying) frames.start() else { frames.stop(); tick() }
+        if (svc.isPlaying && !aod.active) frames.start() else { frames.stop(); tick() }
     }
 
     /** Cheap, smooth "blur": shrink the art to a few pixels and let bilinear filtering scale it up. */
@@ -181,10 +189,29 @@ class LockScreenActivity : BaseActivity(), Player.Listener {
         bg.animate().alpha(1f).setDuration(400).start()
     }
 
+    private var swallow = false
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (ev.actionMasked == android.view.MotionEvent.ACTION_DOWN && ::aod.isInitialized) {
+            swallow = aod.active // the first tap only wakes the player
+            aod.poke()
+        }
+        if (swallow) {
+            if (ev.actionMasked == android.view.MotionEvent.ACTION_UP || ev.actionMasked == android.view.MotionEvent.ACTION_CANCEL) swallow = false
+            return true
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private var lastTimeSec = -1L
+    private var times: android.widget.TextView? = null
     private fun tick() {
         val svc = Player.service ?: return
         val d = svc.duration()
-        val p = if (d > 0) (svc.position() * 1000 / d).toInt() else 0
+        val pos = svc.smoothPosition()
+        // 10 000 steps: the bar glides every frame instead of hopping
+        val p = if (d > 0) (pos * 10_000 / d).toInt() else 0
         if (p != progress.progress) progress.progress = p
+        val sec = pos / 1000
+        if (sec != lastTimeSec) { lastTimeSec = sec; times?.text = "${formatTime(pos)}  ·  -${formatTime((d - pos).coerceAtLeast(0))}" }
     }
 }

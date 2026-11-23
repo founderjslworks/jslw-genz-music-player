@@ -59,7 +59,10 @@ abstract class BaseActivity : AppCompatActivity() {
                 val base = header.layoutParams.height
                 ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
                     val b = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-                    v.setPadding(b.left, 0, b.right, b.bottom)
+                    // the keyboard: lift the screen above it (edge-to-edge windows ignore adjustResize),
+                    // so search boxes and fields stay visible – in landscape too
+                    val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                    v.setPadding(b.left, 0, b.right, maxOf(b.bottom, ime))
                     header.setPadding(header.paddingLeft, b.top, header.paddingRight, header.paddingBottom)
                     if (base > 0) header.layoutParams = header.layoutParams.apply { height = base + b.top }
                     insets

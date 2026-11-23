@@ -82,6 +82,9 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         flipTracks = v.findViewById(R.id.flipTracks)
         emptyView = v.findViewById(R.id.flowEmpty)
         SkinPainter.apply(v)
+        // a black stage, like the original Cover Flow: only a soft light behind the centre cover
+        v.setBackgroundColor(0xFF000000.toInt())
+        title.setTextColor(0xFFFFFFFF.toInt()); artist.setTextColor(0xB3FFFFFF.toInt())
         flipTracks.layoutManager = LinearLayoutManager(requireContext())
         flipTracks.adapter = tracksAdapter
         v.findViewById<View>(R.id.flipClose).setOnClickListener { flipClose() }
@@ -138,8 +141,69 @@ class AlbumFlowFragment : Fragment(), Refreshable {
     }
 
     /** Landscape: slimmer caption and a centred, narrower slide bar, so the covers get the height. */
+    // landscape full screen hides the mini player, so a small "now playing" pill sits beside the slide bar
+    private var npPill: View? = null
+    private var npArt: android.widget.ImageView? = null
+    private var npText: TextView? = null
+    private var npPlay: android.widget.ImageView? = null
+
+    private fun addNowPlayingPill(root: ViewGroup) {
+        val d = resources.displayMetrics.density
+        fun px(v: Int) = (v * d).toInt()
+        val ctx = requireContext()
+        val pill = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(px(6), px(6), px(6), px(6))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = px(28).toFloat(); setColor(0xCC1C1C1E.toInt()); setStroke(px(1), 0x22FFFFFF)
+            }
+            elevation = 6 * d
+            setOnClickListener { (activity as? MainActivity)?.let { a -> a.startActivity(android.content.Intent(a, NowPlayingActivity::class.java)) } }
+        }
+        val art = com.google.android.material.imageview.ShapeableImageView(ctx).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            shapeAppearanceModel = shapeAppearanceModel.withCornerSize(px(22).toFloat())
+        }
+        pill.addView(art, android.widget.LinearLayout.LayoutParams(px(44), px(44)))
+        val text = TextView(ctx).apply {
+            setTextColor(0xFFFFFFFF.toInt()); textSize = 13f; maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            typeface = SkinManager.current.typeface
+            setPadding(px(10), 0, px(6), 0)
+        }
+        pill.addView(text, android.widget.LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val play = android.widget.ImageView(ctx).apply {
+            setColorFilter(0xFFFFFFFF.toInt())
+            setPadding(px(8), px(8), px(8), px(8))
+            background = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(SkinManager.current.accent) }
+            setOnClickListener { com.jslw.genz.util.ControlFx.pop(this); Player.service?.toggle() }
+        }
+        pill.addView(play, android.widget.LinearLayout.LayoutParams(px(40), px(40)))
+        // fits the space left of the centred slide bar
+        val freeW = ((resources.displayMetrics.widthPixels - px(440)) / 2 - px(20)).coerceIn(px(150), px(230))
+        root.addView(pill, android.widget.FrameLayout.LayoutParams(freeW, ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.Gravity.BOTTOM or android.view.Gravity.START).apply { leftMargin = px(14); bottomMargin = px(10) })
+        npPill = pill; npArt = art; npText = text; npPlay = play
+        updatePill()
+    }
+
+    private fun updatePill() {
+        val pill = npPill ?: return
+        val s = Player.current
+        pill.visibility = if (s == null) View.GONE else View.VISIBLE
+        if (s == null) return
+        npText?.text = android.text.SpannableStringBuilder().apply {
+            append(s.title, android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0)
+            append("\n"); append(s.artist)
+        }
+        npArt?.let { com.jslw.genz.util.ArtLoader.load(it, s, (44 * resources.displayMetrics.density).toInt()) }
+        npPlay?.setImageResource(if (Player.isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+    }
+
     private fun fitLandscape(root: View) {
         if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) return
+        (root as? ViewGroup)?.let { addNowPlayingPill(it) }
         val d = resources.displayMetrics.density
         root.findViewById<android.widget.TextView>(R.id.flowTitle)?.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 18f)
         root.findViewById<android.widget.TextView>(R.id.flowArtist)?.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -395,17 +459,19 @@ class AlbumFlowFragment : Fragment(), Refreshable {
     /** Backdrop glow in the centre album's colour, cross-fading as you browse. */
     private fun tintTo(color: Int) {
         val root = view ?: return
-        val target = (color and 0x00FFFFFF) or 0x55000000
+        // a small, soft light in the album's colour just behind the centre cover – the rest stays black
+        val target = (color and 0x00FFFFFF) or 0x38000000
         val from = bgColor
         bgAnim?.cancel()
         val shape = (root.getTag(R.id.flowList) as? android.graphics.drawable.GradientDrawable)
             ?: android.graphics.drawable.GradientDrawable().apply {
                 gradientType = android.graphics.drawable.GradientDrawable.RADIAL_GRADIENT
-                gradientRadius = root.width.coerceAtLeast(1) * 0.75f
-                setGradientCenter(0.5f, 0.38f)
                 root.setTag(R.id.flowList, this)
                 rv.background = this
             }
+        shape.gradientRadius = (cover * 0.85f).coerceAtLeast(1f)
+        val cy = if (rv.height > 0) ((rv.paddingTop + cover * 0.5f) / rv.height).coerceIn(0.2f, 0.6f) else 0.4f
+        shape.setGradientCenter(0.5f, cy)
         if (light) { bgColor = target; shape.colors = intArrayOf(target, 0x00000000); return }
         bgAnim = android.animation.ValueAnimator.ofObject(android.animation.ArgbEvaluator(), from, target).apply {
             duration = 520
@@ -499,6 +565,7 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         // lift: the cover comes forward a little as it turns over
         v.animate().rotationY(90f).scaleX(v.scaleX * 1.08f).scaleY(v.scaleY * 1.08f).setDuration(190).setInterpolator(AccelerateInterpolator()).withEndAction {
             v.visibility = View.INVISIBLE
+            paintCard(tints.get(a.id))
             view?.findViewById<TextView>(R.id.flipTitle)?.text = a.title
             view?.findViewById<TextView>(R.id.flipArtist)?.text = "${a.artist} · ${a.songs.size} songs"
             tracksAdapter.rows = a.songs.mapIndexed { i, s ->
@@ -517,6 +584,28 @@ class AlbumFlowFragment : Fragment(), Refreshable {
                 .setInterpolator(android.view.animation.OvershootInterpolator(1.2f)).start()
             backCb.isEnabled = true
         }.start()
+    }
+
+    /** The open album's card takes the cover's colour (deepened so white text always reads well). */
+    private fun paintCard(c: Int?) {
+        val base = c ?: 0xFF2A2A2E.toInt()
+        val hsv = FloatArray(3); android.graphics.Color.colorToHSV(base, hsv)
+        hsv[1] = minOf(hsv[1], 0.75f); hsv[2] = minOf(hsv[2], 0.32f).coerceAtLeast(0.16f)
+        val top = android.graphics.Color.HSVToColor(hsv)
+        hsv[2] = hsv[2] * 0.55f
+        val bottom = android.graphics.Color.HSVToColor(hsv)
+        val d = resources.displayMetrics.density
+        flip.background = android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom)
+        ).apply { cornerRadius = 22 * d; setStroke((1 * d).toInt(), 0x33FFFFFF) }
+        view?.findViewById<TextView>(R.id.flipTitle)?.setTextColor(0xFFFFFFFF.toInt())
+        view?.findViewById<TextView>(R.id.flipArtist)?.setTextColor(0xB3FFFFFF.toInt())
+        (view?.findViewById<android.widget.ImageView>(R.id.flipClose))?.setColorFilter(0xFFFFFFFF.toInt())
+        // divider under the header
+        for (i in 0 until flip.childCount) flip.getChildAt(i).takeIf { it !is ViewGroup && it.layoutParams.height in 1..(2 * d).toInt() }
+            ?.setBackgroundColor(0x26FFFFFF)
+        tracksAdapter.onDark = true
+        tracksAdapter.notifyDataSetChanged()
     }
 
     private fun flipClose() {
@@ -543,7 +632,7 @@ class AlbumFlowFragment : Fragment(), Refreshable {
         floatAnim = null; floatTarget = null; entered = false
         super.onDestroyView()
     }
-    override fun playingChanged() { tracksAdapter.refreshPlaying() }
+    override fun playingChanged() { tracksAdapter.refreshPlaying(); updatePill() }
 
     inner class CoverAdapter : RecyclerView.Adapter<CoverAdapter.VH>() {
         inner class VH(v: View) : RecyclerView.ViewHolder(v) {
