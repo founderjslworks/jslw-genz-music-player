@@ -61,6 +61,9 @@ android {
 dependencies {
     // JSL Audio Engine 0.3.0 (proprietary, JSL WORKS PVT LTD) – powers JSL Audio+; built from founderjslworks/jslw-audio-engine
     implementation(files("libs/jslw-audio-engine-0.3.0.jar"))
+    // JSL Audio Engine C++20 core 0.1.0 (compiled binary only – the engine source stays private): true-peak limiter,
+    // equal-loudness, crossfeed for JSL Audio+ (Hi-Fi). Built by the engine repo's "Native core" workflow.
+    implementation(files("libs/jslw-audio-core-0.1.0.aar"))
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.fragment:fragment-ktx:1.6.2")

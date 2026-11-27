@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- JSL Audio Engine core (AAR, minSdk 21): only used by JSL Audio+, which is Android 5.0+.
+         KitKat keeps normal playback; the native library is never loaded there. -->
+    <uses-sdk tools:overrideLibrary="com.jslworks.soundengine.nativecore" />
+
     <!-- Fully offline: NO internet permission is requested. -->
 
     <!-- Reading music: KitKat..Android 12 -->

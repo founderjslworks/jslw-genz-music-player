@@ -195,7 +195,7 @@ object AudioPlus {
 
     // ---------------------------------------------------------------- chain
     /** Builds the processing graph for the current settings (allocates – decoder thread only). */
-    fun build(rate: Int, withUserEq: Boolean, tag: MoodTag?): Graph {
+    fun build(rate: Int, withUserEq: Boolean, tag: MoodTag?, nativeLimiter: Boolean = false): Graph {
         val auto = Prefs.apMood == AUTO
         val m = if (auto) mood(tag?.moodId ?: "balanced") else mood()
         val k = Prefs.apIntensity.coerceIn(0, 150) / 100.0
@@ -239,6 +239,8 @@ object AudioPlus {
         )
         val c = AudioPlusChain(rate)
         c.applyPreset(p)
+        // the C++ true-peak limiter (−1 dBTP) is the final stage: the Kotlin sample-peak limiter stands aside
+        if (nativeLimiter) c.limiter.setCeilingDb(HiFi.KOTLIN_LIMITER_PARKED_DB)
         if (speaker) {
             c.bass.setCutoff(150.0)
             c.bass.removeSubBass = p.bassBoost > 0
@@ -312,14 +314,62 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
         if (songId >= 0) { AudioPlus.nowSongId = songId; AudioPlus.nowTag = tag }
     }
 
+    // ---------------------------------------------------------------- JSL Audio Engine C++ core (final stage)
+    private val nativeLock = Any()
+    private var core: com.jslworks.soundengine.nativecore.JslwNativeEngine? =
+        if (HiFi.coreActive) try { com.jslworks.soundengine.nativecore.JslwNativeEngine(rate, 4096) } catch (_: Throwable) { null } else null
+    private var coreLoud = false
+    private var corePhon = -1.0
+    private var coreXfeed = false
+
+    /** Extra delay of the C++ core (true-peak look-ahead), frames: 85 at 48 kHz, 79 at 44.1 kHz. */
+    val latencyFrames: Int = core?.latency() ?: 0
+
+    /** Kotlin chain, then the C++ core: equal-loudness → crossfeed → true-peak limiter. One call per decoder buffer. */
     fun process(data: FloatArray, frames: Int, channels: Int) {
+        processGraph(data, frames, channels)
+        if (channels != 2 || frames <= 0) return
+        synchronized(nativeLock) {
+            val n = core ?: return
+            // Compare (A/B) hears the original: Hi-Fi stages glide off, only the transparent limiter stays
+            val ab = AudioPlus.compare
+            val loud = !ab && HiFi.loudnessOn
+            val phon = if (loud) HiFi.listeningPhon(if (smooth.ready) smooth.lufs else -14.0) else 83.0
+            if (loud != coreLoud || kotlin.math.abs(phon - corePhon) >= 1.0) { n.setLoudness(loud, phon); coreLoud = loud; corePhon = phon }
+            val xf = !ab && HiFi.crossfeedOn
+            if (xf != coreXfeed) { n.setCrossfeed(xf); coreXfeed = xf }
+            n.render(data, frames)
+        }
+    }
+
+    /** After a seek: no old audio may come out of the look-ahead delay. Call from the decoder thread. */
+    fun onSeek() = synchronized(nativeLock) { core?.reset() }
+
+    /**
+     * End of the song: the last [latencyFrames] are still inside the limiter's look-ahead. Pushes silence through
+     * so they come out; returns how many frames of [buf] to write.
+     */
+    fun drainTail(buf: FloatArray): Int = synchronized(nativeLock) {
+        val n = core ?: return 0
+        val f = latencyFrames
+        if (f <= 0 || buf.size < f * 2) return 0
+        java.util.Arrays.fill(buf, 0, f * 2, 0f)
+        n.render(buf, f)
+        f
+    }
+
+    fun close() = synchronized(nativeLock) { core?.close(); core = null }
+
+    private fun limiterGrDb(c: AudioPlus.Graph): Double = core?.gainReductionDb() ?: c.chain.limiter.gainReductionDb
+
+    private fun processGraph(data: FloatArray, frames: Int, channels: Int) {
         if (channels != 2 || frames <= 0) return
         val g = AudioPlus.generation
         if (g != gen) {
             gen = g
             prev = cur
             cur = if (AudioPlus.active && !AudioPlus.compare) {
-                try { AudioPlus.build(rate, withUserEq, tag) } catch (_: Throwable) { null }
+                try { AudioPlus.build(rate, withUserEq, tag, core != null) } catch (_: Throwable) { null }
             } else null
             fadeLeft = if (prev != null || cur != null) fadeLen else 0
         }
@@ -352,7 +402,7 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
             if (c == null && fadeLeft == 0) return
         }
 
-        if (c != null && AutoSound.anyAuto) autoStep(c, x, frames)
+        if (c != null && (AutoSound.anyAuto || HiFi.loudnessOn)) autoStep(c, x, frames)
 
         val fading = fadeLeft > 0
         if (fading) { xl.copyInto(y.channel(0)); xr.copyInto(y.channel(1)) }
@@ -367,7 +417,7 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
             if (blockIn > 1e-7) {
                 pIn += (blockIn - pIn) * avg
                 pOut += (blockOut - pOut) * avg
-                if (c.chain.limiter.gainReductionDb < -1.5) {
+                if (limiterGrDb(c) < -1.5) {
                     makeup = (makeup * 0.98f).coerceAtLeast(1f)          // yield to the limiter: no pumping
                 } else if (pOut > 1e-9) {
                     val want = (makeup * sqrt(pIn / pOut)).toFloat().coerceIn(0.7f, MAX_MAKEUP)

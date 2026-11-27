@@ -900,6 +900,7 @@ class MusicService : MediaBrowserServiceCompat() {
 
     // ---------------------------------------------------------------- periodic tick
     private var lastSave = 0L
+    private var lastVol = 0L
     private val tick = object : Runnable {
         override fun run() {
             if (!isPlaying) { floating.hide(); return }
@@ -907,6 +908,7 @@ class MusicService : MediaBrowserServiceCompat() {
             updateFloatingLyrics()
             val now = SystemClock.elapsedRealtime()
             if (now - lastSave > 5000) { lastSave = now; Prefs.queuePosition = position() }
+            if (now - lastVol > 1000) { lastVol = now; com.jslw.genz.audio.HiFi.updateVolume(this@MusicService) }
             if (sleepAt in 1..now && !sleepFinishSong) sleepFire()
             handler.postDelayed(this, 250)
         }
@@ -969,6 +971,14 @@ class MusicService : MediaBrowserServiceCompat() {
 
     /** Audio+ mood / room / intensity changed: applied live with a short crossfade, no track change. */
     fun audioPlusChanged() = AudioPlus.changed(this)
+
+    /**
+     * The C++ core (true-peak limiter) was switched on or off: it changes the processing chain and its delay,
+     * so the song moves to a fresh track at the same position (never add/remove processing on a playing track).
+     */
+    fun hiFiCoreToggled() {
+        if (cur is AudioPlusEngine) reopenCurrent()
+    }
 
     fun effectsChanged() {
         AudioPlus.updateEq(fx)

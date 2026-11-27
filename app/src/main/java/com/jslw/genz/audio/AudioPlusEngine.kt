@@ -111,6 +111,7 @@ class AudioPlusEngine(ctx: Context, serviceSession: Int) : Engine {
             )
             if (t.state != AudioTrack.STATE_INITIALIZED) { t.release(); null } else {
                 outRate = rate
+                processor?.close()
                 processor = AudioPlusProcessor(rate, songId = songId)
                 t
             }
@@ -137,6 +138,7 @@ class AudioPlusEngine(ctx: Context, serviceSession: Int) : Engine {
                         try { t.pause(); t.flush() } catch (_: Exception) {}
                         ex.seekTo(sk * 1000, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
                         dec.flush()
+                        processor?.onSeek()          // nothing old may come out of the limiter's look-ahead
                         inputDone = false
                         skipUntilUs = sk * 1000
                         basePosMs = sk
@@ -183,7 +185,16 @@ class AudioPlusEngine(ctx: Context, serviceSession: Int) : Engine {
                             processor?.process(out, frames, 2)
                             write(out, frames * 2)
                         } else dec.releaseOutputBuffer(oi, false)
-                        if (eos) finish()
+                        if (eos) {
+                            // the last few ms are still in the true-peak look-ahead: let them out
+                            val p = processor
+                            if (p != null && p.latencyFrames > 0) {
+                                if (out.size < p.latencyFrames * 2) out = FloatArray(p.latencyFrames * 2)
+                                val n = p.drainTail(out)
+                                if (n > 0) write(out, n * 2)
+                            }
+                            finish()
+                        }
                     }
                 }
             }
@@ -273,7 +284,10 @@ class AudioPlusEngine(ctx: Context, serviceSession: Int) : Engine {
 
     override fun position(): Long {
         val t = track ?: return 0
-        val p = basePosMs + (head(t) - baseHead) * 1000L / outRate
+        // what is heard now left the decoder latency frames earlier (true-peak look-ahead)
+        val lat = processor?.latencyFrames ?: 0
+        val played = (head(t) - baseHead - lat).coerceAtLeast(0)
+        val p = basePosMs + played * 1000L / outRate
         return if (durationMs > 0) p.coerceIn(0, durationMs) else p.coerceAtLeast(0)
     }
 
@@ -319,6 +333,8 @@ class AudioPlusEngine(ctx: Context, serviceSession: Int) : Engine {
         try { codec?.release() } catch (_: Throwable) {}
         try { extractor?.release() } catch (_: Throwable) {}
         try { track?.release() } catch (_: Exception) {}
+        // the decoder thread has stopped (or is stopping): the processor locks around the native core
+        processor?.close(); processor = null
         track = null; codec = null; extractor = null
     }
 }

@@ -284,6 +284,59 @@ object AudioPlusCard {
         }
         showCustom()
 
+        // ---- Hi-Fi: the JSL Audio Engine C++ core (true-peak limiter, equal-loudness, crossfeed)
+        val hifi = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(hifi)
+        fun toggleRow(title: String, on: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit): Pair<View, SwitchCompat> {
+            val row = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, px(8), 0, 0) }
+            row.addView(text(title, 14.5f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            val s = SwitchCompat(a).apply { isChecked = on; isEnabled = enabled }
+            s.setOnCheckedChangeListener { _, v -> Touch.confirm(s); onChange(v) }
+            row.addView(s)
+            return row to s
+        }
+        val hfHead = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, px(18), 0, 0) }
+        hfHead.addView(text("Hi-Fi", 16f, true), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val hfSw = SwitchCompat(a)
+        hfHead.addView(hfSw)
+        hifi.addView(hfHead)
+        val coreOk = com.jslw.genz.audio.HiFi.coreAvailable
+        hifi.addView(note(if (coreOk) "Studio-grade processing from the JSL Audio Engine core (C++20), applied after everything above."
+            else "The JSL Audio Engine core isn't available on this device, so Hi-Fi is off."))
+        val hfBody = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+        hifi.addView(hfBody)
+        val (loudRow, _) = toggleRow("Loudness compensation", Prefs.hfLoudness, coreOk) { v -> Prefs.hfLoudness = v }
+        hfBody.addView(loudRow)
+        val loudNote = note("")
+        hfBody.addView(loudNote)
+        val (xfRow, _) = toggleRow("Crossfeed", Prefs.hfCrossfeed, coreOk) { v -> Prefs.hfCrossfeed = v }
+        hfBody.addView(xfRow)
+        val xfNote = note("Headphones only: blends a little of each side into the other, the way speakers reach both ears – a natural, less tiring stereo.")
+        hfBody.addView(xfNote)
+        // the C++ limiter changes the chain (and its delay): switching it moves the song to a fresh track
+        val (tpRow, _) = toggleRow("True-peak protection", Prefs.hfTruePeak, coreOk) { v -> Prefs.hfTruePeak = v; svc.hiFiCoreToggled() }
+        hifi.addView(tpRow)
+        hifi.addView(note("Catches the peaks between samples (4× oversampled) and holds them at −1 dBTP, so loud songs never distort on Bluetooth or DACs; " +
+            "untouched – bit-identical – whenever the music stays below. Adds " + "%.1f".format(com.jslw.genz.audio.HiFi.latencyMs(48000).takeIf { it > 0 } ?: 1.8) + " ms, which the timeline accounts for."))
+        hifi.addView(note("Proprietary software of JSL WORKS PVT LTD · Made in India with ❤ · Partho Ghosh").apply { alpha = 0.6f; textSize = 11f; setPadding(0, px(10), 0, 0) })
+        fun hfSync() {
+            hfSw.isEnabled = coreOk && Prefs.hfTruePeak
+            hfSw.isChecked = coreOk && Prefs.hfTruePeak && Prefs.hfOn
+            hfBody.visibility = if (hfSw.isChecked) View.VISIBLE else View.GONE
+            val hp = com.jslw.genz.audio.HiFi.headphones
+            xfRow.visibility = if (hp) View.VISIBLE else View.GONE
+            xfNote.visibility = if (hp) View.VISIBLE else View.GONE
+            loudNote.text = "Restores bass and treble at lower volume (ISO 226 equal-loudness), from your volume and the song's loudness – now about " +
+                "${com.jslw.genz.audio.HiFi.listeningPhon(-14.0).toInt()} phon."
+        }
+        hfSw.setOnCheckedChangeListener { _, v ->
+            Touch.confirm(hfSw)
+            android.transition.TransitionManager.beginDelayedTransition(box, android.transition.AutoTransition().setDuration(220))
+            Prefs.hfOn = v; hfSync()   // loudness and crossfeed glide in and out inside the engine – no track change
+        }
+        hfSync()
+        hifiSync = { hfSync() }
+
         // ---- on / off
         fun setOn(on: Boolean) {
             body.visibility = if (on) View.VISIBLE else View.GONE
@@ -306,6 +359,7 @@ object AudioPlusCard {
             override fun run() {
                 if (Prefs.apMood == AudioPlus.AUTO) showDesc()
                 if (Prefs.apModesAuto) modesSync?.invoke()
+                hifiSync?.invoke()
                 autoRoomTile?.caption?.text = if (Prefs.apRoom == AutoSound.ROOM_AUTO)
                     (AutoSound.live.roomId?.let { "Now: " + AutoSound.roomName(it) } ?: "listening…") else "follows the song"
                 h.postDelayed(this, 1000)
@@ -320,5 +374,6 @@ object AudioPlusCard {
 
     private var customizeSync: (() -> Unit)? = null
     private var modesSync: (() -> Unit)? = null
+    private var hifiSync: (() -> Unit)? = null
     private var autoRoomTile: Tile? = null
 }

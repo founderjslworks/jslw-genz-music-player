@@ -194,6 +194,22 @@ object Prefs {
     var apTags: String
         get() = s("ap_tags", "{}")
         set(v) = put { putString("ap_tags", v) }
+    /** JSL Audio Engine C++ core: true-peak limiter (−1 dBTP) as the final Audio+ stage (feature flag). */
+    var hfTruePeak: Boolean
+        get() = b("hf_true_peak", true)
+        set(v) = put { putBoolean("hf_true_peak", v) }
+    /** Hi-Fi section switch (Sound screen). */
+    var hfOn: Boolean
+        get() = b("hf_on", false)
+        set(v) = put { putBoolean("hf_on", v) }
+    /** Hi-Fi · Loudness compensation (ISO 226 equal-loudness). */
+    var hfLoudness: Boolean
+        get() = b("hf_loudness", true)
+        set(v) = put { putBoolean("hf_loudness", v) }
+    /** Hi-Fi · Crossfeed (headphones only). */
+    var hfCrossfeed: Boolean
+        get() = b("hf_crossfeed", false)
+        set(v) = put { putBoolean("hf_crossfeed", v) }
     /** Modes follow the music (Auto) instead of fixed levels. */
     var apModesAuto: Boolean
         get() = b("ap_modes_auto", false)
