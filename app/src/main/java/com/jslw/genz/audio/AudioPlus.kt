@@ -240,7 +240,7 @@ object AudioPlus {
         val c = AudioPlusChain(rate)
         c.applyPreset(p)
         // the C++ true-peak limiter (−1 dBTP) is the final stage: the Kotlin sample-peak limiter stands aside
-        if (nativeLimiter) c.limiter.setCeilingDb(HiFi.KOTLIN_LIMITER_PARKED_DB)
+        if (nativeLimiter) c.limiter.ceilingDb = HiFi.KOTLIN_LIMITER_PARKED_DB
         if (speaker) {
             c.bass.setCutoff(150.0)
             c.bass.removeSubBass = p.bassBoost > 0
