@@ -55,6 +55,9 @@ class EqualizerActivity : BaseActivity() {
             append("Effects work on the music GEN-Z plays, including DSD and AIFF.")
             if (Prefs.bitPerfect) append("\nBit-perfect USB output is on: Android bypasses all effects in that mode.")
         }
+        // JSL Audio+ (JSL Audio Engine) on top of the Sound screen
+        (enable.parent.parent as? LinearLayout)?.addView(AudioPlusCard.create(this, svc), 0)
+
         enable.isChecked = Prefs.eqEnabled
         enable.setOnCheckedChangeListener { _, on -> Prefs.eqEnabled = on; svc.effectsChanged(); setEnabled(on) }
 

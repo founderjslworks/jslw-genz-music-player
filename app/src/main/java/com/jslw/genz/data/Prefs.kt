@@ -164,6 +164,23 @@ object Prefs {
         get() = s("se_room_type", "auto")
         set(v) = put { putString("se_room_type", v) }
 
+    // ---- JSL Audio+ (JSL Audio Engine) ----
+    var apOn: Boolean
+        get() = b("ap_on", false)
+        set(v) = put { putBoolean("ap_on", v) }
+    /** Mood id from the engine's SoundPresets (happy, party, chill, melody, …). */
+    var apMood: String
+        get() = s("ap_mood", "happy")
+        set(v) = put { putString("ap_mood", v) }
+    /** "mood" = the mood's own room, "off", or a room id (small_room, party_hall, …). */
+    var apRoom: String
+        get() = s("ap_room", "mood")
+        set(v) = put { putString("ap_room", v) }
+    /** Strength of the mood, 0–150 %. */
+    var apIntensity: Int
+        get() = i("ap_intensity", 100)
+        set(v) = put { putInt("ap_intensity", v) }
+
     // ---- hidden folders ----
     var hideCallRecordings: Boolean
         get() = b("hide_call_rec", true)

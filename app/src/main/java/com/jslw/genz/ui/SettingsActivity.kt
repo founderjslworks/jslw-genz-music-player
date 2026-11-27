@@ -40,6 +40,42 @@ class SettingsActivity : BaseActivity() {
     private val allItems = ArrayList<Item>()
     private lateinit var adapter: Adapter
 
+    private val backupTo = registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri: Uri? ->
+        uri ?: return@registerForActivityResult
+        toast("Backing up…")
+        Thread {
+            val err = try {
+                contentResolver.openOutputStream(uri)?.use { com.jslw.genz.util.Backup.write(this, it) } ?: error("Can't write there")
+                null
+            } catch (e: Exception) { e.message ?: "Backup failed" }
+            runOnUiThread {
+                if (err == null) MaterialAlertDialogBuilder(this).setTitle("Backup saved")
+                    .setMessage("Settings, themes, covers, playlists and favourites are saved. Keep this file safe – after reinstalling GEN-Z, open Settings → Backup & restore → Restore.")
+                    .setPositiveButton("OK", null).show()
+                else toast("Backup failed: $err")
+            }
+        }.start()
+    }
+
+    private val restoreFrom = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        uri ?: return@registerForActivityResult
+        val info = com.jslw.genz.util.Backup.peek(this, uri)
+        if (info == null) { toast("That isn't a GEN-Z backup file"); return@registerForActivityResult }
+        val date = java.text.DateFormat.getDateTimeInstance().format(java.util.Date(info.created))
+        MaterialAlertDialogBuilder(this).setTitle("Restore this backup?")
+            .setMessage("Made on $date\nGEN-Z ${info.version} · ${info.device}\n\nYour current settings, themes, playlists and favourites will be replaced. GEN-Z restarts when it's done.")
+            .setPositiveButton("Restore") { _, _ ->
+                toast("Restoring…")
+                Thread {
+                    val err = try { com.jslw.genz.util.Backup.restore(this, uri); null } catch (e: Exception) { e.message ?: "Restore failed" }
+                    runOnUiThread {
+                        if (err == null) com.jslw.genz.util.Backup.restart(this) else toast("Restore failed: $err")
+                    }
+                }.start()
+            }
+            .setNegativeButton("Cancel", null).show()
+    }
+
     private val pickFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri == null) return@registerForActivityResult
         try {
@@ -389,6 +425,14 @@ class SettingsActivity : BaseActivity() {
                     "• After a long pause the player and its notification are released.\n" +
                     "• GEN-Z never uses the internet."
             ).setPositiveButton("OK", null).show()
+        }
+
+        items += Item.Section("Backup & restore")
+        items += Item.Action("Back up everything", { "Settings, sound, themes, covers, playlists and favourites in one file" }) {
+            backupTo.launch(com.jslw.genz.util.Backup.defaultName())
+        }
+        items += Item.Action("Restore from backup", { "Pick a .genzbackup file – use after reinstalling or on a new phone" }) {
+            restoreFrom.launch(arrayOf("*/*"))
         }
 
         items += Item.Section("About")

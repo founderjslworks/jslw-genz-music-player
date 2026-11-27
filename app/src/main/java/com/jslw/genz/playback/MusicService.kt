@@ -47,6 +47,8 @@ import com.jslw.genz.audio.FormatInfo
 import com.jslw.genz.audio.Formats
 import com.jslw.genz.audio.MediaPlayerEngine
 import com.jslw.genz.audio.PcmEngine
+import com.jslw.genz.audio.AudioPlus
+import com.jslw.genz.audio.AudioPlusEngine
 import com.jslw.genz.data.Library
 import com.jslw.genz.data.LibraryDb
 import com.jslw.genz.data.Prefs
@@ -148,6 +150,7 @@ class MusicService : MediaBrowserServiceCompat() {
             MediaPlayer().also { sessionHolder = it }.audioSessionId
         }
         fx = AudioFx(audioSessionId)
+        AudioPlus.changed(this)
         // re-tune the JSLW Sound Engine when headphones / Bluetooth / speaker change
         if (Build.VERSION.SDK_INT >= 23) try { am.registerAudioDeviceCallback(routeCallback as android.media.AudioDeviceCallback, handler) } catch (_: Throwable) {}
         sendBroadcast(Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
@@ -489,6 +492,12 @@ class MusicService : MediaBrowserServiceCompat() {
         try {
             e = Engine.create(this, s, sid)
             ok = e.prepare(this, s)
+            if (!ok && e is AudioPlusEngine) {
+                // JSL Audio+ can't decode this file: play it on the normal player instead
+                e.release()
+                e = MediaPlayerEngine(this, sid)
+                ok = e.prepare(this, s)
+            }
             if (!ok && s.ext == "wav" && e is MediaPlayerEngine) {
                 // e.g. 32-bit float or 24-bit WAV on an old phone: use our own decoder
                 e.release()
@@ -717,10 +726,7 @@ class MusicService : MediaBrowserServiceCompat() {
         val token = c
         val sid = audioSessionId
         engineExec.execute {
-            val e = try {
-                val x = Engine.create(this, s, sid)
-                if (x.prepare(this, s)) x else { try { x.release() } catch (_: Throwable) {}; null }
-            } catch (_: Throwable) { null }
+            val e = try { Engine.open(this, s, sid) } catch (_: Throwable) { null }
             handler.post {
                 xfadePreparing = false
                 val left = if (cur === token) token.duration() - token.position() else 0L
@@ -947,6 +953,22 @@ class MusicService : MediaBrowserServiceCompat() {
         updatePlaybackState()
     }
 
+    /**
+     * JSL Audio+ switched on or off. The song moves to a fresh track of the right kind at the same position
+     * (the old track keeps playing until the new one takes over), so the output never goes silent.
+     * Effects are never added to or removed from a track that is already playing.
+     */
+    fun audioPlusToggled() {
+        AudioPlus.changed(this)
+        val c = cur ?: return
+        val want = AudioPlus.active && current?.needsPcmEngine != true
+        val has = c is AudioPlusEngine
+        if (want != has) reopenCurrent()
+    }
+
+    /** Audio+ mood / room / intensity changed: applied live with a short crossfade, no track change. */
+    fun audioPlusChanged() = AudioPlus.changed(this)
+
     fun effectsChanged() {
         fx.applyAll()
         applyVolume()
@@ -959,6 +981,7 @@ class MusicService : MediaBrowserServiceCompat() {
     private val routeCallback: Any? = if (Build.VERSION.SDK_INT >= 23) object : android.media.AudioDeviceCallback() {
         override fun onAudioDevicesAdded(added: Array<out android.media.AudioDeviceInfo>?) {
             if (Prefs.seOn) handler.postDelayed({ effectsChanged() }, 300)
+            if (Prefs.apOn) handler.postDelayed({ AudioPlus.changed(this@MusicService) }, 300)
             val car = added?.any {
                 it.isSink && (it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
                     (Build.VERSION.SDK_INT >= 31 && (it.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET || it.type == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER)) ||
@@ -966,7 +989,10 @@ class MusicService : MediaBrowserServiceCompat() {
             } == true
             if (car) handler.postDelayed({ refreshForCar() }, 1200)
         }
-        override fun onAudioDevicesRemoved(removed: Array<out android.media.AudioDeviceInfo>?) { if (Prefs.seOn) handler.postDelayed({ effectsChanged() }, 300) }
+        override fun onAudioDevicesRemoved(removed: Array<out android.media.AudioDeviceInfo>?) {
+            if (Prefs.seOn) handler.postDelayed({ effectsChanged() }, 300)
+            if (Prefs.apOn) handler.postDelayed({ AudioPlus.changed(this@MusicService) }, 300)
+        }
     } else null
 
     /** A car / Bluetooth unit connected: make sure it finds a live, up-to-date session it can control. */

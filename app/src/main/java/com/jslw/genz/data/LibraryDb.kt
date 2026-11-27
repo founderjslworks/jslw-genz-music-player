@@ -19,6 +19,11 @@ object LibraryDb {
         helper = Helper(ctx.applicationContext)
     }
 
+    /** Closes the database file (backup / restore); it reopens automatically on the next query. */
+    fun close() {
+        try { helper.close() } catch (_: Exception) {}
+    }
+
     private class Helper(ctx: Context) : SQLiteOpenHelper(ctx, "genz.db", null, 1) {
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE playlists(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created INTEGER)")

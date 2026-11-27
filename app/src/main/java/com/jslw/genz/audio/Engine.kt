@@ -32,8 +32,24 @@ interface Engine {
     fun release()
 
     companion object {
-        fun create(ctx: Context, song: Song, sessionId: Int): Engine =
-            if (song.needsPcmEngine) PcmEngine(ctx, sessionId) else MediaPlayerEngine(ctx, sessionId)
+        fun create(ctx: Context, song: Song, sessionId: Int): Engine = when {
+            song.needsPcmEngine -> PcmEngine(ctx, sessionId)
+            AudioPlus.active -> AudioPlusEngine(ctx, sessionId)
+            else -> MediaPlayerEngine(ctx, sessionId)
+        }
+
+        /** Creates and prepares an engine; JSL Audio+ falls back to the normal player for files it can't decode. */
+        fun open(ctx: Context, song: Song, sessionId: Int): Engine? {
+            var e: Engine = create(ctx, song, sessionId)
+            var ok = try { e.prepare(ctx, song) } catch (_: Throwable) { false }
+            if (!ok && e is AudioPlusEngine) {
+                try { e.release() } catch (_: Throwable) {}
+                e = MediaPlayerEngine(ctx, sessionId)
+                ok = try { e.prepare(ctx, song) } catch (_: Throwable) { false }
+            }
+            if (!ok) { try { e.release() } catch (_: Throwable) {}; return null }
+            return e
+        }
 
         fun musicAttributes(): AudioAttributes? = if (Build.VERSION.SDK_INT >= 21)
             AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)

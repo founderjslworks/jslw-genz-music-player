@@ -22,6 +22,17 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.14
+
+- **JSL Audio+** (Sound screen, beta, Android 5.0+): GEN-Z's new advanced audio, powered by the JSL Audio Engine. GEN-Z decodes the song itself and processes it before it leaves the phone, so the difference is clearly audible on headphones, Bluetooth, speakers and soundbars
+- 10 **moods**: Balanced, Happy, Energetic, Party, Chill, Romantic, Focus, Devotional, Soothing and **Melody** (brings the singer and lead instrument forward)
+- 10 physical **rooms**: Small Room, Medium Room, Large Room, Medium Hall, Large Hall, Party Hall, Concert Hall, Plate, Temple and Cathedral, each modelled from its size and walls (Sabine reverberation time)
+- Intensity slider (0–150 %) and **Hold to hear the original** to compare instantly
+- Phone speaker protection: deep bass is turned into harmonics the speaker can play, width is reduced
+- Turning Audio+ on or off never stops the music: the song moves to a fresh track at the same position, and mood / room / intensity changes crossfade live
+- The 1.8 equalizer, presets, bass boost, 3D surround, loudness and reverb are unchanged and still work on top
+- **Backup & restore** (Settings): one `.genzbackup` file with every setting, sound and Audio+ choice, themes and skin packs, custom covers, playlists, favourites, play counts and tag edits. Restore after reinstalling or on a new phone; playlists and favourites are matched to your songs
+
 ## What's new in 1.9.13
 
 - Album Flow: a black stage with just a soft light in the album's colour behind the centre cover
