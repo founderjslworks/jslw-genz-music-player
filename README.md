@@ -28,6 +28,9 @@ with no internet permission at all.
   - on the player under the artist, in portrait and landscape
   - at the top of the Sound / Equalizer page
   - shown only while Audio+ is on and something is set to Auto (preset, room, modes or equalizer)
+- **Hi-Fi – JSL Audio Engine C++20 core** inside JSL Audio+ (Android 5.0+):
+  - **True-peak protection** (on by default): a 4× oversampled limiter holds the peaks *between* samples at −1 dBTP as the final stage, so loud songs never distort on Bluetooth or DACs – and leaves the music bit-identical whenever it stays below. Adds 1.8 ms of look-ahead; the timeline and seeking account for it
+  - **Hi-Fi switch** on the Sound screen with **Loudness compensation** (ISO 226 equal-loudness, set from your volume and the song's loudness – restores bass and treble at low volume) and **Crossfeed** (headphones only – a natural, less tiring stereo). Both glide in and out without a click; Compare still plays the original
 
 ## What's new in 1.9.17
 

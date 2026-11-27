@@ -317,13 +317,13 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
     // ---------------------------------------------------------------- JSL Audio Engine C++ core (final stage)
     private val nativeLock = Any()
     private var core: com.jslworks.soundengine.nativecore.JslwNativeEngine? =
-        if (HiFi.coreActive) try { com.jslworks.soundengine.nativecore.JslwNativeEngine(rate, 4096) } catch (_: Throwable) { null } else null
+        if (HiFi.coreActive) try { com.jslworks.soundengine.nativecore.JslwNativeEngine.create(rate.toDouble(), 4096) } catch (_: Throwable) { null } else null
     private var coreLoud = false
     private var corePhon = -1.0
     private var coreXfeed = false
 
     /** Extra delay of the C++ core (true-peak look-ahead), frames: 85 at 48 kHz, 79 at 44.1 kHz. */
-    val latencyFrames: Int = core?.latency() ?: 0
+    val latencyFrames: Int = core?.latencyFrames ?: 0
 
     /** Kotlin chain, then the C++ core: equal-loudness → crossfeed → true-peak limiter. One call per decoder buffer. */
     fun process(data: FloatArray, frames: Int, channels: Int) {
@@ -338,7 +338,7 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
             if (loud != coreLoud || kotlin.math.abs(phon - corePhon) >= 1.0) { n.setLoudness(loud, phon); coreLoud = loud; corePhon = phon }
             val xf = !ab && HiFi.crossfeedOn
             if (xf != coreXfeed) { n.setCrossfeed(xf); coreXfeed = xf }
-            n.render(data, frames)
+            n.render(data, 0, frames)
         }
     }
 
@@ -354,13 +354,13 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
         val f = latencyFrames
         if (f <= 0 || buf.size < f * 2) return 0
         java.util.Arrays.fill(buf, 0, f * 2, 0f)
-        n.render(buf, f)
+        n.render(buf, 0, f)
         f
     }
 
     fun close() = synchronized(nativeLock) { core?.close(); core = null }
 
-    private fun limiterGrDb(c: AudioPlus.Graph): Double = core?.gainReductionDb() ?: c.chain.limiter.gainReductionDb
+    private fun limiterGrDb(c: AudioPlus.Graph): Double = core?.gainReductionDb ?: c.chain.limiter.gainReductionDb
 
     private fun processGraph(data: FloatArray, frames: Int, channels: Int) {
         if (channels != 2 || frames <= 0) return
