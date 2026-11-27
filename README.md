@@ -22,6 +22,18 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.15
+
+- **JSL Audio+ is now presets-first**: tap a sound preset and enjoy. Room and intensity moved under *Customize*; the 10-band equalizer stays as the fine-tune
+- No more doubled options: with Audio+ on, the effects it replaces (EQ presets, bass boost, 3D surround, loudness, reverb) are hidden – Audio+ rooms replace the old reverb
+- **Clearer, fuller sound on Bluetooth earphones and neckbands**: Audio+ songs now play on their own audio session, so the phone-side effects no longer process the music a second time (that stacking pulled the volume down and left only bass or only voice). Your EQ curve is applied inside Audio+ instead
+- **Volume matched to the original**: Audio+ is never quieter than the song without it
+- **Remembers a preset for each device**: your earphones, the phone speaker and the car each keep their own sound
+- Tips when the phone has its own effects (Dolby Atmos, Dirac …) and for earphones with their own EQ app
+- **Search** in Themes
+- **Smoother on 90 / 120 / 144 / 240 Hz screens**: lists build rows ahead of time and keep more ready on high-refresh panels; on Android 15+ the screen jumps to its top refresh rate the moment your finger lands, then relaxes to save battery
+- **Feather touch**: light haptic ticks and a soft spring on presets, rooms, the intensity slider and Compare; Customize and the Audio+ switch open and close with a smooth animation
+
 ## What's new in 1.9.14
 
 - **JSL Audio+** (Sound screen, beta, Android 5.0+): GEN-Z's new advanced audio, powered by the JSL Audio Engine. GEN-Z decodes the song itself and processes it before it leaves the phone, so the difference is clearly audible on headphones, Bluetooth, speakers and soundbars

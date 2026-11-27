@@ -21,7 +21,16 @@ import java.nio.ByteOrder
  * Android 5.0+. If a file can't be decoded this way the service falls back to the normal player.
  */
 @TargetApi(21)
-class AudioPlusEngine(ctx: Context, override val sessionId: Int) : Engine {
+class AudioPlusEngine(ctx: Context, serviceSession: Int) : Engine {
+    /**
+     * Audio+ plays on its own audio session: the 1.8 phone-side effects (EQ, bass boost, 3D, loudness, reverb)
+     * stay on GEN-Z's main session and never process Audio+ songs a second time. The user's EQ curve runs
+     * inside the engine instead (AudioPlus.build).
+     */
+    override val sessionId: Int = try {
+        (ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager).generateAudioSessionId()
+    } catch (_: Throwable) { serviceSession }
+
     override var onCompletion: (() -> Unit)? = null
     override var onError: ((String) -> Unit)? = null
 
@@ -46,8 +55,6 @@ class AudioPlusEngine(ctx: Context, override val sessionId: Int) : Engine {
     private var volume = 1f
     private var speed = 1f
     private var pitch = 1f
-    private var auxId = 0
-    private var auxLevel = 0f
 
     override fun prepare(ctx: Context, song: Song): Boolean {
         if (Build.VERSION.SDK_INT < 21) return false
@@ -194,7 +201,6 @@ class AudioPlusEngine(ctx: Context, override val sessionId: Int) : Engine {
             val pos = position()
             val n = createTrack(rate) ?: return
             n.setVolume(volume)
-            if (auxId != 0) try { n.attachAuxEffect(auxId); n.setAuxEffectSendLevel(auxLevel) } catch (_: Exception) {}
             track = n
             basePosMs = pos; baseHead = 0
             if (playing) { n.play(); applyParams() }
@@ -296,10 +302,8 @@ class AudioPlusEngine(ctx: Context, override val sessionId: Int) : Engine {
         }
     }
 
-    override fun attachAux(effectId: Int, level: Float) {
-        auxId = effectId; auxLevel = level
-        try { track?.attachAuxEffect(effectId); track?.setAuxEffectSendLevel(level) } catch (_: Exception) {}
-    }
+    /** The 1.8 reverb doesn't apply to Audio+ (it has its own rooms). */
+    override fun attachAux(effectId: Int, level: Float) {}
 
     override fun setNext(next: Engine?): Boolean = false
 

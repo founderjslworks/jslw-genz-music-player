@@ -61,6 +61,7 @@ class ThemesActivity : BaseActivity() {
         list.layoutManager = LinearLayoutManager(this)
         com.jslw.genz.util.Smooth.tuneList(list)
         list.adapter = Adapter()
+        setupSearch()
         com.jslw.genz.util.Bounce.enter(list)
         findViewById<View>(R.id.footer).visibility = View.VISIBLE
         findViewById<MaterialButton>(R.id.footerBtn1).apply {
@@ -132,8 +133,34 @@ class ThemesActivity : BaseActivity() {
         m.show()
     }
 
+    private var query = ""
+
+    /** Search box: matches the theme name, author and type (built-in, skin pack, theme file). */
+    private fun matches(s: Skin): Boolean {
+        if (query.isEmpty()) return true
+        val type = if (s.builtIn) "built-in builtin" else if (s.packDir != null) "skin pack" else "theme file"
+        return listOf(s.name, s.author, type, "v${s.version}").any { it.lowercase(java.util.Locale.ROOT).contains(query) }
+    }
+
+    private fun setupSearch() {
+        val box = findViewById<android.widget.EditText>(R.id.searchInput)
+        box.visibility = View.VISIBLE
+        box.hint = "Search themes"
+        box.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
+        box.compoundDrawablePadding = (10 * resources.displayMetrics.density).toInt()
+        androidx.core.widget.TextViewCompat.setCompoundDrawableTintList(box, android.content.res.ColorStateList.valueOf(skin.textSecondary))
+        box.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(t: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(t: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(e: android.text.Editable?) {
+                query = (e?.toString() ?: "").trim().lowercase(java.util.Locale.ROOT)
+                list.adapter?.notifyDataSetChanged()
+            }
+        })
+    }
+
     private inner class Adapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-        val items: List<Skin> get() = SkinManager.all()
+        val items: List<Skin> get() = SkinManager.all().filter { matches(it) }
         override fun getItemCount() = items.size
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {

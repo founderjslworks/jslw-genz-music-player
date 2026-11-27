@@ -176,7 +176,15 @@ object Prefs {
     var apRoom: String
         get() = s("ap_room", "mood")
         set(v) = put { putString("ap_room", v) }
-    /** Strength of the mood, 0–150 %. */
+    /** Preset remembered per output device (JSON: device name → mood, room, intensity). */
+    var apDevices: String
+        get() = s("ap_devices", "{}")
+        set(v) = put { putString("ap_devices", v) }
+    /** Customize section of Audio+ is open. */
+    var apCustomOpen: Boolean
+        get() = b("ap_custom_open", false)
+        set(v) = put { putBoolean("ap_custom_open", v) }
+        /** Strength of the mood, 0–150 %. */
     var apIntensity: Int
         get() = i("ap_intensity", 100)
         set(v) = put { putInt("ap_intensity", v) }

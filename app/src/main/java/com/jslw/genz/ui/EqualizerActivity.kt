@@ -56,7 +56,7 @@ class EqualizerActivity : BaseActivity() {
             if (Prefs.bitPerfect) append("\nBit-perfect USB output is on: Android bypasses all effects in that mode.")
         }
         // JSL Audio+ (JSL Audio Engine) on top of the Sound screen
-        (enable.parent.parent as? LinearLayout)?.addView(AudioPlusCard.create(this, svc), 0)
+        (enable.parent.parent as? LinearLayout)?.addView(AudioPlusCard.create(this, svc) { on -> audioPlusMode(on) }, 0)
 
         enable.isChecked = Prefs.eqEnabled
         enable.setOnCheckedChangeListener { _, on -> Prefs.eqEnabled = on; svc.effectsChanged(); setEnabled(on) }
@@ -149,6 +149,25 @@ class EqualizerActivity : BaseActivity() {
                     .setInterpolator(android.view.animation.OvershootInterpolator(3f)).start()
             }
         }
+    }
+
+    /**
+     * With JSL Audio+ on, the 1.8 effects it replaces are hidden so nothing is offered twice:
+     * EQ presets (Audio+ presets replace them), bass boost, 3D surround, loudness and reverb (Audio+ rooms).
+     * The 10-band graph stays as the fine-tune – Audio+ applies it inside the engine.
+     */
+    private fun audioPlusMode(on: Boolean) {
+        val vis = if (on) View.GONE else View.VISIBLE
+        val views = listOfNotNull(
+            presetGroup.parent as? android.widget.HorizontalScrollView ?: presetGroup,
+            findViewById<View>(R.id.eqBass)?.parent as? View,
+            findViewById<View>(R.id.eqVirt)?.parent as? View,
+            findViewById<View>(R.id.eqLoud)?.parent as? View,
+            findViewById<View>(R.id.eqReverbIcon)?.parent as? View,
+            findViewById<View>(R.id.eqReverb)?.parent as? View,
+            findViewById<View>(R.id.eqNote),
+        )
+        for (v in views) v.visibility = vis
     }
 
     private fun slider(id: Int, valId: Int, value: Int, set: (Int) -> Unit) {

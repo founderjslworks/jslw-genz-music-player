@@ -150,6 +150,7 @@ class MusicService : MediaBrowserServiceCompat() {
             MediaPlayer().also { sessionHolder = it }.audioSessionId
         }
         fx = AudioFx(audioSessionId)
+        AudioPlus.updateEq(fx)
         AudioPlus.changed(this)
         // re-tune the JSLW Sound Engine when headphones / Bluetooth / speaker change
         if (Build.VERSION.SDK_INT >= 23) try { am.registerAudioDeviceCallback(routeCallback as android.media.AudioDeviceCallback, handler) } catch (_: Throwable) {}
@@ -970,6 +971,7 @@ class MusicService : MediaBrowserServiceCompat() {
     fun audioPlusChanged() = AudioPlus.changed(this)
 
     fun effectsChanged() {
+        AudioPlus.updateEq(fx)
         fx.applyAll()
         applyVolume()
         val id = fx.reverbEffectId

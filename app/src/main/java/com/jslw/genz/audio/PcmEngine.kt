@@ -153,7 +153,7 @@ class PcmEngine(ctx: Context, override val sessionId: Int) : Engine {
                 }
                 val len = n * outCh
                 if (outCh == 2 && (AudioPlus.active || audioPlus != null)) {
-                    val ap = audioPlus ?: AudioPlusProcessor(outRate).also { audioPlus = it }
+                    val ap = audioPlus ?: AudioPlusProcessor(outRate, withUserEq = false).also { audioPlus = it }
                     ap.process(data, n, 2)
                 }
                 if (useFloat && Build.VERSION.SDK_INT >= 21) {
