@@ -40,8 +40,10 @@ class PcmEngine(ctx: Context, override val sessionId: Int) : Engine {
     private var speed = 1f
     private var pitch = 1f
     private var audioPlus: AudioPlusProcessor? = null
+    private var songId = -1L
 
     override fun prepare(ctx: Context, song: Song): Boolean {
+        songId = song.id
         val f = AudioFile.open(ctx, song.uri) ?: return false
         try {
             val ok = when (song.ext) {
@@ -153,7 +155,7 @@ class PcmEngine(ctx: Context, override val sessionId: Int) : Engine {
                 }
                 val len = n * outCh
                 if (outCh == 2 && (AudioPlus.active || audioPlus != null)) {
-                    val ap = audioPlus ?: AudioPlusProcessor(outRate, withUserEq = false).also { audioPlus = it }
+                    val ap = audioPlus ?: AudioPlusProcessor(outRate, withUserEq = false, songId = songId).also { audioPlus = it }
                     ap.process(data, n, 2)
                 }
                 if (useFloat && Build.VERSION.SDK_INT >= 21) {

@@ -46,6 +46,7 @@ class AudioPlusEngine(ctx: Context, serviceSession: Int) : Engine {
     private var pcmFloat = false
     private var durationMs = 0L
     private var processor: AudioPlusProcessor? = null
+    private var songId = -1L
 
     @Volatile private var playing = false
     @Volatile private var released = false
@@ -58,6 +59,7 @@ class AudioPlusEngine(ctx: Context, serviceSession: Int) : Engine {
 
     override fun prepare(ctx: Context, song: Song): Boolean {
         if (Build.VERSION.SDK_INT < 21) return false
+        songId = song.id
         val ex = MediaExtractor()
         var dec: MediaCodec? = null
         try {
@@ -109,7 +111,7 @@ class AudioPlusEngine(ctx: Context, serviceSession: Int) : Engine {
             )
             if (t.state != AudioTrack.STATE_INITIALIZED) { t.release(); null } else {
                 outRate = rate
-                processor = AudioPlusProcessor(rate)
+                processor = AudioPlusProcessor(rate, songId = songId)
                 t
             }
         }

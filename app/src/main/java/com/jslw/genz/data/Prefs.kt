@@ -180,6 +180,20 @@ object Prefs {
     var apDevices: String
         get() = s("ap_devices", "{}")
         set(v) = put { putString("ap_devices", v) }
+    /** Sound Stage / Sound Separation / Instrument Separation, 0–100 each. */
+    var apStage: Int
+        get() = i("ap_stage", 0)
+        set(v) = put { putInt("ap_stage", v) }
+    var apSep: Int
+        get() = i("ap_sep", 0)
+        set(v) = put { putInt("ap_sep", v) }
+    var apInst: Int
+        get() = i("ap_inst", 0)
+        set(v) = put { putInt("ap_inst", v) }
+    /** Auto mood tags per song (JSON: song id → mood, tone, tilt, BPM). */
+    var apTags: String
+        get() = s("ap_tags", "{}")
+        set(v) = put { putString("ap_tags", v) }
     /** Customize section of Audio+ is open. */
     var apCustomOpen: Boolean
         get() = b("ap_custom_open", false)

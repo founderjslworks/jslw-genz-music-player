@@ -22,6 +22,15 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.16
+
+- **Fixed: the equalizer now works with JSL Audio+** – every band change and EQ preset is applied inside Audio+ (before, changes only reached the phone's own equalizer). EQ presets are back on the Sound screen with Audio+ on
+- **No more pumping on bass-heavy songs through speakers**: gentler limiter (3 ms look-ahead, 150 ms release), volume matching that backs off while the limiter works, and a **Headphones / Speaker / Car** choice per device – speakers and cars get gentler bass
+- **Auto** preset: Audio+ listens to the first 15 seconds of each song – tempo (BPM), tonal balance and loudness – picks the mood, corrects the tone (bass-heavy songs get less bass) and remembers it, so next time the song starts tagged
+- **Modes** – one tap each (Off → Medium → Strong): **Sound Stage** (music around and in front of you), **Sound Separation** (voice lifted out of the band), **Instrument Separation** (bass centred, instruments spread out)
+- A **graphic on every option**: each preset shows its real sound curve, each room shows how long its echo lasts, each mode shows what it does
+- JSL Audio Engine 0.3.0
+
 ## What's new in 1.9.15
 
 - **JSL Audio+ is now presets-first**: tap a sound preset and enjoy. Room and intensity moved under *Customize*; the 10-band equalizer stays as the fine-tune

@@ -13,8 +13,8 @@ android {
         minSdk = 19
         // Google Play: new apps must target Android 16 (API 36)
         targetSdk = 36
-        versionCode = 24
-        versionName = "1.9.15"
+        versionCode = 25
+        versionName = "1.9.16"
         multiDexEnabled = true
         // Leave vector PNG generation ON for API < 21 (notifications/widgets on KitKat need PNGs).
     }
@@ -59,8 +59,8 @@ android {
 // support minSdk 19 (KitKat). Do NOT let Android Studio "upgrade" them, newer versions
 // require Android 5.0+ and the build will fail with a manifest-merger minSdk error.
 dependencies {
-    // JSL Audio Engine 0.2.0 (proprietary, JSL WORKS PVT LTD) – powers JSL Audio+; built from founderjslworks/jslw-audio-engine
-    implementation(files("libs/jslw-audio-engine-0.2.0.jar"))
+    // JSL Audio Engine 0.3.0 (proprietary, JSL WORKS PVT LTD) – powers JSL Audio+; built from founderjslworks/jslw-audio-engine
+    implementation(files("libs/jslw-audio-engine-0.3.0.jar"))
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.fragment:fragment-ktx:1.6.2")

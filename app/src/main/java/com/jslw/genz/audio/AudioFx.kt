@@ -75,6 +75,7 @@ class AudioFx(private val sessionId: Int) {
         Prefs.eqBands = levels.joinToString(",")
         Prefs.eqPreset = presetName
         applyEq()
+        AudioPlus.updateEq(this)   // Audio+ songs apply the curve inside the engine
     }
 
     fun applyAll() {

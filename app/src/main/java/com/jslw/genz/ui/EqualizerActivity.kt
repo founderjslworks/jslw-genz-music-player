@@ -153,13 +153,12 @@ class EqualizerActivity : BaseActivity() {
 
     /**
      * With JSL Audio+ on, the 1.8 effects it replaces are hidden so nothing is offered twice:
-     * EQ presets (Audio+ presets replace them), bass boost, 3D surround, loudness and reverb (Audio+ rooms).
-     * The 10-band graph stays as the fine-tune – Audio+ applies it inside the engine.
+     * bass boost, 3D surround, loudness and reverb (Audio+ has its own bass, Stage modes and rooms).
+     * The equalizer (graph + presets) stays – Audio+ applies it inside the engine.
      */
     private fun audioPlusMode(on: Boolean) {
         val vis = if (on) View.GONE else View.VISIBLE
         val views = listOfNotNull(
-            presetGroup.parent as? android.widget.HorizontalScrollView ?: presetGroup,
             findViewById<View>(R.id.eqBass)?.parent as? View,
             findViewById<View>(R.id.eqVirt)?.parent as? View,
             findViewById<View>(R.id.eqLoud)?.parent as? View,

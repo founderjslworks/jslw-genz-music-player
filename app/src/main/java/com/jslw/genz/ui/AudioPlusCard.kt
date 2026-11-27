@@ -3,12 +3,18 @@ package com.jslw.genz.ui
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.widget.SwitchCompat
+import androidx.core.graphics.ColorUtils
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
@@ -17,83 +23,150 @@ import com.jslw.genz.R
 import com.jslw.genz.audio.AudioPlus
 import com.jslw.genz.data.Prefs
 import com.jslw.genz.playback.MusicService
+import com.jslw.genz.skin.SkinManager
 import com.jslw.genz.skin.SkinPainter
 import com.jslw.genz.util.Touch
 import com.jslworks.soundengine.dsp.SoundPresets
 
 /**
- * "JSL Audio+" at the top of the Sound screen – presets first: tap a sound preset and enjoy.
- * Room and intensity sit under "Customize"; the 10-band equalizer below is the fine-tune and runs inside Audio+.
- * [onMode] tells the screen to hide the 1.8 effects that Audio+ replaces (bass boost, 3D, loudness, reverb, EQ presets).
+ * "JSL Audio+" at the top of the Sound screen. Built for a personal experience, not a mixing desk:
+ * pick a preset (or Auto) and enjoy; Stage modes are one tap each; room and intensity sit under Customize.
+ * Every tile carries a small graphic that shows what it does (the preset's real curve, a room's echo, the stage).
+ * [onMode] hides the 1.8 effects that Audio+ replaces (bass boost, 3D, loudness, reverb).
  */
 object AudioPlusCard {
 
-    @SuppressLint("ClickableViewAccessibility")
+    private class Tile(val root: LinearLayout, val caption: TextView)
+
+    @SuppressLint("ClickableViewAccessibility", "SetTextI18n")
     fun create(a: Activity, svc: MusicService, onMode: (Boolean) -> Unit): View {
+        val sk = SkinManager.current
         val d = a.resources.displayMetrics.density
         fun px(v: Int) = (v * d).toInt()
         fun text(s: String, size: Float, bold: Boolean = false) = TextView(a).apply {
             text = s; textSize = size; tag = "skin_text"
             if (bold) setTypeface(typeface, Typeface.BOLD)
         }
-        fun label(s: String) = text(s, 14f, true).apply { setPadding(0, px(14), 0, px(4)) }
+        fun label(s: String) = text(s, 14f, true).apply { setPadding(0, px(16), 0, px(6)) }
         fun note(s: String) = text(s, 12.5f).apply { alpha = 0.75f; setPadding(0, px(4), 0, 0) }
+        val faint = ColorUtils.setAlphaComponent(sk.accent, 110)
 
-        AudioPlus.changed(a)   // fresh output detection for the labels below
+        fun tile(art: FxArt, title: String, caption: String = ""): Tile {
+            val t = LinearLayout(a).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(px(10), px(10), px(10), px(8))
+                isClickable = true; isFocusable = true
+            }
+            t.addView(ImageView(a).apply { setImageDrawable(art) }, LinearLayout.LayoutParams(px(84), px(46)))
+            t.addView(text(title, 13.5f, true).apply { gravity = Gravity.CENTER; setPadding(0, px(6), 0, 0) })
+            val cap = text(caption, 11f).apply { gravity = Gravity.CENTER; alpha = 0.7f; visibility = if (caption.isEmpty()) View.GONE else View.VISIBLE }
+            t.addView(cap)
+            Touch.spring(t)
+            return Tile(t, cap)
+        }
+        fun paint(t: Tile, selected: Boolean) {
+            t.root.background = GradientDrawable().apply {
+                cornerRadius = px(16).toFloat()
+                setColor(if (selected) ColorUtils.setAlphaComponent(sk.accent, 70) else ColorUtils.setAlphaComponent(sk.text, 14))
+                setStroke(px(if (selected) 2 else 1), if (selected) sk.accent else ColorUtils.setAlphaComponent(sk.text, 40))
+            }
+        }
+        fun row(): Pair<HorizontalScrollView, LinearLayout> {
+            val inner = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL }
+            val sc = HorizontalScrollView(a).apply { isHorizontalScrollBarEnabled = false; addView(inner) }
+            return sc to inner
+        }
+        fun lp() = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginEnd = px(10) }
+
+        AudioPlus.changed(a)
 
         val box = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, px(18)) }
-
         val head = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         head.addView(text("JSL Audio+", 18f, true), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         val sw = SwitchCompat(a)
         head.addView(sw)
         box.addView(head)
         box.addView(text(
-            if (AudioPlus.supported) "Tap a sound preset and enjoy. Fine-tune only if you want."
+            if (AudioPlus.supported) "Your personal sound, powered by the JSL Audio Engine. Pick a preset or let Auto choose – fine-tune only if you want."
             else "JSL Audio+ needs Android 5.0 or newer.", 13f
         ).apply { alpha = 0.85f })
 
         val body = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         box.addView(body)
 
-        // ---- output + tips
-        val output = note("").apply { alpha = 0.9f }
-        body.addView(output)
-        fun showOutput() {
-            output.text = "${if (AudioPlus.speaker) "🔊" else "🎧"} ${AudioPlus.outputName} – your preset is remembered for this device"
+        // ---- this device
+        body.addView(label("${if (AudioPlus.speaker) "🔊" else "🎧"}  ${AudioPlus.outputName}"))
+        val kinds = ChipGroup(a).apply { isSingleSelection = true; isSelectionRequired = true }
+        for ((k, name) in listOf(AudioPlus.KIND_HEADPHONES to "Headphones", AudioPlus.KIND_SPEAKER to "Speaker", AudioPlus.KIND_CAR to "Car")) {
+            val c = Chip(a)
+            c.text = name; c.isCheckable = true; c.id = View.generateViewId()
+            SkinPainter.styleChip(c); Touch.spring(c)
+            c.isChecked = AudioPlus.kind == k
+            c.setOnClickListener { Touch.confirm(c); AudioPlus.setKind(k) }
+            kinds.addView(c)
         }
-        showOutput()
+        body.addView(kinds)
+        body.addView(note("Tell Audio+ what this is – speakers and cars get gentler bass so songs never boom or pump. Everything you choose is remembered for this device."))
         if (AudioPlus.bluetooth) body.addView(note("Tip: keep your earphones' own EQ on Default / Balanced, so two equalizers don't fight."))
         AudioPlus.phoneEffects()?.let { body.addView(note("This phone also has $it. If the sound feels too strong or thin, switch $it off while using Audio+.")) }
 
-        // ---- presets
+        // ---- presets (Auto first)
         body.addView(label("Sound presets"))
+        val (presetScroll, presetRow) = row()
+        body.addView(presetScroll)
         val desc = note("").apply { alpha = 0.85f }
-        val presets = ChipGroup(a).apply { isSingleSelection = true; isSelectionRequired = true }
-        fun showDesc() { desc.text = AudioPlus.mood().description }
-        for (m in SoundPresets.MOODS) {
-            val c = Chip(a)
-            c.text = m.name
-            c.isCheckable = true
-            c.id = View.generateViewId()
-            SkinPainter.styleChip(c)
-            c.isChecked = Prefs.apMood == m.id
-            Touch.spring(c)
-            c.setOnClickListener {
-                Touch.confirm(c)
-                Prefs.apMood = m.id
-                Prefs.apRoom = "mood"          // a preset is complete: it brings its own room
-                Prefs.apIntensity = 100
-                AudioPlus.rememberForDevice()
-                showDesc()
-                svc.audioPlusChanged()
-                a.recreateCustomize()
-            }
-            presets.addView(c)
-        }
-        body.addView(presets)
         body.addView(desc)
-        showDesc()
+        val presetTiles = ArrayList<Pair<Tile, String>>()
+        fun showDesc() {
+            desc.text = if (Prefs.apMood == AudioPlus.AUTO) {
+                val t = AudioPlus.nowTag
+                "Auto listens to each song (tempo, tone, loudness), picks the preset and corrects the tone – and remembers it. " +
+                    if (t != null) "Now: ${AudioPlus.mood(t.moodId).name} · ${t.bpm.toInt()} BPM · ${t.tone}" else "Now: listening…"
+            } else AudioPlus.mood().description
+        }
+        fun selectPreset() { for ((t, id) in presetTiles) paint(t, Prefs.apMood == id) }
+        val presets = listOf<Pair<String, com.jslworks.soundengine.dsp.SoundPreset?>>(AudioPlus.AUTO to null) + SoundPresets.MOODS.map { it.id to it }
+        for ((id, m) in presets) {
+            val art = if (m == null) FxArt(FxArt.Kind.Auto, sk.accent, faint) else FxArt(FxArt.Kind.Curve(FxArt.presetCurve(m)), sk.accent, faint)
+            val t = tile(art, m?.name ?: "Auto")
+            t.root.setOnClickListener {
+                Touch.confirm(t.root)
+                Prefs.apMood = id; Prefs.apRoom = "mood"; Prefs.apIntensity = 100
+                AudioPlus.rememberForDevice(); svc.audioPlusChanged()
+                selectPreset(); showDesc(); customizeSync?.invoke()
+            }
+            presetRow.addView(t.root, lp())
+            presetTiles += t to id
+        }
+        selectPreset(); showDesc()
+
+        // ---- stage modes (one tap: Off → Medium → Strong)
+        body.addView(label("Modes"))
+        val (modeScroll, modeRow) = row()
+        body.addView(modeScroll)
+        fun level(v: Int) = when { v <= 0 -> "Off"; v < 75 -> "Medium"; else -> "Strong" }
+        val modes = listOf<Triple<String, FxArt.Kind, Int>>(
+            Triple("Sound Stage", FxArt.Kind.Stage, 0),
+            Triple("Sound Separation", FxArt.Kind.Separation, 1),
+            Triple("Instrument Separation", FxArt.Kind.Instruments, 2),
+        )
+        fun getMode(i: Int) = when (i) { 0 -> Prefs.apStage; 1 -> Prefs.apSep; else -> Prefs.apInst }
+        fun setMode(i: Int, v: Int) { when (i) { 0 -> Prefs.apStage = v; 1 -> Prefs.apSep = v; else -> Prefs.apInst = v } }
+        for ((name, art, i) in modes) {
+            val t = tile(FxArt(art, sk.accent, faint), name, level(getMode(i)))
+            paint(t, getMode(i) > 0)
+            t.root.setOnClickListener {
+                Touch.confirm(t.root)
+                val cur = getMode(i)
+                val next = when { cur <= 0 -> 50; cur < 75 -> 100; else -> 0 }
+                setMode(i, next)
+                t.caption.text = level(next); paint(t, next > 0)
+                AudioPlus.rememberForDevice(); svc.audioPlusChanged()
+            }
+            modeRow.addView(t.root, lp())
+        }
+        body.addView(note("Sound Stage puts the music around and in front of you. Sound Separation lifts the voice out of the band. Instrument Separation keeps the bass centred and spreads the instruments. Tap again for Strong, once more for Off."))
 
         // ---- compare
         val compare = MaterialButton(a).apply {
@@ -111,46 +184,44 @@ object AudioPlusCard {
                 false
             }
         }
-        body.addView(compare, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = px(10) })
+        body.addView(compare, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = px(14) })
 
-        // ---- customize (collapsed by default)
+        // ---- customize: room + intensity
         val toggle = MaterialButton(a, null, com.google.android.material.R.attr.materialButtonOutlinedStyle)
-        body.addView(toggle, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = px(4) })
+        body.addView(toggle, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = px(6) })
         val custom = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         body.addView(custom)
-
-        val rooms = ChipGroup(a).apply { isSingleSelection = true; isSelectionRequired = true }
+        custom.addView(label("Room"))
+        val (roomScroll, roomRow) = row()
+        custom.addView(roomScroll)
+        val roomTiles = ArrayList<Pair<Tile, String>>()
+        val roomChoices = listOf(Triple("mood", "Preset's room", 1.0), Triple("off", "No room", 0.15)) +
+            SoundPresets.ROOMS.map { Triple(it.id, it.name, it.rt60) }
+        for ((id, name, rt) in roomChoices) {
+            val t = tile(FxArt(FxArt.Kind.Room(rt), sk.accent, faint), name, if (id == "mood" || id == "off") "" else "${"%.1f".format(rt)} s echo")
+            t.root.setOnClickListener {
+                Touch.confirm(t.root)
+                Prefs.apRoom = id; AudioPlus.rememberForDevice(); svc.audioPlusChanged()
+                for ((x, xid) in roomTiles) paint(x, Prefs.apRoom == xid)
+            }
+            roomRow.addView(t.root, lp())
+            roomTiles += t to id
+        }
+        custom.addView(note("Each room is modelled from its size and walls – the graphic shows how long its echo lasts."))
         val intLabel = label("")
         val slider = Slider(a).apply { valueFrom = 0f; valueTo = 150f; stepSize = 10f }
-        custom.addView(label("Room"))
-        custom.addView(rooms)
-        custom.addView(note("Rooms are modelled from their size and walls (reverberation time shown)."))
-        custom.addView(intLabel)
-        custom.addView(slider)
-        custom.addView(note("Your equalizer curve below is applied inside Audio+, and the volume is matched to the original song."))
-
-        val roomChoices = listOf("mood" to "Preset's room", "off" to "No room") +
-            SoundPresets.ROOMS.map { it.id to "${it.name} · ${"%.1f".format(it.rt60)} s" }
-        val roomChips = roomChoices.map { (id, name) ->
-            Chip(a).apply {
-                text = name; isCheckable = true; this.id = View.generateViewId()
-                SkinPainter.styleChip(this)
-                Touch.spring(this)
-                setOnClickListener { Touch.confirm(this); Prefs.apRoom = id; AudioPlus.rememberForDevice(); svc.audioPlusChanged() }
-                rooms.addView(this)
-            } to id
-        }
+        custom.addView(intLabel); custom.addView(slider)
+        custom.addView(note("Your equalizer below is applied inside Audio+, and the volume is matched to the original song."))
         slider.addOnChangeListener { _, v, fromUser ->
             intLabel.text = "Intensity · ${v.toInt()}%"
             if (fromUser) { Touch.tick(slider); Prefs.apIntensity = v.toInt(); AudioPlus.rememberForDevice(); svc.audioPlusChanged() }
         }
-        fun syncCustom() {
-            for ((chip, id) in roomChips) chip.isChecked = Prefs.apRoom == id
+        customizeSync = {
+            for ((x, xid) in roomTiles) paint(x, Prefs.apRoom == xid)
             slider.value = (Prefs.apIntensity.coerceIn(0, 150) / 10 * 10).toFloat()
             intLabel.text = "Intensity · ${slider.value.toInt()}%"
         }
-        customizeSync = ::syncCustom
-        syncCustom()
+        customizeSync?.invoke()
         fun showCustom() {
             val open = Prefs.apCustomOpen
             custom.visibility = if (open) View.VISIBLE else View.GONE
@@ -164,6 +235,7 @@ object AudioPlusCard {
         }
         showCustom()
 
+        // ---- on / off
         fun setOn(on: Boolean) {
             body.visibility = if (on) View.VISIBLE else View.GONE
             onMode(on)
@@ -177,13 +249,22 @@ object AudioPlusCard {
             Prefs.apOn = on
             setOn(on)
             svc.audioPlusToggled()
-            showOutput()
         }
+
+        // Auto: refresh "Now: …" while the screen is open
+        val h = Handler(Looper.getMainLooper())
+        val tick = object : Runnable {
+            override fun run() {
+                if (Prefs.apMood == AudioPlus.AUTO) showDesc()
+                h.postDelayed(this, 1000)
+            }
+        }
+        box.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) { h.post(tick) }
+            override fun onViewDetachedFromWindow(v: View) { h.removeCallbacks(tick) }
+        })
         return box
     }
 
     private var customizeSync: (() -> Unit)? = null
-
-    /** A preset resets room + intensity: refresh the Customize controls. */
-    private fun Activity.recreateCustomize() { customizeSync?.invoke() }
 }
