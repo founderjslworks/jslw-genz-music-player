@@ -21,6 +21,7 @@ import com.google.android.material.chip.ChipGroup
 import com.google.android.material.slider.Slider
 import com.jslw.genz.R
 import com.jslw.genz.audio.AudioPlus
+import com.jslw.genz.audio.AutoSound
 import com.jslw.genz.data.Prefs
 import com.jslw.genz.playback.MusicService
 import com.jslw.genz.skin.SkinManager
@@ -132,7 +133,7 @@ object AudioPlusCard {
             val t = tile(art, m?.name ?: "Auto")
             t.root.setOnClickListener {
                 Touch.confirm(t.root)
-                Prefs.apMood = id; Prefs.apRoom = "mood"; Prefs.apIntensity = 100
+                Prefs.apMood = id; if (Prefs.apRoom != AutoSound.ROOM_AUTO) Prefs.apRoom = "mood"; Prefs.apIntensity = 100
                 AudioPlus.rememberForDevice(); svc.audioPlusChanged()
                 selectPreset(); showDesc(); customizeSync?.invoke()
             }
@@ -153,20 +154,44 @@ object AudioPlusCard {
         )
         fun getMode(i: Int) = when (i) { 0 -> Prefs.apStage; 1 -> Prefs.apSep; else -> Prefs.apInst }
         fun setMode(i: Int, v: Int) { when (i) { 0 -> Prefs.apStage = v; 1 -> Prefs.apSep = v; else -> Prefs.apInst = v } }
+        val modeTiles = ArrayList<Tile>()
+        val autoModes = tile(FxArt(FxArt.Kind.Auto, sk.accent, faint), "Auto", "")
+        fun liveMode(i: Int) = when (i) { 0 -> AutoSound.live.stage; 1 -> AutoSound.live.sep; else -> AutoSound.live.inst }
+        modesSync = {
+            val auto = Prefs.apModesAuto
+            paint(autoModes, auto)
+            autoModes.caption.text = if (auto) (if (AutoSound.live.listening) "listening…" else "follows the song") else "Off"
+            modeTiles.forEachIndexed { i, t ->
+                if (auto) { t.caption.text = "Auto · ${AutoSound.level(liveMode(i))}"; paint(t, false); t.root.alpha = 0.85f }
+                else { t.caption.text = level(getMode(i)); paint(t, getMode(i) > 0); t.root.alpha = 1f }
+            }
+        }
+        autoModes.root.setOnClickListener {
+            Touch.confirm(autoModes.root)
+            Prefs.apModesAuto = !Prefs.apModesAuto
+            AudioPlus.rememberForDevice(); svc.audioPlusChanged()
+            modesSync?.invoke()
+        }
+        modeRow.addView(autoModes.root, lp())
         for ((name, art, i) in modes) {
             val t = tile(FxArt(art, sk.accent, faint), name, level(getMode(i)))
             paint(t, getMode(i) > 0)
             t.root.setOnClickListener {
                 Touch.confirm(t.root)
-                val cur = getMode(i)
+                // choosing a level yourself turns Auto off for the modes
+                val wasAuto = Prefs.apModesAuto
+                Prefs.apModesAuto = false
+                val cur = if (wasAuto) 0 else getMode(i)
                 val next = when { cur <= 0 -> 50; cur < 75 -> 100; else -> 0 }
                 setMode(i, next)
-                t.caption.text = level(next); paint(t, next > 0)
                 AudioPlus.rememberForDevice(); svc.audioPlusChanged()
+                modesSync?.invoke()
             }
             modeRow.addView(t.root, lp())
+            modeTiles += t
         }
-        body.addView(note("Sound Stage puts the music around and in front of you. Sound Separation lifts the voice out of the band. Instrument Separation keeps the bass centred and spreads the instruments. Tap again for Strong, once more for Off."))
+        modesSync?.invoke()
+        body.addView(note("Auto sets all three from the song as it plays. Sound Stage puts the music around and in front of you. Sound Separation lifts the voice out of the band. Instrument Separation keeps the bass centred and spreads the instruments. Tap a mode for Medium, again for Strong, once more for Off."))
 
         // ---- compare
         val compare = MaterialButton(a).apply {
@@ -195,10 +220,12 @@ object AudioPlusCard {
         val (roomScroll, roomRow) = row()
         custom.addView(roomScroll)
         val roomTiles = ArrayList<Pair<Tile, String>>()
-        val roomChoices = listOf(Triple("mood", "Preset's room", 1.0), Triple("off", "No room", 0.15)) +
+        val roomChoices = listOf(Triple(AutoSound.ROOM_AUTO, "Auto", 0.0), Triple("mood", "Preset's room", 1.0), Triple("off", "No room", 0.15)) +
             SoundPresets.ROOMS.map { Triple(it.id, it.name, it.rt60) }
         for ((id, name, rt) in roomChoices) {
-            val t = tile(FxArt(FxArt.Kind.Room(rt), sk.accent, faint), name, if (id == "mood" || id == "off") "" else "${"%.1f".format(rt)} s echo")
+            val art = if (id == AutoSound.ROOM_AUTO) FxArt(FxArt.Kind.Auto, sk.accent, faint) else FxArt(FxArt.Kind.Room(rt, id), sk.accent, faint)
+            val t = tile(art, name, when (id) { "mood", "off" -> ""; AutoSound.ROOM_AUTO -> "follows the song"; else -> "${"%.1f".format(rt)} s echo" })
+            if (id == AutoSound.ROOM_AUTO) autoRoomTile = t
             t.root.setOnClickListener {
                 Touch.confirm(t.root)
                 Prefs.apRoom = id; AudioPlus.rememberForDevice(); svc.audioPlusChanged()
@@ -207,7 +234,7 @@ object AudioPlusCard {
             roomRow.addView(t.root, lp())
             roomTiles += t to id
         }
-        custom.addView(note("Each room is modelled from its size and walls – the graphic shows how long its echo lasts."))
+        custom.addView(note("Auto picks the room from the song as it plays – bigger for quiet, open passages, smaller and drier for busy, loud or fast ones. Each room is modelled from its size and walls; the line under it shows how long its echo lasts."))
         val intLabel = label("")
         val slider = Slider(a).apply { valueFrom = 0f; valueTo = 150f; stepSize = 10f }
         custom.addView(intLabel); custom.addView(slider)
@@ -256,6 +283,9 @@ object AudioPlusCard {
         val tick = object : Runnable {
             override fun run() {
                 if (Prefs.apMood == AudioPlus.AUTO) showDesc()
+                if (Prefs.apModesAuto) modesSync?.invoke()
+                autoRoomTile?.caption?.text = if (Prefs.apRoom == AutoSound.ROOM_AUTO)
+                    (AutoSound.live.roomId?.let { "Now: " + AutoSound.roomName(it) } ?: "listening…") else "follows the song"
                 h.postDelayed(this, 1000)
             }
         }
@@ -267,4 +297,6 @@ object AudioPlusCard {
     }
 
     private var customizeSync: (() -> Unit)? = null
+    private var modesSync: (() -> Unit)? = null
+    private var autoRoomTile: Tile? = null
 }

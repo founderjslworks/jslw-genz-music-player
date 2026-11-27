@@ -71,6 +71,9 @@ object AudioPlus {
     @Volatile private var eqDb = FloatArray(0)
     @Volatile private var eqOn = false
 
+    val bandFreqs: IntArray get() = eqFreqs
+    val intensity: Double get() = Prefs.apIntensity.coerceIn(0, 150) / 100.0
+
     fun changed(ctx: Context) {
         detectOutput(ctx)
         recallForDevice()
@@ -102,7 +105,8 @@ object AudioPlus {
     fun rememberForDevice() {
         val o = devices()
         o.put(outputName, JSONObject().put("mood", Prefs.apMood).put("room", Prefs.apRoom).put("intensity", Prefs.apIntensity)
-            .put("stage", Prefs.apStage).put("sep", Prefs.apSep).put("inst", Prefs.apInst).put("kind", kind))
+            .put("stage", Prefs.apStage).put("sep", Prefs.apSep).put("inst", Prefs.apInst).put("kind", kind)
+            .put("modesAuto", Prefs.apModesAuto))
         Prefs.apDevices = o.toString()
     }
 
@@ -118,6 +122,7 @@ object AudioPlus {
         Prefs.apStage = e.optInt("stage", Prefs.apStage)
         Prefs.apSep = e.optInt("sep", Prefs.apSep)
         Prefs.apInst = e.optInt("inst", Prefs.apInst)
+        Prefs.apModesAuto = e.optBoolean("modesAuto", Prefs.apModesAuto)
     }
 
     private fun devices(): JSONObject = try { JSONObject(Prefs.apDevices) } catch (_: Exception) { JSONObject() }
@@ -183,6 +188,11 @@ object AudioPlus {
         when (val r = Prefs.apRoom) {
             "mood" -> { roomId = m.roomId; roomWet = m.roomWet }
             "off" -> { roomId = null; roomWet = 0.0 }
+            AutoSound.ROOM_AUTO -> {
+                // starts on the preset's room; the processor moves it with the music
+                roomId = AutoSound.live.roomId ?: m.roomId ?: "medium_room"
+                roomWet = m.roomWet.takeIf { it > 0 } ?: 0.15
+            }
             else -> {
                 roomId = SoundPresets.ROOMS.firstOrNull { it.id == r }?.id
                 roomWet = roomId?.let { m.roomWet.takeIf { w -> w > 0 } ?: 0.15 } ?: 0.0
@@ -212,7 +222,11 @@ object AudioPlus {
             c.bass.removeSubBass = p.bassBoost > 0
         }
 
-        val stage = StageProcessor(rate).apply {
+        val stage = if (AutoSound.modesAuto) StageProcessor(rate).apply {
+            // Auto: kept even at 0 so the processor can ease the modes in and out with the music
+            val l = AutoSound.live
+            this.stage = l.stage; separation = l.sep; instruments = l.inst
+        } else StageProcessor(rate).apply {
             this.stage = Prefs.apStage / 100.0 * (if (speaker) 0.5 else 1.0)
             separation = Prefs.apSep / 100.0
             instruments = Prefs.apInst / 100.0
@@ -220,7 +234,14 @@ object AudioPlus {
 
         var user: ParametricEqualizer? = null
         val f = eqFreqs; val g = eqDb
-        if (withUserEq && eqOn && f.isNotEmpty() && f.size == g.size && g.any { it != 0f }) {
+        if (withUserEq && AutoSound.eqAuto && f.isNotEmpty()) {
+            // Auto EQ: bands start where Auto last was and are eased by the processor
+            val eq = ParametricEqualizer(2, rate)
+            val n = minOf(f.size, ParametricEqualizer.MAX_BANDS)
+            val cur = AutoSound.live.eqDb
+            for (i in 0 until n) eq.setBand(i, autoBand(i, n, f[i], cur.getOrElse(i) { 0f }.toDouble()))
+            user = eq
+        } else if (withUserEq && eqOn && f.isNotEmpty() && f.size == g.size && g.any { it != 0f }) {
             val eq = ParametricEqualizer(2, rate)
             val n = minOf(f.size, ParametricEqualizer.MAX_BANDS)
             for (i in 0 until n) {
@@ -233,7 +254,12 @@ object AudioPlus {
         return Graph(c, user, stage)
     }
 
-    class Graph(val chain: AudioPlusChain, private val userEq: ParametricEqualizer?, private val stage: StageProcessor?) {
+    fun autoBand(i: Int, n: Int, hz: Int, db: Double): EqBand {
+        val type = when (i) { 0 -> BiquadType.LowShelf; n - 1 -> BiquadType.HighShelf; else -> BiquadType.Peaking }
+        return EqBand(type, hz.toDouble(), db, if (type == BiquadType.Peaking) 1.41 else 0.707)
+    }
+
+    class Graph(val chain: AudioPlusChain, val userEq: ParametricEqualizer?, val stage: StageProcessor?) {
         fun process(b: JslwAudioBuffer) { userEq?.process(b); stage?.process(b); chain.process(b) }
     }
 }
@@ -304,6 +330,8 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
             if (c == null && fadeLeft == 0) return
         }
 
+        if (c != null && AutoSound.anyAuto) autoStep(c, x, frames)
+
         val fading = fadeLeft > 0
         if (fading) { xl.copyInto(y.channel(0)); xr.copyInto(y.channel(1)) }
 
@@ -338,6 +366,87 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
             if (fadeLeft == 0) prev = null
         }
         for (i in 0 until frames) { data[2 * i] = xl[i]; data[2 * i + 1] = xr[i] }
+    }
+
+    // ---------------------------------------------------------------- Auto Room / Modes / EQ, live with the music
+    private var section: TrackAnalyzer? = null
+    private var sections = 0
+    private val smooth = AutoSound.Smoothed()
+    private var target: AutoSound.Decision? = null
+    private var lastRoomVote: String? = null
+    private var confirmedRoom: String? = null
+    private var appliedRoom: String? = null
+    private var appliedWet = -1.0
+    private var eqNow: FloatArray = AutoSound.live.eqDb.copyOf()
+    private var eqSet: FloatArray = FloatArray(0)
+    private val modesNow = doubleArrayOf(AutoSound.live.stage, AutoSound.live.sep, AutoSound.live.inst)
+    private var autoGraph: AudioPlus.Graph? = null
+
+    private fun autoStep(c: AudioPlus.Graph, x: JslwAudioBuffer, frames: Int) {
+        // listen in sections: the first after 4 s, then every 6 s, all the way through the song
+        val an = section ?: TrackAnalyzer(rate, if (sections == 0) 4.0 else 6.0).also { section = it }
+        an.process(x)
+        if (an.isFull) {
+            val f = an.features()
+            section = null; sections++
+            if (smooth.add(f)) {
+                val moodNow = if (Prefs.apMood == AudioPlus.AUTO) AudioPlus.mood(tag?.moodId ?: "balanced") else AudioPlus.mood()
+                val d = AutoSound.decide(smooth, moodNow, AudioPlus.bandFreqs, AudioPlus.kind, AudioPlus.speaker)
+                val first = target == null
+                target = d
+                // a room changes only when two sections in a row agree (or on the first decision)
+                if (first || d.roomId == lastRoomVote) confirmedRoom = d.roomId
+                lastRoomVote = d.roomId
+                AutoSound.live.listening = false
+            }
+        }
+        val t = target ?: return
+        if (c !== autoGraph) { autoGraph = c; eqSet = FloatArray(0); appliedRoom = null }   // new graph: apply everything once
+        val dt = frames.toDouble() / rate
+
+        // room
+        if (AutoSound.roomAuto) {
+            val want = confirmedRoom
+            val wet = t.roomWet * AudioPlus.intensity
+            if (want != null && (want != appliedRoom || kotlin.math.abs(wet - appliedWet) > appliedWet * 0.2 + 0.01)) {
+                try { c.chain.setRoom(SoundPresets.room(want), wet) } catch (_: Throwable) {}
+                appliedRoom = want; appliedWet = wet
+                AutoSound.live.roomId = want
+            }
+        }
+
+        // modes, eased ~0.12 per second
+        val st = c.stage
+        if (AutoSound.modesAuto && st != null) {
+            val goal = doubleArrayOf(t.stage, t.sep, t.inst)
+            val step = 0.12 * dt
+            var moved = false
+            for (i in 0..2) {
+                val dlt = (goal[i] - modesNow[i]).coerceIn(-step, step)
+                if (dlt != 0.0) { modesNow[i] += dlt; moved = true }
+            }
+            if (moved || st.stage != modesNow[0]) {
+                st.stage = modesNow[0]; st.separation = modesNow[1]; st.instruments = modesNow[2]
+                AutoSound.live.stage = modesNow[0]; AutoSound.live.sep = modesNow[1]; AutoSound.live.inst = modesNow[2]
+            }
+        }
+
+        // equalizer, eased ~0.6 dB per second
+        val eq = c.userEq
+        if (AutoSound.eqAuto && eq != null && t.eqDb.isNotEmpty()) {
+            val n = minOf(t.eqDb.size, ParametricEqualizer.MAX_BANDS)
+            if (eqNow.size != n) eqNow = FloatArray(n) { AutoSound.live.eqDb.getOrElse(it) { 0f } }
+            val step = (0.6 * dt).toFloat()
+            for (i in 0 until n) eqNow[i] += (t.eqDb[i] - eqNow[i]).coerceIn(-step, step)
+            val changed = eqSet.size != n || (0 until n).any { kotlin.math.abs(eqNow[it] - eqSet[it]) > 0.05f }
+            if (changed) {
+                val fr = AudioPlus.bandFreqs
+                for (i in 0 until n) eq.setBand(i, AudioPlus.autoBand(i, n, fr.getOrElse(i) { 1000 }, eqNow[i].toDouble()))
+                eq.setPreampDb(-0.5 * (eqNow.maxOrNull() ?: 0f).coerceAtLeast(0f))
+                eqSet = eqNow.copyOf()
+                AutoSound.live.eqDb = eqNow.copyOf()
+            }
+        }
     }
 
     companion object {

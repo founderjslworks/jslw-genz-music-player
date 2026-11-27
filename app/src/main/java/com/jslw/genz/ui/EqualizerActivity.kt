@@ -82,6 +82,7 @@ class EqualizerActivity : BaseActivity() {
         curve.set(levels, fx.minLevel, fx.maxLevel, false)
 
         buildPresets()
+        if (Prefs.eqPreset == com.jslw.genz.audio.AutoSound.EQ_AUTO) showAutoEq()
 
         findViewById<MaterialButton>(R.id.eqSave).setOnClickListener {
             Sheets.askText(this, "Save preset", "My sound", "Save") { name ->
@@ -258,6 +259,17 @@ class EqualizerActivity : BaseActivity() {
     private fun buildPresets() {
         presets = fx.presets()
         presetGroup.removeAllViews()
+        // Auto: the curve follows the song as it plays (needs JSL Audio+, which hears the music)
+        Chip(this).apply {
+            text = "Auto"
+            isCheckable = true
+            id = View.generateViewId()
+            SkinPainter.styleChip(this)
+            chipIcon(this, R.drawable.ic_eq_auto)
+            isChecked = Prefs.eqPreset == com.jslw.genz.audio.AutoSound.EQ_AUTO
+            setOnClickListener { chooseAutoEq() }
+            presetGroup.addView(this)
+        }
         for ((name, vals) in presets) {
             val c = Chip(this)
             c.text = name
@@ -270,6 +282,41 @@ class EqualizerActivity : BaseActivity() {
             presetGroup.addView(c)
         }
     }
+
+    private fun chooseAutoEq() {
+        if (!com.jslw.genz.audio.AudioPlus.active) {
+            selectPresetChip(Prefs.eqPreset)
+            MaterialAlertDialogBuilder(this).setTitle("Auto equalizer")
+                .setMessage("Auto listens to each song while it plays and shapes the equalizer to it, all the way through. It works inside JSL Audio+ – turn Audio+ on above to use it.")
+                .setPositiveButton("OK", null).show()
+            return
+        }
+        Prefs.eqPreset = com.jslw.genz.audio.AutoSound.EQ_AUTO
+        if (!Prefs.eqEnabled) { Prefs.eqEnabled = true; findViewById<SwitchCompat>(R.id.eqEnable).isChecked = true }
+        selectPresetChip("Auto")
+        svc.effectsChanged()
+        com.jslw.genz.audio.AudioPlus.updateEq(svc.fx)
+        showAutoEq()
+    }
+
+    /** While Auto is chosen, the sliders and curve move with what Auto is doing to the song. */
+    private val autoTick = object : Runnable {
+        override fun run() {
+            if (Prefs.eqPreset != com.jslw.genz.audio.AutoSound.EQ_AUTO || isFinishing) return
+            val db = com.jslw.genz.audio.AutoSound.live.eqDb
+            if (db.size == levels.size) {
+                settingPreset = true
+                for (i in levels.indices) {
+                    levels[i] = (db[i] * 100).toInt().coerceIn(fx.minLevel, fx.maxLevel)
+                    bands[i].value = levels[i]
+                }
+                curve.set(levels, fx.minLevel, fx.maxLevel, false)
+                settingPreset = false
+            }
+            presetGroup.postDelayed(this, 500)
+        }
+    }
+    private fun showAutoEq() { presetGroup.removeCallbacks(autoTick); presetGroup.post(autoTick) }
 
     private fun selectPresetChip(name: String?) {
         for (i in 0 until presetGroup.childCount) {

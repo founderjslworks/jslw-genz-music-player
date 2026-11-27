@@ -22,6 +22,15 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.17
+
+- **Auto for Room, Modes and Equalizer** – each follows the song *while it plays*: Audio+ now listens in short sections (every ~6 s) all the way through, not only the first 15 seconds
+  - **Room · Auto**: starts on the preset's room, goes one size bigger for quiet, open passages and smaller and drier for busy, loud or fast ones; changes only when two sections agree, so it never flickers. The tile shows the room in use ("Now: Medium Hall")
+  - **Modes · Auto**: Sound Stage for narrow mixes, Sound Separation when there's a voice to lift, Instrument Separation for dense, compressed mixes – eased in and out smoothly; each mode shows its live level
+  - **Equalizer · Auto** (with Audio+): a gentle correction (±4.5 dB) toward the average tonal balance of *your* music, learned as you listen – dull songs get air, boomy songs get tamed. The sliders and curve move live; dragging a slider takes over manually
+- **A picture for every room**: Small / Medium / Large Room, halls with columns, Party Hall with a disco ball, Concert Hall with stage and seats, Plate, Temple (shikhara), Cathedral (gothic arch) – with a line showing how long each one echoes
+- Auto choices are remembered per device, like the rest of Audio+
+
 ## What's new in 1.9.16
 
 - **Fixed: the equalizer now works with JSL Audio+** – every band change and EQ preset is applied inside Audio+ (before, changes only reached the phone's own equalizer). EQ presets are back on the Sound screen with Audio+ on

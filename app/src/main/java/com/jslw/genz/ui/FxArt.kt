@@ -27,7 +27,7 @@ class FxArt(private val kind: Kind, private val color: Int, private val faint: I
         /** Frequency response, dB at 48 log-spaced points (20 Hz – 20 kHz). */
         class Curve(val db: FloatArray) : Kind()
         object Auto : Kind()
-        class Room(val rt60: Double) : Kind()
+        class Room(val rt60: Double, val id: String = "") : Kind()
         object Stage : Kind()
         object Separation : Kind()
         object Instruments : Kind()
@@ -76,26 +76,7 @@ class FxArt(private val kind: Kind, private val color: Int, private val faint: I
                 }
                 c.drawPath(star, fill)
             }
-            is Kind.Room -> {
-                // direct sound, early reflections, then the decay envelope (longer room = longer tail)
-                val base = b.bottom - h * 0.1f
-                val span = 3.0
-                fill.alpha = 70
-                path.reset(); path.moveTo(b.left + w * 0.08f, b.top + h * 0.12f)
-                for (i in 0..60) {
-                    val t = i / 60.0 * span
-                    val env = exp(-6.91 * t / k.rt60).toFloat()
-                    path.lineTo(b.left + w * 0.08f + (w * 0.9f) * (i / 60f), base - (base - b.top - h * 0.12f) * env)
-                }
-                path.lineTo(b.right - w * 0.02f, base); path.lineTo(b.left + w * 0.08f, base); path.close()
-                c.drawPath(path, fill)
-                val tick = Paint(line).apply { strokeWidth = h * 0.05f }
-                c.drawLine(b.left + w * 0.08f, base, b.left + w * 0.08f, b.top + h * 0.1f, tick)
-                for ((i, f) in listOf(0.14f, 0.19f, 0.23f, 0.28f).withIndex()) {
-                    val top = b.top + h * (0.35f + i * 0.1f)
-                    c.drawLine(b.left + w * f, base, b.left + w * f, top, tick)
-                }
-            }
+            is Kind.Room -> drawRoom(c, b, k)
             Kind.Stage -> {
                 // listener + widening arcs in front
                 val cx = b.left + w / 2; val cy = b.bottom - h * 0.12f
@@ -135,6 +116,134 @@ class FxArt(private val kind: Kind, private val color: Int, private val faint: I
             }
         }
     }
+
+    /**
+     * Each room as its own little picture (its shape and size), with a line underneath showing how long its echo
+     * lasts – so Small Room, Concert Hall, Temple or Cathedral are told apart at a glance.
+     */
+    private fun drawRoom(c: Canvas, b: RectF, k: Kind.Room) {
+        val w = b.width(); val h = b.height()
+        val ground = b.top + h * 0.74f
+        val cx = b.left + w / 2
+        line.strokeWidth = h * 0.045f
+        fill.color = faint; fill.alpha = 70
+        val solid = Paint(fill).apply { color = color0(); alpha = 255 }
+        fun box(bw: Float, bh: Float, columns: Int = 0) {
+            val r = RectF(cx - w * bw / 2, ground - h * bh, cx + w * bw / 2, ground)
+            c.drawRect(r, fill); c.drawRect(r, line)
+            for (i in 1..columns) {
+                val x = r.left + r.width() * i / (columns + 1)
+                c.drawLine(x, r.top + h * 0.06f, x, r.bottom, Paint(line).apply { strokeWidth = h * 0.03f; alpha = 170 })
+            }
+        }
+        when (k.id) {
+            "small_room" -> { box(0.3f, 0.3f); c.drawCircle(cx, ground - h * 0.12f, h * 0.045f, solid) }
+            "medium_room" -> { box(0.45f, 0.42f); c.drawCircle(cx, ground - h * 0.15f, h * 0.05f, solid) }
+            "large_room" -> { box(0.66f, 0.56f); c.drawCircle(cx, ground - h * 0.18f, h * 0.055f, solid) }
+            "medium_hall" -> box(0.7f, 0.46f, 3)
+            "large_hall" -> box(0.88f, 0.6f, 5)
+            "party_hall" -> {
+                box(0.78f, 0.6f)
+                val by = ground - h * 0.42f
+                c.drawLine(cx, ground - h * 0.6f, cx, by - h * 0.07f, line)
+                c.drawCircle(cx, by, h * 0.07f, solid)
+                val ray = Paint(line).apply { strokeWidth = h * 0.025f; alpha = 180 }
+                for (a in listOf(-60.0, -30.0, 30.0, 60.0, 150.0, 210.0)) {
+                    val rad = Math.toRadians(a + 90)
+                    c.drawLine(cx + (Math.cos(rad) * h * 0.11).toFloat(), by + (Math.sin(rad) * h * 0.11).toFloat(),
+                        cx + (Math.cos(rad) * h * 0.22).toFloat(), by + (Math.sin(rad) * h * 0.22).toFloat(), ray)
+                }
+            }
+            "concert_hall" -> {
+                // stage shell in front, tiered seats rising behind the listener
+                val shell = RectF(cx - w * 0.22f, ground - h * 0.62f, cx + w * 0.22f, ground - h * 0.1f)
+                c.drawArc(shell, 180f, 180f, false, line)
+                c.drawLine(shell.left, shell.centerY(), shell.right, shell.centerY(), line)
+                val seat = Paint(line).apply { strokeWidth = h * 0.035f; alpha = 190 }
+                for (i in 0..2) {
+                    val y = ground - h * (0.02f + i * 0.04f)
+                    val half = w * (0.32f + i * 0.08f)
+                    c.drawLine(cx - half, y, cx - w * 0.24f, y, seat); c.drawLine(cx + w * 0.24f, y, cx + half, y, seat)
+                }
+            }
+            "plate" -> {
+                // a hanging metal plate and its vibration
+                val r = RectF(cx - w * 0.2f, b.top + h * 0.18f, cx + w * 0.2f, ground)
+                c.drawRect(r, fill); c.drawRect(r, line)
+                val v = Paint(line).apply { strokeWidth = h * 0.028f; alpha = 170 }
+                for (i in 1..3) {
+                    val x0 = r.right + w * 0.05f * i
+                    c.drawArc(RectF(x0 - w * 0.06f, r.centerY() - h * 0.12f * i / 1.5f, x0 + w * 0.02f, r.centerY() + h * 0.12f * i / 1.5f), -60f, 120f, false, v)
+                }
+            }
+            "temple" -> {
+                // shikhara: stepped tower, kalash and flag on a plinth
+                path.reset()
+                val baseW = w * 0.42f; val top = b.top + h * 0.16f
+                path.moveTo(cx - baseW / 2, ground)
+                path.lineTo(cx - baseW / 2, ground - h * 0.16f)
+                path.lineTo(cx - baseW * 0.36f, ground - h * 0.2f)
+                path.quadTo(cx - baseW * 0.3f, top + h * 0.1f, cx, top)
+                path.quadTo(cx + baseW * 0.3f, top + h * 0.1f, cx + baseW * 0.36f, ground - h * 0.2f)
+                path.lineTo(cx + baseW / 2, ground - h * 0.16f)
+                path.lineTo(cx + baseW / 2, ground); path.close()
+                c.drawPath(path, fill); c.drawPath(path, line)
+                c.drawCircle(cx, top - h * 0.03f, h * 0.035f, solid)
+                c.drawLine(cx, top - h * 0.06f, cx, top - h * 0.16f, line)
+                c.drawLine(cx, top - h * 0.16f, cx + w * 0.07f, top - h * 0.12f, line)
+                val door = RectF(cx - w * 0.05f, ground - h * 0.12f, cx + w * 0.05f, ground)
+                c.drawArc(RectF(door.left, door.top - h * 0.04f, door.right, door.top + h * 0.04f), 180f, 180f, false, line)
+                c.drawLine(door.left, door.top, door.left, ground, line); c.drawLine(door.right, door.top, door.right, ground, line)
+            }
+            "cathedral" -> {
+                // gothic nave with a pointed arch, rose window and spire
+                path.reset()
+                val half = w * 0.24f; val shoulder = ground - h * 0.32f; val apex = b.top + h * 0.2f
+                path.moveTo(cx - half, ground); path.lineTo(cx - half, shoulder)
+                path.quadTo(cx - half, apex + h * 0.08f, cx, apex)
+                path.quadTo(cx + half, apex + h * 0.08f, cx + half, shoulder)
+                path.lineTo(cx + half, ground); path.close()
+                c.drawPath(path, fill); c.drawPath(path, line)
+                c.drawLine(cx, apex, cx, b.top + h * 0.02f, line)
+                c.drawLine(cx - w * 0.04f, b.top + h * 0.08f, cx + w * 0.04f, b.top + h * 0.08f, line)
+                c.drawCircle(cx, shoulder - h * 0.04f, h * 0.07f, Paint(line).apply { strokeWidth = h * 0.03f })
+                val door = Path().apply {
+                    moveTo(cx - w * 0.06f, ground); lineTo(cx - w * 0.06f, ground - h * 0.12f)
+                    quadTo(cx - w * 0.06f, ground - h * 0.2f, cx, ground - h * 0.22f)
+                    quadTo(cx + w * 0.06f, ground - h * 0.2f, cx + w * 0.06f, ground - h * 0.12f); lineTo(cx + w * 0.06f, ground)
+                }
+                c.drawPath(door, line)
+            }
+            "off" -> {
+                // open air: no walls, just the ground and a struck-out room
+                val r = RectF(cx - w * 0.22f, ground - h * 0.4f, cx + w * 0.22f, ground)
+                c.drawRect(r, Paint(line).apply { alpha = 90 })
+                c.drawLine(r.left - w * 0.04f, r.bottom, r.right + w * 0.04f, r.top, line)
+            }
+            else -> {
+                // "Preset's room": the preset's own room – a room with a music note inside
+                box(0.5f, 0.46f)
+                val nx = cx + w * 0.02f; val ny = ground - h * 0.12f
+                c.drawCircle(nx - w * 0.04f, ny, h * 0.05f, solid)
+                c.drawLine(nx - w * 0.04f + h * 0.045f, ny, nx - w * 0.04f + h * 0.045f, ny - h * 0.24f, line)
+                c.drawLine(nx - w * 0.04f + h * 0.045f, ny - h * 0.24f, nx + w * 0.06f, ny - h * 0.2f, line)
+            }
+        }
+        // the echo: a line whose length shows how long the room rings
+        if (k.rt60 > 0 && k.id != "off" && k.id != "mood") {
+            val y = b.bottom - h * 0.08f
+            val len = (w * 0.86f * (k.rt60 / 3.2).coerceIn(0.08, 1.0)).toFloat()
+            val x0 = b.left + w * 0.07f
+            val e = Paint(line).apply { strokeWidth = h * 0.04f }
+            val steps = 14
+            for (i in 0 until steps) {
+                e.alpha = (230 * exp(-3.0 * i / steps)).toInt()
+                c.drawLine(x0 + len * i / steps, y, x0 + len * (i + 1) / steps, y, e)
+            }
+        }
+    }
+
+    private fun color0() = color
 
     override fun setAlpha(alpha: Int) {}
     override fun setColorFilter(colorFilter: ColorFilter?) {}

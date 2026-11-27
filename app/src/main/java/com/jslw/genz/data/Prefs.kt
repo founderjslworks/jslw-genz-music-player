@@ -194,6 +194,14 @@ object Prefs {
     var apTags: String
         get() = s("ap_tags", "{}")
         set(v) = put { putString("ap_tags", v) }
+    /** Modes follow the music (Auto) instead of fixed levels. */
+    var apModesAuto: Boolean
+        get() = b("ap_modes_auto", false)
+        set(v) = put { putBoolean("ap_modes_auto", v) }
+    /** Auto EQ: the average tonal balance of the user's music (5 shares, JSON array), learned while listening. */
+    var apRefShares: String
+        get() = s("ap_ref_shares", "[]")
+        set(v) = put { putString("ap_ref_shares", v) }
     /** Customize section of Audio+ is open. */
     var apCustomOpen: Boolean
         get() = b("ap_custom_open", false)
