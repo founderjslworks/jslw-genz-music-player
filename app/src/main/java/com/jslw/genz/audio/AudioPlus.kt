@@ -39,6 +39,10 @@ object AudioPlus {
     const val KIND_HEADPHONES = "headphones"
     const val KIND_SPEAKER = "speaker"
     const val KIND_CAR = "car"
+    const val KIND_SOUNDBAR = "soundbar"
+
+    /** Output is a TV / HDMI / ARC connection, most likely a soundbar or home theatre. */
+    @Volatile var hdmi = false; private set
 
     /** Needs float PCM output (Android 5.0+). */
     val supported: Boolean get() = Build.VERSION.SDK_INT >= 21
@@ -114,7 +118,11 @@ object AudioPlus {
 
     private fun recallForDevice() {
         val e = devices().optJSONObject(outputName)
-        kind = e?.optString("kind", "")?.takeIf { it.isNotEmpty() } ?: if (speaker) KIND_SPEAKER else KIND_HEADPHONES
+        kind = e?.optString("kind", "")?.takeIf { it.isNotEmpty() } ?: when {
+            speaker -> KIND_SPEAKER
+            hdmi || Regex("(?i)sound ?bar|home ?theat|\\bbar\\b|cinema").containsMatchIn(outputName) -> KIND_SOUNDBAR
+            else -> KIND_HEADPHONES
+        }
         if (e == null) return
         Prefs.apMood = e.optString("mood", Prefs.apMood)
         Prefs.apRoom = e.optString("room", Prefs.apRoom)
@@ -128,7 +136,7 @@ object AudioPlus {
     private fun devices(): JSONObject = try { JSONObject(Prefs.apDevices) } catch (_: Exception) { JSONObject() }
 
     private fun detectOutput(ctx: Context) {
-        var name = "Phone speaker"; var bt = false; var spk = true
+        var name = "Phone speaker"; var bt = false; var spk = true; var tv = false
         if (Build.VERSION.SDK_INT >= 23) {
             try {
                 val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -136,7 +144,11 @@ object AudioPlus {
                 val pick = outs.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP }
                     ?: outs.firstOrNull { it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET }
                     ?: outs.firstOrNull { it.type == AudioDeviceInfo.TYPE_USB_HEADSET || it.type == AudioDeviceInfo.TYPE_USB_DEVICE }
-                if (pick != null) {
+                    ?: outs.firstOrNull { isTvOut(it.type) }
+                if (pick != null && isTvOut(pick.type)) {
+                    spk = false; tv = true
+                    name = pick.productName?.toString()?.takeIf { it.isNotBlank() && it != Build.MODEL } ?: "TV / soundbar (HDMI)"
+                } else if (pick != null) {
                     spk = false
                     bt = pick.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
                     val usb = pick.type == AudioDeviceInfo.TYPE_USB_HEADSET || pick.type == AudioDeviceInfo.TYPE_USB_DEVICE
@@ -150,8 +162,12 @@ object AudioPlus {
         } else {
             spk = try { SoundEngine.detect(ctx) == SoundEngine.Output.SPEAKER } catch (_: Throwable) { false }
         }
-        outputName = name; bluetooth = bt; speaker = spk
+        outputName = name; bluetooth = bt; speaker = spk; hdmi = tv
     }
+
+    private fun isTvOut(t: Int) = t == AudioDeviceInfo.TYPE_HDMI || t == AudioDeviceInfo.TYPE_HDMI_ARC ||
+        t == AudioDeviceInfo.TYPE_LINE_DIGITAL || t == AudioDeviceInfo.TYPE_LINE_ANALOG ||
+        (Build.VERSION.SDK_INT >= 31 && t == AudioDeviceInfo.TYPE_HDMI_EARC)
 
     /** Phone-maker sound effects installed on this phone (Dolby Atmos, Dirac, DTS…), if any. */
     fun phoneEffects(): String? = try {
@@ -206,13 +222,19 @@ object AudioPlus {
             // a speaker / car already has real bass: lift it gently so it never booms or pumps
             low = low.coerceAtMost(2.0); bass *= 0.4
         }
+        val bar = !speaker && kind == KIND_SOUNDBAR
+        if (bar) {
+            // a soundbar: small drivers in one narrow box (often with a sub) – moderate bass, a wider stage
+            // so the music opens up beyond the bar, and a little more voice so dialogue and singers stay clear
+            low = low.coerceAtMost(3.0); bass *= 0.6
+        }
         if (auto && tag?.tone == "bass-heavy") bass *= 0.3
-        val widthScale = if (speaker) 0.5 else if (extSpeaker) 0.8 else 1.0
+        val widthScale = if (speaker) 0.5 else if (extSpeaker) 0.8 else if (bar) 1.3 else 1.0
         val p = SoundPreset(
             m.id, m.name, m.description,
             lowShelfDb = low, highShelfDb = high, bassBoost = bass,
-            width = 1.0 + (m.width - 1.0) * k * widthScale,
-            melody = (m.melody * k).coerceAtMost(1.0),
+            width = (1.0 + (m.width - 1.0) * k * widthScale).let { if (bar) maxOf(it, 1.0 + 0.15 * k) else it },
+            melody = ((m.melody + if (bar) 0.15 else 0.0) * k).coerceAtMost(1.0),
             roomId = roomId, roomWet = roomWet * k,
         )
         val c = AudioPlusChain(rate)

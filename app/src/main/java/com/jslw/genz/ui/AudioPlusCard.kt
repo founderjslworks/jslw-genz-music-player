@@ -97,18 +97,36 @@ object AudioPlusCard {
         box.addView(body)
 
         // ---- this device
-        body.addView(label("${if (AudioPlus.speaker) "🔊" else "🎧"}  ${AudioPlus.outputName}"))
+        fun kindIcon(k: String) = when (k) {
+            AudioPlus.KIND_SPEAKER -> R.drawable.ic_out_speaker
+            AudioPlus.KIND_CAR -> R.drawable.ic_out_car
+            AudioPlus.KIND_SOUNDBAR -> R.drawable.ic_out_soundbar
+            else -> R.drawable.ic_out_headphones
+        }
+        val outLabel = label("  ${AudioPlus.outputName}")
+        fun outIcon() {
+            val res = if (AudioPlus.speaker) R.drawable.ic_out_phone else kindIcon(AudioPlus.kind)
+            val d = androidx.core.content.ContextCompat.getDrawable(a, res)?.mutate()
+            d?.setTint(sk.accent); d?.setBounds(0, 0, px(22), px(22))
+            outLabel.setCompoundDrawablesRelative(d, null, null, null)
+            outLabel.compoundDrawablePadding = px(6)
+        }
+        outIcon()
+        body.addView(outLabel)
         val kinds = ChipGroup(a).apply { isSingleSelection = true; isSelectionRequired = true }
-        for ((k, name) in listOf(AudioPlus.KIND_HEADPHONES to "Headphones", AudioPlus.KIND_SPEAKER to "Speaker", AudioPlus.KIND_CAR to "Car")) {
+        for ((k, name) in listOf(AudioPlus.KIND_HEADPHONES to "Headphones", AudioPlus.KIND_SPEAKER to "Speaker",
+                AudioPlus.KIND_SOUNDBAR to "Soundbar", AudioPlus.KIND_CAR to "Car")) {
             val c = Chip(a)
             c.text = name; c.isCheckable = true; c.id = View.generateViewId()
             SkinPainter.styleChip(c); Touch.spring(c)
+            c.setChipIconResource(kindIcon(k)); c.isChipIconVisible = true
+            c.chipIconSize = px(18).toFloat(); c.chipIconTint = c.textColors; c.iconStartPadding = px(4).toFloat()
             c.isChecked = AudioPlus.kind == k
-            c.setOnClickListener { Touch.confirm(c); AudioPlus.setKind(k) }
+            c.setOnClickListener { Touch.confirm(c); AudioPlus.setKind(k); outIcon() }
             kinds.addView(c)
         }
         body.addView(kinds)
-        body.addView(note("Tell Audio+ what this is – speakers and cars get gentler bass so songs never boom or pump. Everything you choose is remembered for this device."))
+        body.addView(note("Tell Audio+ what this is – speakers, soundbars and cars get gentler bass so songs never boom or pump; a soundbar also gets a wider stage and clearer voices. Everything you choose is remembered for this device."))
         if (AudioPlus.bluetooth) body.addView(note("Tip: keep your earphones' own EQ on Default / Balanced, so two equalizers don't fight."))
         AudioPlus.phoneEffects()?.let { body.addView(note("This phone also has $it. If the sound feels too strong or thin, switch $it off while using Audio+.")) }
 

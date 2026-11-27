@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- a soundbar under a TV line, with its row of drivers -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M4,4h16c0.6,0 1,0.4 1,1v7c0,0.6 -0.4,1 -1,1H4c-0.6,0 -1,-0.4 -1,-1V5c0,-0.6 0.4,-1 1,-1zM5,6v5h14V6H5z" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M3,15.5h18c0.8,0 1.5,0.7 1.5,1.5v1.5c0,0.8 -0.7,1.5 -1.5,1.5H3c-0.8,0 -1.5,-0.7 -1.5,-1.5V17c0,-0.8 0.7,-1.5 1.5,-1.5zM5,17a0.75,0.75 0 1,0 0.001,0zM9,17a0.75,0.75 0 1,0 0.001,0zM13,17a0.75,0.75 0 1,0 0.001,0zM17,17a0.75,0.75 0 1,0 0.001,0z" />
+</vector>

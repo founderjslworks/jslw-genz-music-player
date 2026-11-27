@@ -107,13 +107,14 @@ object AutoSound {
         var sep = when { voice > 1.1 -> 0.55; voice > 0.85 -> 0.4; else -> 0.15 } + (if (dense) 0.1 else 0.0)
         val inst = when { f.crestDb < 9 -> 0.55; f.crestDb < 13 -> 0.35; else -> 0.15 }
         if (onSpeaker) stage *= 0.5
+        if (kind == AudioPlus.KIND_SOUNDBAR && !onSpeaker) { stage = (stage + 0.15).coerceAtMost(0.7); sep += 0.05 }
         sep = sep.coerceAtMost(0.7)
 
         // ---- equalizer: half-way toward your average balance, ±4.5 dB
         val corr = DoubleArray(5) { (10 * log10(r[it] / s[it]) * 0.6).coerceIn(-4.5, 4.5) }
         val eq = FloatArray(bandFreqs.size) { i ->
             var v = interp(bandFreqs[i].toDouble(), corr)
-            if ((kind == AudioPlus.KIND_SPEAKER || kind == AudioPlus.KIND_CAR || onSpeaker) && bandFreqs[i] < 150) v = v.coerceAtMost(2.0)
+            if ((kind == AudioPlus.KIND_SPEAKER || kind == AudioPlus.KIND_CAR || kind == AudioPlus.KIND_SOUNDBAR || onSpeaker) && bandFreqs[i] < 150) v = v.coerceAtMost(2.0)
             v.toFloat()
         }
         if (eq.isNotEmpty()) {

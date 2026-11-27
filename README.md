@@ -30,6 +30,8 @@ with no internet permission at all.
   - **Equalizer · Auto** (with Audio+): a gentle correction (±4.5 dB) toward the average tonal balance of *your* music, learned as you listen – dull songs get air, boomy songs get tamed. The sliders and curve move live; dragging a slider takes over manually
 - **A picture for every room**: Small / Medium / Large Room, halls with columns, Party Hall with a disco ball, Concert Hall with stage and seats, Plate, Temple (shikhara), Cathedral (gothic arch) – with a line showing how long each one echoes
 - Auto choices are remembered per device, like the rest of Audio+
+- **Soundbar** joins Headphones, Speaker and Car: moderate bass, a wider stage that opens the music beyond the bar, and clearer voices. TVs / HDMI / ARC outputs and devices named like a soundbar are set to Soundbar automatically
+- **Icons** for every output type, and the current output (phone speaker, headphones, speaker, soundbar or car) is shown with its icon
 
 ## What's new in 1.9.16
 
