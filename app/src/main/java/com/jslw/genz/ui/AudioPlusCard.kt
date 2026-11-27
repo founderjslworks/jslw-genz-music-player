@@ -130,6 +130,10 @@ object AudioPlusCard {
         if (AudioPlus.bluetooth) body.addView(note("Tip: keep your earphones' own EQ on Default / Balanced, so two equalizers don't fight."))
         AudioPlus.phoneEffects()?.let { body.addView(note("This phone also has $it. If the sound feels too strong or thin, switch $it off while using Audio+.")) }
 
+        // ---- live: what Auto has chosen for the song playing now
+        body.addView(com.jslw.genz.ui.views.AutoNowView(a, sk.text, (sk.accent and 0x00FFFFFF) or 0x26000000, center = false),
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = px(10) })
+
         // ---- presets (Auto first)
         body.addView(label("Sound presets"))
         val (presetScroll, presetRow) = row()

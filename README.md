@@ -22,6 +22,13 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.18
+
+- **"Auto now" – live**: what JSL Audio+ Auto has chosen for the song playing, updated every second – e.g. *✦ Auto · Happy · 107 BPM · Medium Hall · Stage Light · Voice Medium · EQ bass −1.5, treble +2.0*
+  - on the player under the artist, in portrait and landscape
+  - at the top of the Sound / Equalizer page
+  - shown only while Audio+ is on and something is set to Auto (preset, room, modes or equalizer)
+
 ## What's new in 1.9.17
 
 - **Auto for Room, Modes and Equalizer** – each follows the song *while it plays*: Audio+ now listens in short sections (every ~6 s) all the way through, not only the first 15 seconds

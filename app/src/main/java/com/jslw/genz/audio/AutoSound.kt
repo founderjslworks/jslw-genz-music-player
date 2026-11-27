@@ -154,6 +154,39 @@ object AutoSound {
         val ready get() = n > 0
     }
 
+    /**
+     * What Auto has chosen for the song playing right now, e.g.
+     * "Happy · Medium Hall · Stage Light · Voice Medium · EQ bass −1.5, treble +2". Null when Audio+ is off
+     * or nothing is on Auto.
+     */
+    fun summary(): String? {
+        if (!AudioPlus.active) return null
+        val parts = ArrayList<String>()
+        if (Prefs.apMood == AudioPlus.AUTO) {
+            val t = AudioPlus.nowTag
+            parts += if (t != null) "${AudioPlus.mood(t.moodId).name} · ${t.bpm.toInt()} BPM" else "Preset: listening…"
+        }
+        if (roomAuto) parts += live.roomId?.let { roomName(it) } ?: "Room: listening…"
+        if (modesAuto) {
+            val m = listOf("Stage" to live.stage, "Voice" to live.sep, "Instruments" to live.inst)
+                .filter { it.second >= 0.1 }.joinToString(" · ") { "${it.first} ${level(it.second)}" }
+            parts += m.ifEmpty { "Modes off" }
+        }
+        if (eqAuto) parts += eqText()
+        if (parts.isEmpty()) return null
+        return parts.joinToString("  ·  ")
+    }
+
+    private fun eqText(): String {
+        val db = live.eqDb; val f = AudioPlus.bandFreqs
+        if (db.isEmpty() || f.size != db.size) return "EQ: listening…"
+        fun avg(lo: Int, hi: Int) = db.indices.filter { f[it] in lo until hi }.map { db[it] }.average().takeIf { !it.isNaN() } ?: 0.0
+        val zones = listOf("bass" to avg(0, 250), "mids" to avg(250, 4000), "treble" to avg(4000, 100000))
+            .filter { kotlin.math.abs(it.second) >= 0.3 }
+        if (zones.isEmpty()) return "EQ flat"
+        return "EQ " + zones.joinToString(", ") { "${it.first} ${if (it.second > 0) "+" else "−"}${"%.1f".format(kotlin.math.abs(it.second))}" }
+    }
+
     fun roomName(id: String?): String = when (id) {
         null -> "No room"
         else -> try { SoundPresets.room(id).name } catch (_: Exception) { id }

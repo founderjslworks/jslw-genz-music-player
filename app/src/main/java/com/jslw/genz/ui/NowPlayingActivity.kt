@@ -135,6 +135,17 @@ class NowPlayingActivity : BaseActivity(), Player.Listener {
         coverFx.setEffect(skin.activeCoverEffect)
         titleTv = findViewById(R.id.npTitle)
         artistTv = findViewById(R.id.npArtist)
+        // live "Auto now" line under the artist (portrait and landscape share this controls block)
+        (artistTv.parent as? android.view.ViewGroup)?.let { parent ->
+            val auto = com.jslw.genz.ui.views.AutoNowView(this, skin.npText, (skin.accent and 0x00FFFFFF) or 0x2E000000, center = false)
+            val lp = android.view.ViewGroup.MarginLayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = (6 * resources.displayMetrics.density).toInt() }
+            val lin = (parent as? android.widget.LinearLayout)
+            val wrapped = if (lin != null) android.widget.LinearLayout.LayoutParams(lp).apply {
+                gravity = (artistTv.layoutParams as? android.widget.LinearLayout.LayoutParams)?.gravity?.takeIf { it != -1 } ?: android.view.Gravity.START
+            } else lp
+            parent.addView(auto, parent.indexOfChild(artistTv) + 1, wrapped)
+        }
         contextTv = findViewById(R.id.npContext)
         format = findViewById(R.id.npFormat)
         lcd = findViewById(R.id.npLcd)
