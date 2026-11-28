@@ -22,6 +22,14 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.22
+
+- **Clearer, fuller Auto sound**: Audio+ now matches its level to the original the way the ear hears it (ITU-R BS.1770 K-weighting) – added bass no longer turns voices and detail down, and it's never noticeably quieter; Auto EQ never dulls voices or treble; Auto room a touch drier; SoundFit cuts in the voice range limited to −4 dB (JSLW Audio Engine 0.4.2)
+- **Opus / Ogg files – much more from the file itself**:
+  - embedded **cover art** (METADATA_BLOCK_PICTURE / COVERART), **lyrics**, and **loudness** (R128 gain → used by ReplayGain levelling)
+  - **YouTube Music downloads**: the saved description gives title · artists, album, year and label – offered as **"This file"** at the top of *Find cover & details online* (works offline) and used for Opus files GEN-Z indexes itself; the video link (PURL) feeds the YouTube cover lookup
+  - song **Info**: encoder, original sample rate, output gain, loudness tag, cover/lyrics in file, album and label, YouTube source
+
 ## What's new in 1.9.21
 
 - **SoundFit: no more extra bass.** Everyone naturally hears low and very high pitches less well than the middle; SoundFit used to "correct" that and lifted the bass for everyone. It now compares your ears with normal hearing (ISO 389-7) and corrects only where your ears and earphones really differ – bass boosts at most +3 dB. Saved profiles are fixed automatically, no retest needed

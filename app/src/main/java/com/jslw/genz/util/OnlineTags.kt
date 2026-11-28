@@ -36,6 +36,8 @@ object OnlineTags {
             val m = runCatching { YouTubeMeta.match(id) }.getOrNull() ?: throw java.io.IOException("offline")
             return listOf(m)
         }
+        // the file itself: a YouTube Music description saved by the downloader (title · artist, album, year)
+        val fromFile = if (query == null && ctx != null) runCatching { fileMatch(ctx, s) }.getOrNull() else null
         val ytId = if (query == null && ctx != null) runCatching { YouTubeMeta.videoId(ctx, s) }.getOrNull() else null
         val yt = ytId?.let { runCatching { YouTubeMeta.match(it) }.getOrNull() }
         val term = query?.trim()?.ifEmpty { null } ?: defaultTerm(s, yt)
@@ -46,9 +48,18 @@ object OnlineTags {
             Thread { results[2] = runCatching { musicBrainz(term) }.getOrNull() },
         )
         jobs.forEach { it.start() }; jobs.forEach { it.join(16000) }
-        if (results.all { it == null } && yt == null) throw java.io.IOException("offline")
+        if (results.all { it == null } && yt == null && fromFile == null) throw java.io.IOException("offline")
         val found = merge(s, results)
-        return if (yt != null) listOf(yt) + found else found
+        return listOfNotNull(fromFile, yt) + found
+    }
+
+    /** Details stored in the file by a YouTube downloader (Opus/Ogg/FLAC comments), as a match – works offline. */
+    fun fileMatch(ctx: android.content.Context, s: Song): Match? {
+        if (s.ext !in com.jslw.genz.audio.TagIO.OGG_EXT && s.ext != "flac") return null
+        val f = com.jslw.genz.audio.AudioFile.open(ctx, s.uri) ?: return null
+        val c = f.use { if (s.ext == "flac") com.jslw.genz.audio.TagIO.readFlacTags(it)?.comments else com.jslw.genz.audio.TagIO.readOggTags(it)?.comments } ?: return null
+        val d = com.jslw.genz.audio.YtDescription.parse(c["DESCRIPTION"] ?: c["COMMENT"] ?: c["SYNOPSIS"]) ?: return null
+        return Match(d.title ?: s.title, d.artist ?: s.artist, d.album ?: "", "", "", d.year?.toIntOrNull() ?: 0, 0, null, null, "This file")
     }
 
     /** What to search for when the user didn't type anything – YouTube-style names are tidied first. */

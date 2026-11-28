@@ -166,6 +166,11 @@ object Sheets {
         Thread {
             val info = com.jslw.genz.audio.Formats.probe(a, s)
             val plays = LibraryDb.playCount(s.id)
+            // Ogg Opus / Vorbis: what the file says about itself (encoder, original rate, loudness, YouTube source…)
+            val ogg = if (s.ext in com.jslw.genz.audio.TagIO.OGG_EXT) try {
+                com.jslw.genz.audio.AudioFile.open(a, s.uri)?.use { com.jslw.genz.audio.TagIO.readOggTags(it) }
+            } catch (_: Exception) { null } else null
+            val ytId = try { com.jslw.genz.util.YouTubeMeta.videoId(a, s) } catch (_: Exception) { null }
             a.runOnUiThread {
                 val msg = buildString {
                     append("Format: ").append(info?.label() ?: s.ext.uppercase()).append('\n')
@@ -173,6 +178,24 @@ object Sheets {
                     append("Size: ").append(String.format(java.util.Locale.US, "%.1f MB", s.size / 1048576.0)).append('\n')
                     if (s.year > 0) append("Year: ").append(s.year).append('\n')
                     if (s.genre.isNotBlank()) append("Genre: ").append(s.genre).append('\n')
+                    ogg?.let { o ->
+                        val c = o.comments
+                        o.info?.let { i ->
+                            if (i.opus && i.inputRate > 0) append("Original sample rate: ").append(if (i.inputRate % 1000 == 0) "${i.inputRate / 1000} kHz" else "${"%.1f".format(i.inputRate / 1000.0)} kHz").append(" (Opus plays at 48 kHz)\n")
+                            if (i.opus && i.outputGainDb != 0.0) append("Output gain: ").append("%+.1f dB".format(i.outputGainDb)).append('\n')
+                            if (i.vendor.isNotBlank()) append("Encoder: ").append(i.vendor.take(60)).append('\n')
+                        }
+                        (c["ALBUMARTIST"] ?: c["ALBUM ARTIST"])?.let { append("Album artist: ").append(it).append('\n') }
+                        c["TRACKNUMBER"]?.let { append("Track: ").append(it).append('\n') }
+                        (c["R128_TRACK_GAIN"]?.toIntOrNull()?.let { "%+.1f dB (R128)".format(it / 256.0) } ?: c["REPLAYGAIN_TRACK_GAIN"])?.let { append("Loudness tag: ").append(it).append('\n') }
+                        append("Cover in file: ").append(if (o.picture != null) "yes" else "no").append('\n')
+                        if (c["LYRICS"] != null || c["UNSYNCEDLYRICS"] != null || c["SYNCEDLYRICS"] != null) append("Lyrics in file: yes\n")
+                        com.jslw.genz.audio.YtDescription.parse(c["DESCRIPTION"] ?: c["COMMENT"] ?: c["SYNOPSIS"])?.let { d ->
+                            d.album?.let { append("Album (YouTube Music): ").append(it).append('\n') }
+                            d.label?.let { append("Label: ").append(it).append('\n') }
+                        }
+                    }
+                    ytId?.let { append("Source: YouTube · youtu.be/").append(it).append('\n') }
                     append("Played: ").append(plays).append(" times\n")
                     append("Path: ").append(s.path)
                     if (s.needsPcmEngine) append("\n\nDecoded by GEN-Z's own engine (not supported natively by Android).")

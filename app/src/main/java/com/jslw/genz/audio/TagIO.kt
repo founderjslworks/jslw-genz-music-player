@@ -202,7 +202,99 @@ object TagIO {
         }
     } catch (e: Exception) { null }
 
-    private fun le32(b: ByteArray, off: Int): Int =
+    // ------------------------------------------------------------------ Ogg Opus / Vorbis comments
+    val OGG_EXT = setOf("ogg", "opus", "oga")
+
+    /** Header facts of an Ogg Opus file (OpusHead) plus the encoder ("vendor") from the comment header. */
+    class OggInfo(val opus: Boolean, val channels: Int, val inputRate: Int, val preSkip: Int, val outputGainDb: Double, val vendor: String)
+    class OggTags(val comments: Map<String, String>, val picture: ByteArray?, val info: OggInfo?)
+
+    /**
+     * Reads the first two packets of the first Ogg stream – the identification header (OpusHead / Vorbis) and the
+     * comment header (OpusTags / Vorbis comments, which can span many pages when a cover is embedded).
+     * Cover: METADATA_BLOCK_PICTURE (base64 FLAC picture block) or the older COVERART.
+     */
+    fun readOggTags(f: AudioFile): OggTags? = try {
+        if (f.ascii(0, 4) != "OggS") null else {
+            val packets = ArrayList<ByteArray>()
+            val cur = java.io.ByteArrayOutputStream()
+            var pos = 0L
+            var serial = -1
+            val limit = minOf(f.size, 24L * 1024 * 1024)
+            while (packets.size < 2 && pos + 27 <= limit) {
+                val h = f.read(pos, 27)
+                if (String(h, 0, 4, Charsets.ISO_8859_1) != "OggS") break
+                val ser = le32(h, 14)
+                val nSeg = h[26].toInt() and 0xFF
+                val lace = f.read(pos + 27, nSeg)
+                var dataPos = pos + 27 + nSeg
+                var total = 0
+                for (l in lace) total += l.toInt() and 0xFF
+                if (serial == -1) serial = ser
+                if (ser == serial) {
+                    var off = 0
+                    val data = f.read(dataPos, total)
+                    for (l in lace) {
+                        val n = l.toInt() and 0xFF
+                        cur.write(data, off, n); off += n
+                        if (n < 255) { packets += cur.toByteArray(); cur.reset(); if (packets.size >= 2) break }
+                    }
+                }
+                dataPos += total
+                pos = dataPos
+            }
+            if (packets.size < 2) null else {
+                val head = packets[0]; val tags = packets[1]
+                val opus = head.size >= 19 && String(head, 0, 8, Charsets.ISO_8859_1) == "OpusHead"
+                var p = when {
+                    tags.size >= 8 && String(tags, 0, 8, Charsets.ISO_8859_1) == "OpusTags" -> 8
+                    tags.size >= 7 && tags[0].toInt() == 3 && String(tags, 1, 6, Charsets.ISO_8859_1) == "vorbis" -> 7
+                    else -> -1
+                }
+                if (p < 0) null else {
+                    val comments = HashMap<String, String>()
+                    val vlen = le32(tags, p); p += 4
+                    val vendor = if (vlen in 0..(tags.size - p)) String(tags, p, vlen, Charsets.UTF_8) else ""
+                    p += vlen.coerceAtLeast(0)
+                    val n = le32(tags, p); p += 4
+                    for (i in 0 until n) {
+                        if (p + 4 > tags.size) break
+                        val l = le32(tags, p); p += 4
+                        if (l < 0 || p + l > tags.size) break
+                        val str = String(tags, p, l, Charsets.UTF_8); p += l
+                        val eq = str.indexOf('=')
+                        if (eq > 0) {
+                            val k = str.substring(0, eq).uppercase()
+                            val v = str.substring(eq + 1)
+                            comments[k] = comments[k]?.let { "$it; $v" } ?: v
+                        }
+                    }
+                    var pic: ByteArray? = null
+                    comments["METADATA_BLOCK_PICTURE"]?.substringBefore("; ")?.let { b64 ->
+                        val b = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+                        var q = 4
+                        val ml = be32(b, q); q += 4 + ml
+                        val dl = be32(b, q); q += 4 + dl
+                        q += 16
+                        val datal = be32(b, q); q += 4
+                        if (datal > 0 && q + datal <= b.size) pic = b.copyOfRange(q, q + datal)
+                    }
+                    if (pic == null) comments["COVERART"]?.substringBefore("; ")?.let { pic = android.util.Base64.decode(it, android.util.Base64.DEFAULT) }
+                    comments.remove("METADATA_BLOCK_PICTURE"); comments.remove("COVERART")
+                    val info = if (opus) OggInfo(true, head[9].toInt() and 0xFF,
+                        le32(head, 12), (head[10].toInt() and 0xFF) or ((head[11].toInt() and 0xFF) shl 8),
+                        ((head[16].toInt() and 0xFF) or (head[17].toInt() shl 8)).toShort() / 256.0, vendor)
+                    else OggInfo(false, if (head.size > 11) head[11].toInt() and 0xFF else 0, if (head.size > 15) le32(head, 12) else 0, 0, 0.0, vendor)
+                    OggTags(comments, pic, info)
+                }
+            }
+        }
+    } catch (e: Exception) { null }
+
+    /** ReplayGain (dB, −18 LUFS reference) from Opus R128 gain tags (Q7.8 dB relative to −23 LUFS). */
+    private fun r128ToReplayGain(v: String?): String? = v?.trim()?.toIntOrNull()?.let { (it / 256.0 + 5.0).toString() }
+
+        private fun le32(b: ByteArray, off: Int): Int =
         (b[off].toInt() and 0xFF) or ((b[off + 1].toInt() and 0xFF) shl 8) or
             ((b[off + 2].toInt() and 0xFF) shl 16) or ((b[off + 3].toInt() and 0xFF) shl 24)
 
@@ -246,6 +338,7 @@ object TagIO {
         return f.use {
             when (song.ext) {
                 "flac" -> readFlacTags(f)?.comments?.let { c -> c["LYRICS"] ?: c["UNSYNCEDLYRICS"] ?: c["SYNCEDLYRICS"] }
+                "ogg", "opus", "oga" -> readOggTags(f)?.comments?.let { c -> c["LYRICS"] ?: c["UNSYNCEDLYRICS"] ?: c["SYNCEDLYRICS"] }
                 "m4a", "mp4", "aac", "alac" -> mp4Lyrics(f)
                 else -> {
                     val off = id3Offset(f, song.ext)
@@ -263,6 +356,9 @@ object TagIO {
         val raw = f.use {
             when (song.ext) {
                 "flac" -> readFlacTags(f)?.comments?.let { c -> c[key] ?: c[fallback] }
+                "ogg", "opus", "oga" -> readOggTags(f)?.comments?.let { c ->
+                    c[key] ?: c[fallback] ?: r128ToReplayGain(if (album) c["R128_ALBUM_GAIN"] ?: c["R128_TRACK_GAIN"] else c["R128_TRACK_GAIN"] ?: c["R128_ALBUM_GAIN"])
+                }
                 "m4a", "mp4", "aac", "alac" -> null
                 else -> {
                     val off = id3Offset(f, song.ext)
@@ -278,6 +374,7 @@ object TagIO {
         val f = AudioFile.open(ctx, uri) ?: return null
         return f.use {
             if (ext == "flac") readFlacTags(f)?.picture
+            else if (ext in OGG_EXT) readOggTags(f)?.picture
             else {
                 val off = id3Offset(f, ext)
                 if (off >= 0) readId3At(f, off)?.picture else null
@@ -288,8 +385,14 @@ object TagIO {
     /** title, artist, album, albumArtist, genre, year, track – for files found by the folder scanner. */
     fun basicTags(f: AudioFile, ext: String): Map<String, String> {
         val out = HashMap<String, String>()
-        if (ext == "flac") {
-            readFlacTags(f)?.comments?.let { c ->
+        if (ext == "flac" || ext in OGG_EXT) {
+            val cm = if (ext == "flac") readFlacTags(f)?.comments else readOggTags(f)?.comments
+            // YouTube Music downloads: the description holds title · artist, album and release date
+            cm?.let { c -> YtDescription.parse(c["DESCRIPTION"] ?: c["COMMENT"] ?: c["SYNOPSIS"])?.let { d ->
+                d.title?.let { out["title"] = it }; d.artist?.let { out["artist"] = it }
+                d.album?.let { out["album"] = it }; d.year?.let { out["year"] = it }
+            } }
+            cm?.let { c ->
                 c["TITLE"]?.let { out["title"] = it }
                 c["ARTIST"]?.let { out["artist"] = it }
                 c["ALBUM"]?.let { out["album"] = it }

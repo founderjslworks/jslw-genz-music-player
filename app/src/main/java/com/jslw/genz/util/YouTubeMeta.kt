@@ -26,6 +26,13 @@ object YouTubeMeta {
     /** The YouTube video id this song came from, or null. Reads only the start and end of the file. Background thread. */
     fun videoId(ctx: Context, s: Song): String? {
         idInUrl.find(s.path)?.let { return it.groupValues[1] }
+        // Opus / Ogg from downloaders: the link is in the comments (PURL / COMMENT / DESCRIPTION), which a large
+        // embedded cover can push beyond the bytes scanned below
+        if (s.ext in com.jslw.genz.audio.TagIO.OGG_EXT) try {
+            com.jslw.genz.audio.AudioFile.open(ctx, s.uri)?.use { f -> com.jslw.genz.audio.TagIO.readOggTags(f) }?.comments?.let { c ->
+                for (k in listOf("PURL", "URL", "COMMENT", "DESCRIPTION", "SYNOPSIS", "WWW")) c[k]?.let { v -> idInUrl.find(v)?.let { return it.groupValues[1] } }
+            }
+        } catch (_: Exception) {}
         idInName.findAll(s.path.substringAfterLast('/')).lastOrNull()?.let { m ->
             val id = m.groupValues[1]
             if (id.any { it.isDigit() || it == '_' || it == '-' } || id.any { it.isUpperCase() } && id.any { it.isLowerCase() }) return id
