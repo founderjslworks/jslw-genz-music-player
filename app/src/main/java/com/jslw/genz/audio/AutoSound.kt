@@ -78,6 +78,7 @@ object AutoSound {
 
     /** A section was analysed: decide Room, Modes and EQ for it. [smoothed] are the song's running features. */
     fun decide(f: Smoothed, mood: SoundPreset, bandFreqs: IntArray, kind: String, onSpeaker: Boolean): Decision {
+        val soundFitOn = SoundFitStore.active() != null
         val s = f.shares
         learn(s)
         val r = reference() ?: s
@@ -115,6 +116,8 @@ object AutoSound {
         val eq = FloatArray(bandFreqs.size) { i ->
             var v = interp(bandFreqs[i].toDouble(), corr)
             if ((kind == AudioPlus.KIND_SPEAKER || kind == AudioPlus.KIND_CAR || kind == AudioPlus.KIND_SOUNDBAR || onSpeaker) && bandFreqs[i] < 150) v = v.coerceAtMost(2.0)
+            // SoundFit already shaped the low end for these earphones: Auto EQ doesn't add more bass on top
+            if (soundFitOn && bandFreqs[i] < 250) v = v.coerceAtMost(0.5)
             v.toFloat()
         }
         if (eq.isNotEmpty()) {

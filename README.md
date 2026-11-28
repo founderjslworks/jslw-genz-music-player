@@ -22,6 +22,12 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.21
+
+- **SoundFit: no more extra bass.** Everyone naturally hears low and very high pitches less well than the middle; SoundFit used to "correct" that and lifted the bass for everyone. It now compares your ears with normal hearing (ISO 389-7) and corrects only where your ears and earphones really differ – bass boosts at most +3 dB. Saved profiles are fixed automatically, no retest needed
+- With SoundFit on, Auto EQ no longer adds bass on top
+- JSLW Audio Engine 0.4.1
+
 ## What's new in 1.9.20
 
 - **SoundFit test, refined**

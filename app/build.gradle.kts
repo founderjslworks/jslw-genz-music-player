@@ -13,8 +13,8 @@ android {
         minSdk = 19
         // Google Play: new apps must target Android 16 (API 36)
         targetSdk = 36
-        versionCode = 29
-        versionName = "1.9.20"
+        versionCode = 30
+        versionName = "1.9.21"
         multiDexEnabled = true
         // Leave vector PNG generation ON for API < 21 (notifications/widgets on KitKat need PNGs).
     }
@@ -59,8 +59,8 @@ android {
 // support minSdk 19 (KitKat). Do NOT let Android Studio "upgrade" them, newer versions
 // require Android 5.0+ and the build will fail with a manifest-merger minSdk error.
 dependencies {
-    // JSLW Audio Engine 0.4.0 (proprietary, JSL WORKS PVT LTD) – powers JSLW Audio+ and SoundFit; built from founderjslworks/jslw-audio-engine
-    implementation(files("libs/jslw-audio-engine-0.4.0.jar"))
+    // JSLW Audio Engine 0.4.1 (proprietary, JSL WORKS PVT LTD) – powers JSLW Audio+ and SoundFit; built from founderjslworks/jslw-audio-engine
+    implementation(files("libs/jslw-audio-engine-0.4.1.jar"))
     // JSL Audio Engine C++20 core 0.1.0 (compiled binary only – the engine source stays private): true-peak limiter,
     // equal-loudness, crossfeed for JSL Audio+ (Hi-Fi). Built by the engine repo's "Native core" workflow.
     implementation(files("libs/jslw-audio-core-0.1.0.aar"))
