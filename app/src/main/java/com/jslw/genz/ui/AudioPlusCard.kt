@@ -130,6 +130,36 @@ object AudioPlusCard {
         if (AudioPlus.bluetooth) body.addView(note("Tip: keep your earphones' own EQ on Default / Balanced, so two equalizers don't fight."))
         AudioPlus.phoneEffects()?.let { body.addView(note("This phone also has $it. If the sound feels too strong or thin, switch $it off while using Audio+.")) }
 
+        // ---- SoundFit: "Tune to my ears" (per device)
+        val sfRow = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, px(14), 0, 0) }
+        val sfTexts = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+        sfTexts.addView(text("SoundFit · Tune to my ears", 15.5f, true))
+        val sfStatus = note("")
+        sfTexts.addView(sfStatus)
+        sfRow.addView(sfTexts, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val sfSw = SwitchCompat(a)
+        sfRow.addView(sfSw)
+        body.addView(sfRow)
+        val sfBtn = com.google.android.material.button.MaterialButton(a, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            isAllCaps = false; cornerRadius = px(20); setTextColor(sk.accent)
+            setOnClickListener { Touch.confirm(this); a.startActivity(android.content.Intent(a, SoundFitActivity::class.java)) }
+        }
+        body.addView(sfBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = px(4) })
+        fun sfSync() {
+            val p = com.jslw.genz.audio.SoundFitStore.get()
+            sfSw.setOnCheckedChangeListener(null)
+            sfSw.visibility = if (p != null) View.VISIBLE else View.GONE
+            sfSw.isChecked = p?.on == true
+            sfSw.setOnCheckedChangeListener { _, v -> Touch.confirm(sfSw); com.jslw.genz.audio.SoundFitStore.setOn(v); svc.audioPlusChanged(); sfSync() }
+            sfStatus.text = if (p == null) "A 2-minute listening test through these earphones – Audio+ then corrects them for your ears."
+                else "Tuned for ${p.device}" + (if (p.on) " – correcting both ears." else " – off.")
+            sfBtn.text = if (p == null) "Start the test" else "Test again"
+            sfBtn.visibility = if (AudioPlus.speaker && p == null) View.GONE else View.VISIBLE
+            if (AudioPlus.speaker && p == null) sfStatus.text = "Connect your earphones to tune them to your ears."
+        }
+        sfSync()
+        soundFitSync = { sfSync() }
+
         // ---- live: what Auto has chosen for the song playing now
         body.addView(com.jslw.genz.ui.views.AutoNowView(a, sk.text, (sk.accent and 0x00FFFFFF) or 0x26000000, center = false),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = px(10) })
@@ -360,6 +390,7 @@ object AudioPlusCard {
                 if (Prefs.apMood == AudioPlus.AUTO) showDesc()
                 if (Prefs.apModesAuto) modesSync?.invoke()
                 hifiSync?.invoke()
+                soundFitSync?.invoke()
                 autoRoomTile?.caption?.text = if (Prefs.apRoom == AutoSound.ROOM_AUTO)
                     (AutoSound.live.roomId?.let { "Now: " + AutoSound.roomName(it) } ?: "listening…") else "follows the song"
                 h.postDelayed(this, 1000)
@@ -375,5 +406,6 @@ object AudioPlusCard {
     private var customizeSync: (() -> Unit)? = null
     private var modesSync: (() -> Unit)? = null
     private var hifiSync: (() -> Unit)? = null
+    private var soundFitSync: (() -> Unit)? = null
     private var autoRoomTile: Tile? = null
 }

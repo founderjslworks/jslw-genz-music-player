@@ -10,6 +10,7 @@ import com.jslworks.soundengine.core.JslwAudioBuffer
 import com.jslworks.soundengine.dsp.AudioPlusChain
 import com.jslworks.soundengine.dsp.BiquadType
 import com.jslworks.soundengine.dsp.EqBand
+import com.jslworks.soundengine.dsp.SoundFitEqualizer
 import com.jslworks.soundengine.dsp.MoodClassifier
 import com.jslworks.soundengine.dsp.MoodTag
 import com.jslworks.soundengine.dsp.ParametricEqualizer
@@ -275,7 +276,11 @@ object AudioPlus {
             eq.setPreampDb(-0.5 * (g.maxOrNull() ?: 0f).coerceAtLeast(0f))
             user = eq
         }
-        return Graph(c, user, stage)
+        // SoundFit: this device's "Tune to my ears" profile, per ear
+        val fit = SoundFitStore.active()?.let { pf ->
+            try { SoundFitEqualizer(rate).apply { setProfile(pf.frequenciesHz, pf.left, pf.right) } } catch (_: Throwable) { null }
+        }
+        return Graph(c, user, stage, fit)
     }
 
     fun autoBand(i: Int, n: Int, hz: Int, db: Double): EqBand {
@@ -283,8 +288,10 @@ object AudioPlus {
         return EqBand(type, hz.toDouble(), db, if (type == BiquadType.Peaking) 1.41 else 0.707)
     }
 
-    class Graph(val chain: AudioPlusChain, val userEq: ParametricEqualizer?, val stage: StageProcessor?) {
-        fun process(b: JslwAudioBuffer) { userEq?.process(b); stage?.process(b); chain.process(b) }
+    class Graph(val chain: AudioPlusChain, val userEq: ParametricEqualizer?, val stage: StageProcessor?,
+                val soundFit: SoundFitEqualizer? = null) {
+        // SoundFit first (it corrects the earphones + your ears), then your EQ, modes and the preset chain
+        fun process(b: JslwAudioBuffer) { soundFit?.process(b); userEq?.process(b); stage?.process(b); chain.process(b) }
     }
 }
 

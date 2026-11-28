@@ -194,6 +194,10 @@ object Prefs {
     var apTags: String
         get() = s("ap_tags", "{}")
         set(v) = put { putString("ap_tags", v) }
+    /** SoundFit hearing-test profiles per output device (JSON). */
+    var sfProfiles: String
+        get() = s("sf_profiles", "{}")
+        set(v) = put { putString("sf_profiles", v) }
     /** JSLW Audio Engine C++ core: true-peak limiter (−1 dBTP) as the final Audio+ stage (feature flag). */
     var hfTruePeak: Boolean
         get() = b("hf_true_peak", true)

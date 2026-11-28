@@ -174,6 +174,7 @@ object AutoSound {
         }
         if (eqAuto) parts += eqText()
         if (parts.isEmpty()) return null
+        if (SoundFitStore.active() != null) parts += "SoundFit"
         return parts.joinToString("  ·  ")
     }
 

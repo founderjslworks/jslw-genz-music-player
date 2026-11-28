@@ -107,6 +107,9 @@
             android:name=".ui.EqualizerActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.SoundFitActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.SettingsActivity"
             android:exported="false" />
         <activity

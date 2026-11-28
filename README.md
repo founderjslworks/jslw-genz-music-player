@@ -22,6 +22,17 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.19
+
+- **JSLW SoundFit – "Tune to my ears"** (Sound screen › SoundFit): a short listening test through your own earphones – soft beeps, one ear at a time, tap "I hear it" or "I don't"
+  - **Quick** (≈ 2 min, 6 pitches per ear) or **Full** (≈ 5 min, 10 pitches)
+  - measures the whole chain at your ear – the earphones' tuning, codec, fit, noise cancelling and your hearing
+  - becomes a gentle per-ear correction (half-gain rule, mostly cuts, boosts ≤ +6 dB, left/right balance ≤ ±3 dB), the **first stage** of JSLW Audio+ before your preset and equalizer
+  - saved **per device** and switched automatically (your neckband and other earphones keep their own); on/off switch, "Test again", a curve for each ear; shown in the live "Auto now" line
+  - a listening-comfort correction, not a medical hearing test
+- Name: **JSLW Audio Engine** / **JSLW Audio+** throughout
+- JSLW Audio Engine 0.4.0 (SoundFit, C# ⇄ Kotlin parity-checked)
+
 ## What's new in 1.9.18
 
 - **"Auto now" – live**: what JSLW Audio+ Auto has chosen for the song playing, updated every second – e.g. *✦ Auto · Happy · 107 BPM · Medium Hall · Stage Light · Voice Medium · EQ bass −1.5, treble +2.0*
