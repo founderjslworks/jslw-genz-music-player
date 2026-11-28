@@ -30,6 +30,7 @@ import com.jslw.genz.audio.SoundFitStore
 import com.jslw.genz.data.Prefs
 import com.jslw.genz.playback.Player
 import com.jslw.genz.skin.SkinManager
+import com.jslw.genz.util.Touch
 import com.jslworks.soundengine.core.JslwAudioBuffer
 import com.jslworks.soundengine.dsp.HearingTest
 import com.jslworks.soundengine.dsp.SoundFitEqualizer
