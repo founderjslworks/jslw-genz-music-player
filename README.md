@@ -22,6 +22,16 @@ with no internet permission at all.
 ![GEN-Z Music on Android](docs/screenshots/hero.jpg)
 
 
+## What's new in 1.9.20
+
+- **SoundFit test, refined**
+  - an animated head: sound waves pulse from the ear being tested, in time with the beeps
+  - **Play again** repeats the beeps (doesn't count as an answer); **Pause / Resume**
+  - fixed test volume: the test sets media volume to 50 % itself, puts it back if it's changed, and restores yours afterwards – so results are measured the same way every time (the level is saved with the profile)
+  - a smooth, gliding progress bar; the ear name slides in at each change
+  - **Both ears – centre check**: beeps in both ears, slide until they sit exactly in the middle of your head – sets the left/right balance precisely so the stereo image (virtual sound field) is centred
+  - silent check beeps now and then: if they're "heard", the result suggests retesting somewhere quieter
+
 ## What's new in 1.9.19
 
 - **JSLW SoundFit – "Tune to my ears"** (Sound screen › SoundFit): a short listening test through your own earphones – soft beeps, one ear at a time, tap "I hear it" or "I don't"

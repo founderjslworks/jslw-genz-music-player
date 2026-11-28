@@ -278,7 +278,7 @@ object AudioPlus {
         }
         // SoundFit: this device's "Tune to my ears" profile, per ear
         val fit = SoundFitStore.active()?.let { pf ->
-            try { SoundFitEqualizer(rate).apply { setProfile(pf.frequenciesHz, pf.left, pf.right) } } catch (_: Throwable) { null }
+            try { SoundFitEqualizer(rate).also { pf.apply(it) } } catch (_: Throwable) { null }
         }
         return Graph(c, user, stage, fit)
     }

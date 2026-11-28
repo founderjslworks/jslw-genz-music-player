@@ -42,6 +42,11 @@ import kotlin.math.ln
  * The result is a per-ear correction saved for the current earphones and used as the first stage of JSLW Audio+.
  */
 class SoundFitActivity : BaseActivity() {
+    companion object {
+        /** Media volume for the test (share of the maximum): the same for every test, so results compare. */
+        const val TEST_VOLUME = 0.5
+    }
+
     private val main = Handler(Looper.getMainLooper())
     private lateinit var body: LinearLayout
     private val sk get() = SkinManager.current
@@ -64,7 +69,7 @@ class SoundFitActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (test != null && track == null) next()   // back from elsewhere: replay the current beeps
+        if (test != null && track == null && !inCentre) next()   // back from elsewhere: replay the current beeps
     }
 
     override fun onPause() {
@@ -75,6 +80,7 @@ class SoundFitActivity : BaseActivity() {
 
     override fun onDestroy() {
         stopTone(); track?.release(); track = null
+        restoreVolume()
         if (wasPlaying) Player.service?.play()
         super.onDestroy()
     }
@@ -108,7 +114,7 @@ class SoundFitActivity : BaseActivity() {
         full(text("🎧  $device", 16f, true), 16)
         if (AudioPlus.speaker) full(text("You're on the phone speaker – connect the earphones you want to tune first.", 14f).apply { setTextColor(sk.accent) })
         full(text("Before you start", 16f, true), 18)
-        full(text("•  Sit somewhere quiet.\n•  Wear the earphones properly (ANC as you usually use it).\n•  Set the volume where you normally listen – and keep it there.\n" +
+        full(text("•  Sit somewhere quiet.\n•  Wear the earphones properly (ANC as you usually use it).\n•  The test sets the volume itself (and puts yours back after).\n" +
             "•  You'll hear three soft beeps at a time, one ear at a time. Tap \"I hear it\" even when they're very faint.", 14.5f, dim = true))
         SoundFitStore.get()?.let { p ->
             val d = android.text.format.DateFormat.getMediumDateFormat(this).format(java.util.Date(p.time))
@@ -122,50 +128,117 @@ class SoundFitActivity : BaseActivity() {
     }
 
     // ---------------------------------------------------------------- 2. the test
+    private lateinit var headV: com.jslw.genz.ui.views.HeadView
     private lateinit var earTv: TextView
     private lateinit var pitchTv: TextView
-    private lateinit var progress: ProgressBar
+    private lateinit var progress: com.jslw.genz.ui.views.GlideProgress
     private lateinit var hintTv: TextView
     private lateinit var yes: MaterialButton
     private lateinit var no: MaterialButton
+    private lateinit var replay: MaterialButton
+    private lateinit var pauseBtn: MaterialButton
+    private var paused = false
+    private var catchNow = false          // the current beeps are a silent check
+    private var catches = 0
+    private var falseAlarms = 0
+    private var sinceCatch = 0
+    private val rnd = java.util.Random()
+    private var userVolume = -1
+    private var testVolume = -1
+
+    private val am get() = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val beepMs get() = ToneBurst.frames(48000) * 1000L / 48000
+
+    /** The test runs at a fixed media volume (half of the maximum), so every result is measured the same way. */
+    private fun lockVolume() {
+        val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        if (userVolume < 0) userVolume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+        testVolume = (max * TEST_VOLUME).toInt().coerceIn(1, max)
+        try { am.setStreamVolume(AudioManager.STREAM_MUSIC, testVolume, 0) } catch (_: Exception) {}
+    }
+    private fun restoreVolume() {
+        if (userVolume >= 0) try { am.setStreamVolume(AudioManager.STREAM_MUSIC, userVolume, 0) } catch (_: Exception) {}
+        userVolume = -1
+    }
 
     private fun start(fullTest: Boolean) {
         if (Build.VERSION.SDK_INT < 21) return
         Player.service?.let { s -> wasPlaying = s.isPlaying; if (s.isPlaying) s.pause() }
-        startVolume = (getSystemService(Context.AUDIO_SERVICE) as AudioManager).getStreamVolume(AudioManager.STREAM_MUSIC)
+        lockVolume()
+        startVolume = testVolume
         test = if (fullTest) HearingTest.full() else HearingTest.quick()
+        catches = 0; falseAlarms = 0; sinceCatch = 0; paused = false
         body.removeAllViews()
-        earTv = text("", 30f, true).apply { gravity = Gravity.CENTER }
+        headV = com.jslw.genz.ui.views.HeadView(this, sk.accent, sk.text)
+        earTv = text("", 28f, true).apply { gravity = Gravity.CENTER }
         pitchTv = text("", 15f, dim = true).apply { gravity = Gravity.CENTER }
-        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 1000 }
+        progress = com.jslw.genz.ui.views.GlideProgress(this, sk.accent, (sk.text and 0x00FFFFFF) or 0x22000000)
         hintTv = text("", 13.5f, dim = true).apply { gravity = Gravity.CENTER }
-        full(earTv, 24); full(pitchTv, 2); full(progress, 18); full(hintTv, 10)
+        full(headV, 8); full(earTv, 4); full(pitchTv, 0); full(progress, 16); full(hintTv, 8)
         yes = button("I hear it", true) { answer(true) }
         no = button("I don't hear it", false) { answer(false) }
-        full(yes, 36); full(no, 12)
-        full(button("Cancel", false) { stopTone(); test = null; showIntro() }.apply { alpha = 0.7f }, 30)
+        full(yes, 24); full(no, 12)
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        replay = button("↻  Play again", false) { replayBeeps() }.apply { textSize = 14f }
+        pauseBtn = button("Pause", false) { togglePause() }.apply { textSize = 14f }
+        row.addView(replay, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = px(6) })
+        row.addView(pauseBtn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = px(6) })
+        full(row, 22)
+        full(button("Cancel", false) { stopTone(); test = null; restoreVolume(); showIntro() }.apply { alpha = 0.7f }, 12)
         next()
     }
 
-    private fun next() {
+    private fun next(replaying: Boolean = false) {
         val t = test ?: return
+        if (paused) return
         val p = t.current()
-        if (p == null) { finishTest(); return }
-        earTv.text = if (p.ear == 0) "Left ear" else "Right ear"
+        if (p == null) { centreCheck(); return }
+        // now and then a silent check (never twice in a row, never on the first beeps of an ear)
+        if (!replaying) {
+            sinceCatch++
+            catchNow = sinceCatch >= 6 && rnd.nextInt(4) == 0
+            if (catchNow) { sinceCatch = 0; catches++ }
+        }
+        val earName = if (p.ear == 0) "Left ear" else "Right ear"
+        if (earTv.text != earName) { earTv.alpha = 0f; earTv.translationY = px(10).toFloat(); earTv.animate().alpha(1f).translationY(0f).setDuration(260).start() }
+        earTv.text = earName
+        headV.ear = p.ear
         pitchTv.text = "${pitchName(p.frequencyHz)}  ·  ${t.pointsDone + 1} of ${t.totalPoints}"
-        progress.progress = t.pointsDone * 1000 / t.totalPoints
-        val vol = (getSystemService(Context.AUDIO_SERVICE) as AudioManager).getStreamVolume(AudioManager.STREAM_MUSIC)
-        hintTv.text = if (vol != startVolume) "The volume changed – please put it back where it was." else "Listening…"
+        progress.setProgress(t.pointsDone.toFloat() / t.totalPoints)
+        if (am.getStreamVolume(AudioManager.STREAM_MUSIC) != testVolume) {
+            lockVolume()
+            hintTv.text = "Volume set back to the test level – please leave it there."
+        } else hintTv.text = "Listen…"
         setAnswering(false)
-        play(p.frequencyHz, p.levelDbfs, p.ear)
-        // answers open once the beeps have played (they stay open – take your time)
-        main.postDelayed({ if (test != null) { setAnswering(true); hintTv.text = "Did you hear the beeps?" } }, (ToneBurst.frames(48000) * 1000L / 48000) + 150)
+        if (catchNow) play(p.frequencyHz, -200.0, p.ear) else play(p.frequencyHz, p.levelDbfs, p.ear)
+        headV.pulse(beepMs)
+        main.postDelayed({ if (test != null && !paused) { setAnswering(true); hintTv.text = "Did you hear the beeps?" } }, beepMs + 150)
     }
 
-    private fun setAnswering(on: Boolean) { busy = !on; yes.isEnabled = on; no.isEnabled = on; yes.alpha = if (on) 1f else 0.5f; no.alpha = if (on) 1f else 0.5f }
+    private fun replayBeeps() { if (test != null && !paused) { stopTone(); next(replaying = true) } }
+
+    private fun togglePause() {
+        paused = !paused
+        pauseBtn.text = if (paused) "Resume" else "Pause"
+        if (paused) { stopTone(); headV.stopPulse(); setAnswering(false); hintTv.text = "Paused – take your time." }
+        else next(replaying = true)
+    }
+
+    private fun setAnswering(on: Boolean) {
+        busy = !on
+        for (b in listOf(yes, no)) { b.isEnabled = on; b.animate().alpha(if (on) 1f else 0.45f).setDuration(160).start() }
+        replay.isEnabled = !paused
+    }
 
     private fun answer(heard: Boolean) {
         if (busy) return
+        if (catchNow) {
+            // silent check: not part of the result, only of its reliability
+            if (heard) falseAlarms++
+            catchNow = false
+            next()
+            return
+        }
         test?.answer(heard)
         next()
     }
@@ -175,11 +248,17 @@ class SoundFitActivity : BaseActivity() {
     } + "  (" + (if (hz >= 1000) "${"%.0f".format(hz / 1000)} kHz" else "${hz.toInt()} Hz") + ")"
 
     // ---------------------------------------------------------------- tone playback (its own clean track, no effects)
-    private fun play(hz: Double, dbfs: Double, ear: Int) {
+    /** [ear] 0 left, 1 right, 2 both; [balanceDb] (centre check) shifts level: left −b/2, right +b/2. */
+    private fun play(hz: Double, dbfs: Double, ear: Int, balanceDb: Double = 0.0, loop: Boolean = false) {
         stopTone()
         val rate = 48000
         val b = JslwAudioBuffer(2, ToneBurst.frames(rate), rate)
         ToneBurst.render(b, hz, dbfs, ear)
+        if (ear == 2 && balanceDb != 0.0) {
+            val gl = JslwAudioBuffer.dbToLinear(-balanceDb / 2); val gr = JslwAudioBuffer.dbToLinear(balanceDb / 2)
+            val l = b.channel(0); val r = b.channel(1)
+            for (i in l.indices) { l[i] *= gl; r[i] *= gr }
+        }
         val pcm = b.toInterleavedFloat()
         try {
             val t = AudioTrack(
@@ -187,9 +266,10 @@ class SoundFitActivity : BaseActivity() {
                 AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_FLOAT).setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build(),
                 pcm.size * 4, AudioTrack.MODE_STATIC, AudioManager.AUDIO_SESSION_ID_GENERATE)
             t.write(pcm, 0, pcm.size, AudioTrack.WRITE_BLOCKING)
+            if (loop) t.setLoopPoints(0, pcm.size / 2, -1)
             t.play()
             track = t
-        } catch (_: Exception) { hintTv.text = "Couldn't play the test tone on this device." }
+        } catch (_: Exception) { if (::hintTv.isInitialized) hintTv.text = "Couldn't play the test tone on this device." }
     }
 
     private fun stopTone() {
@@ -198,13 +278,68 @@ class SoundFitActivity : BaseActivity() {
         track = null
     }
 
-    // ---------------------------------------------------------------- 3. result
+    // ---------------------------------------------------------------- 3. both ears: centre check (the stereo "virtual field")
+    private var centreDb = 0.0
+    private var inCentre = false
+
+    private fun centreCheck() {
+        val t = test ?: return
+        inCentre = true
+        stopTone()
+        progress.setProgress(1f)
+        body.removeAllViews()
+        // start from what the thresholds suggest
+        val ref = t.order[0]
+        val suggested = com.jslworks.soundengine.dsp.SoundFit.balanceDb(t.thresholds[0][ref], t.thresholds[1][ref])
+        centreDb = suggested[1] - suggested[0]
+        headV = com.jslw.genz.ui.views.HeadView(this, sk.accent, sk.text).apply { ear = 2; showDot = true }
+        full(text("Both ears – centre the sound", 22f, true).apply { gravity = Gravity.CENTER }, 4)
+        full(text("You'll hear beeps in both ears. Slide until they sound exactly in the middle of your head – " +
+            "that centres the stereo image (the virtual sound field) for these earphones.", 14.5f, dim = true).apply { gravity = Gravity.CENTER })
+        full(headV, 10)
+        val val0 = text("", 14f, true).apply { gravity = Gravity.CENTER }
+        val slider = com.google.android.material.slider.Slider(this).apply {
+            valueFrom = -6f; valueTo = 6f; stepSize = 0.5f; value = centreDb.toFloat().coerceIn(-6f, 6f)
+            trackActiveTintList = android.content.res.ColorStateList.valueOf(sk.accent)
+            thumbTintList = android.content.res.ColorStateList.valueOf(sk.accent)
+        }
+        fun show() {
+            val v = slider.value.toDouble()
+            centreDb = v
+            headV.balance = (v / 6.0).toFloat()
+            val0.text = when {
+                v > 0.25 -> "Right +${"%.1f".format(v)} dB"
+                v < -0.25 -> "Left +${"%.1f".format(-v)} dB"
+                else -> "Even"
+            }
+        }
+        slider.addOnChangeListener { _, _, fromUser -> show(); if (fromUser) { play(1000.0, -30.0, 2, centreDb, loop = true); headV.pulse(60_000) } }
+        full(slider, 8); full(val0, 0)
+        val l = text("◀ sounds more left", 12f, dim = true); val r = text("sounds more right ▶", 12f, dim = true).apply { gravity = Gravity.END }
+        val lr = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        lr.addView(l, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)); lr.addView(r, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        full(lr, 0)
+        full(text("If the beeps sound to the left, move the slider right (and the other way round).", 12.5f, dim = true).apply { gravity = Gravity.CENTER }, 6)
+        full(button("▶  Play the beeps", false) { play(1000.0, -30.0, 2, centreDb, loop = true); headV.pulse(60_000) }, 16)
+        full(button("It's centred – save", true) { stopTone(); headV.stopPulse(); finishTest() }, 12)
+        full(button("Skip", false) { centreDb = Double.NaN; stopTone(); finishTest() }.apply { alpha = 0.7f }, 10)
+        show()
+        play(1000.0, -30.0, 2, centreDb, loop = true); headV.pulse(60_000)
+    }
+
+    // ---------------------------------------------------------------- 4. result
     private fun finishTest() {
         val t = test ?: return
-        test = null
+        test = null; inCentre = false
         stopTone()
+        val maxV = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        val vol = testVolume.toDouble() / maxV
+        restoreVolume()
+        val fa = if (catches > 0) falseAlarms.toDouble() / catches else 0.0
+        val bal = if (centreDb.isNaN()) null else (centreDb / 2).coerceIn(-com.jslworks.soundengine.dsp.SoundFit.MAX_BALANCE_DB, com.jslworks.soundengine.dsp.SoundFit.MAX_BALANCE_DB)
         val p = SoundFitStore.Profile(AudioPlus.outputName, t.frequenciesHz.size > 6, t.frequenciesHz,
-            t.thresholds[0], t.thresholds[1], System.currentTimeMillis(), true)
+            t.thresholds[0], t.thresholds[1], System.currentTimeMillis(), true,
+            balanceLeftDb = bal?.let { -it } ?: Double.NaN, balanceRightDb = bal ?: Double.NaN, volume = vol, falseAlarms = fa)
         SoundFitStore.save(p)
         Player.service?.audioPlusChanged()
         body.removeAllViews()
@@ -213,6 +348,8 @@ class SoundFitActivity : BaseActivity() {
             "it switches automatically when you change earphones.", 15f, dim = true))
         full(curve(p), 14)
         full(text("The curve shows what SoundFit adds or takes away for each ear (left ${legend(0)}, right ${legend(1)}).", 13f, dim = true))
+        if (bal != null) full(text("Centre: " + (if (kotlin.math.abs(bal) < 0.25) "even" else if (bal > 0) "right +${"%.1f".format(bal * 2)} dB" else "left +${"%.1f".format(-bal * 2)} dB"), 13f, dim = true))
+        if (fa > 0.34) full(text("A few silent check beeps were answered \"I hear it\" – for a more accurate result, try again somewhere quieter.", 13f).apply { setTextColor(sk.accent) })
         val noResp = t.noResponse.any { e -> e.any { it } }
         if (noResp) full(text("Some beeps weren't heard even at the loudest test level – those pitches are lifted only as far as is safe (+6 dB).", 13f).apply { setTextColor(sk.accent) })
         if (!AudioPlus.active) full(text("Turn on JSLW Audio+ on the Sound screen to hear it.", 14f).apply { setTextColor(sk.accent) })
@@ -224,7 +361,7 @@ class SoundFitActivity : BaseActivity() {
     private fun legend(ear: Int) = if (ear == 0) "solid" else "dashed"
 
     private fun curve(p: SoundFitStore.Profile): View = object : View(this) {
-        private val eq = SoundFitEqualizer(48000).apply { setProfile(p.frequenciesHz, p.left, p.right) }
+        private val eq = SoundFitEqualizer(48000).also { p.apply(it) }
         private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = px(3).toFloat(); color = sk.accent; strokeCap = Paint.Cap.ROUND }
         private val dash = Paint(line).apply { pathEffect = android.graphics.DashPathEffect(floatArrayOf(px(8).toFloat(), px(6).toFloat()), 0f); alpha = 200 }
         private val grid = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = sk.textSecondary; alpha = 60; strokeWidth = px(1).toFloat() }
