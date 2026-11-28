@@ -314,6 +314,42 @@ object AudioPlusCard {
         }
         showCustom()
 
+        // ---- Quality: repair the source (detail restore for lossy files, dynamics restore for squashed masters)
+        body.addView(text("Quality", 16f, true).apply { setPadding(0, px(18), 0, 0) })
+        fun qRow(title: String, on: Boolean, onChange: (Boolean) -> Unit): Pair<View, TextView> {
+            val row = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, px(8), 0, 0) }
+            val col = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+            col.addView(text(title, 14.5f))
+            val st = note("")
+            col.addView(st)
+            row.addView(col, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            val sw = SwitchCompat(a).apply { isChecked = on }
+            sw.setOnCheckedChangeListener { _, v -> Touch.confirm(sw); onChange(v) }
+            row.addView(sw)
+            return row to st
+        }
+        val (detRow, detNote) = qRow("Detail restore", Prefs.hqDetail) { v -> Prefs.hqDetail = v }
+        body.addView(detRow)
+        val (dynRow, dynNote) = qRow("Dynamics restore", Prefs.hqDynamics) { v -> Prefs.hqDynamics = v }
+        body.addView(dynRow)
+        fun qSync() {
+            val cut = AudioPlus.liveCutoffHz
+            detNote.text = when {
+                !Prefs.hqDetail -> "Rebuilds the treble and air that lossy files (Opus, MP3, AAC) lose."
+                cut > 0 -> "Restoring above ${"%.1f".format(cut / 1000)} kHz – this song was cut there by its encoder."
+                else -> "This song is full range – nothing to restore."
+            }
+            val cr = AudioPlus.liveCrestDb
+            dynNote.text = when {
+                !Prefs.hqDynamics -> "Gives over-compressed (\"loudness war\") songs their punch back."
+                cr in 0.0..12.0 -> "Bringing back punch – this master is compressed (${"%.0f".format(cr)} dB crest)."
+                cr > 12.0 -> "This song has natural dynamics – untouched."
+                else -> "Listening…"
+            }
+        }
+        qSync()
+        qualitySync = { qSync() }
+
         // ---- Hi-Fi: the JSLW Audio Engine C++ core (true-peak limiter, equal-loudness, crossfeed)
         val hifi = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         body.addView(hifi)
@@ -391,6 +427,7 @@ object AudioPlusCard {
                 if (Prefs.apModesAuto) modesSync?.invoke()
                 hifiSync?.invoke()
                 soundFitSync?.invoke()
+                qualitySync?.invoke()
                 autoRoomTile?.caption?.text = if (Prefs.apRoom == AutoSound.ROOM_AUTO)
                     (AutoSound.live.roomId?.let { "Now: " + AutoSound.roomName(it) } ?: "listening…") else "follows the song"
                 h.postDelayed(this, 1000)
@@ -407,5 +444,6 @@ object AudioPlusCard {
     private var modesSync: (() -> Unit)? = null
     private var hifiSync: (() -> Unit)? = null
     private var soundFitSync: (() -> Unit)? = null
+    private var qualitySync: (() -> Unit)? = null
     private var autoRoomTile: Tile? = null
 }

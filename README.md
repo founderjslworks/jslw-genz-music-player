@@ -25,6 +25,9 @@ with no internet permission at all.
 ## What's new in 1.9.22
 
 - **Clearer, fuller Auto sound**: Audio+ now matches its level to the original the way the ear hears it (ITU-R BS.1770 K-weighting) – added bass no longer turns voices and detail down, and it's never noticeably quieter; Auto EQ never dulls voices or treble; Auto room a touch drier; SoundFit cuts in the voice range limited to −4 dB (JSLW Audio Engine 0.4.2)
+- **Quality** (Sound screen, JSLW Audio Engine 0.5.0):
+  - **Detail restore** – finds where a lossy encoder (Opus, MP3, AAC) cut the treble off – from the music itself – and rebuilds the missing top octave (sparkle, air) the way codec band replication does; full-range songs are left bit-identical. Shows "Restoring above 16.8 kHz" live
+  - **Dynamics restore** – measures how squashed a master is (crest factor) and, only for over-compressed "loudness war" songs, brings drum hits and attacks back (≤ +4 dB); natural recordings untouched
 - **Opus / Ogg files – much more from the file itself**:
   - embedded **cover art** (METADATA_BLOCK_PICTURE / COVERART), **lyrics**, and **loudness** (R128 gain → used by ReplayGain levelling)
   - **YouTube Music downloads**: the saved description gives title · artists, album, year and label – offered as **"This file"** at the top of *Find cover & details online* (works offline) and used for Opus files GEN-Z indexes itself; the video link (PURL) feeds the YouTube cover lookup

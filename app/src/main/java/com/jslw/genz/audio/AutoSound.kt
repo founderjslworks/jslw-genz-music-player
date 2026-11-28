@@ -181,6 +181,7 @@ object AutoSound {
         if (eqAuto) parts += eqText()
         if (parts.isEmpty()) return null
         if (SoundFitStore.active() != null) parts += "SoundFit"
+        if (AudioPlus.liveCutoffHz > 0) parts += "Detail ↑${"%.0f".format(AudioPlus.liveCutoffHz / 1000)} kHz"
         return parts.joinToString("  ·  ")
     }
 

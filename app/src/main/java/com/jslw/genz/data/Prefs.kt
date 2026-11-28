@@ -194,6 +194,14 @@ object Prefs {
     var apTags: String
         get() = s("ap_tags", "{}")
         set(v) = put { putString("ap_tags", v) }
+    /** Quality · Detail restore (rebuild the top octave lossy encoders removed). */
+    var hqDetail: Boolean
+        get() = b("hq_detail", true)
+        set(v) = put { putBoolean("hq_detail", v) }
+    /** Quality · Dynamics restore (punch back for over-compressed masters). */
+    var hqDynamics: Boolean
+        get() = b("hq_dynamics", true)
+        set(v) = put { putBoolean("hq_dynamics", v) }
     /** SoundFit hearing-test profiles per output device (JSON). */
     var sfProfiles: String
         get() = s("sf_profiles", "{}")

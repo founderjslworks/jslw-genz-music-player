@@ -11,6 +11,8 @@ import com.jslworks.soundengine.dsp.AudioPlusChain
 import com.jslworks.soundengine.dsp.BiquadType
 import com.jslworks.soundengine.dsp.EqBand
 import com.jslworks.soundengine.dsp.SoundFitEqualizer
+import com.jslworks.soundengine.dsp.DetailRestore
+import com.jslworks.soundengine.dsp.DynamicRestore
 import com.jslworks.soundengine.dsp.MoodClassifier
 import com.jslworks.soundengine.dsp.MoodTag
 import com.jslworks.soundengine.dsp.ParametricEqualizer
@@ -77,6 +79,10 @@ object AudioPlus {
     @Volatile private var eqOn = false
 
     val bandFreqs: IntArray get() = eqFreqs
+
+    /** Live from the processor: detected lossy cut-off (0 = full range, −1 = off) and crest factor (−1 = off). */
+    @Volatile var liveCutoffHz = 0.0
+    @Volatile var liveCrestDb = -1.0
     val intensity: Double get() = Prefs.apIntensity.coerceIn(0, 150) / 100.0
 
     fun changed(ctx: Context) {
@@ -318,6 +324,8 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
         private val hp = com.jslworks.soundengine.dsp.BiquadFilter(2).apply { configure(BiquadType.HighPass, rate.toDouble(), 38.13547087602444, 0.5003270373238773, 0.0) }
         fun weigh(ch: Int, x: Double) = hp.processSample(ch, hs.processSample(ch, x))
     }
+    private val detail = DetailRestore(rate).apply { amount = 0.6 }
+    private val dynamics = DynamicRestore(rate).apply { amount = 0.5 }
     private val kIn = KWeight(rate)
     private val kOut = KWeight(rate)
 
@@ -429,6 +437,9 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
         if (fading) { xl.copyInto(y.channel(0)); xr.copyInto(y.channel(1)) }
 
         if (c != null) {
+            // repair the source first: rebuild what a lossy encoder cut off, give squashed masters their punch back
+            if (Prefs.hqDetail) { detail.process(x); AudioPlus.liveCutoffHz = detail.cutoffHz } else AudioPlus.liveCutoffHz = -1.0
+            if (Prefs.hqDynamics) { dynamics.process(x); AudioPlus.liveCrestDb = dynamics.crestDb } else AudioPlus.liveCrestDb = -1.0
             val mk = makeup
             if (mk != 1f) for (i in 0 until frames) { xl[i] *= mk; xr[i] *= mk }
             c.process(x)
