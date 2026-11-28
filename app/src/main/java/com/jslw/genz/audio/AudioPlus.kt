@@ -21,7 +21,7 @@ import org.json.JSONObject
 import kotlin.math.sqrt
 
 /**
- * JSL Audio+ – GEN-Z's advanced audio, powered by the JSL Audio Engine (proprietary, JSL WORKS PVT LTD).
+ * JSLW Audio+ – GEN-Z's advanced audio, powered by the JSLW Audio Engine (proprietary, JSL WORKS PVT LTD).
  *
  * One processing stage, not a stack: an Audio+ song plays on its OWN audio session, so the phone-side
  * 1.8 effects never process it a second time. Order: your EQ curve → Stage / Separation / Instruments →
@@ -314,7 +314,7 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
         if (songId >= 0) { AudioPlus.nowSongId = songId; AudioPlus.nowTag = tag }
     }
 
-    // ---------------------------------------------------------------- JSL Audio Engine C++ core (final stage)
+    // ---------------------------------------------------------------- JSLW Audio Engine C++ core (final stage)
     private val nativeLock = Any()
     private var core: com.jslworks.soundengine.nativecore.JslwNativeEngine? =
         if (HiFi.coreActive) try { com.jslworks.soundengine.nativecore.JslwNativeEngine.create(rate.toDouble(), 4096) } catch (_: Throwable) { null } else null

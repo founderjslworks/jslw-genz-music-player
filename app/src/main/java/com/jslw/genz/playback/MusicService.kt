@@ -494,7 +494,7 @@ class MusicService : MediaBrowserServiceCompat() {
             e = Engine.create(this, s, sid)
             ok = e.prepare(this, s)
             if (!ok && e is AudioPlusEngine) {
-                // JSL Audio+ can't decode this file: play it on the normal player instead
+                // JSLW Audio+ can't decode this file: play it on the normal player instead
                 e.release()
                 e = MediaPlayerEngine(this, sid)
                 ok = e.prepare(this, s)
@@ -957,7 +957,7 @@ class MusicService : MediaBrowserServiceCompat() {
     }
 
     /**
-     * JSL Audio+ switched on or off. The song moves to a fresh track of the right kind at the same position
+     * JSLW Audio+ switched on or off. The song moves to a fresh track of the right kind at the same position
      * (the old track keeps playing until the new one takes over), so the output never goes silent.
      * Effects are never added to or removed from a track that is already playing.
      */

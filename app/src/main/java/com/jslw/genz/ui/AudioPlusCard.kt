@@ -30,7 +30,7 @@ import com.jslw.genz.util.Touch
 import com.jslworks.soundengine.dsp.SoundPresets
 
 /**
- * "JSL Audio+" at the top of the Sound screen. Built for a personal experience, not a mixing desk:
+ * "JSLW Audio+" at the top of the Sound screen. Built for a personal experience, not a mixing desk:
  * pick a preset (or Auto) and enjoy; Stage modes are one tap each; room and intensity sit under Customize.
  * Every tile carries a small graphic that shows what it does (the preset's real curve, a room's echo, the stage).
  * [onMode] hides the 1.8 effects that Audio+ replaces (bass boost, 3D, loudness, reverb).
@@ -84,13 +84,13 @@ object AudioPlusCard {
 
         val box = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, px(18)) }
         val head = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        head.addView(text("JSL Audio+", 18f, true), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        head.addView(text("JSLW Audio+", 18f, true), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         val sw = SwitchCompat(a)
         head.addView(sw)
         box.addView(head)
         box.addView(text(
-            if (AudioPlus.supported) "Your personal sound, powered by the JSL Audio Engine. Pick a preset or let Auto choose – fine-tune only if you want."
-            else "JSL Audio+ needs Android 5.0 or newer.", 13f
+            if (AudioPlus.supported) "Your personal sound, powered by the JSLW Audio Engine. Pick a preset or let Auto choose – fine-tune only if you want."
+            else "JSLW Audio+ needs Android 5.0 or newer.", 13f
         ).apply { alpha = 0.85f })
 
         val body = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
@@ -284,7 +284,7 @@ object AudioPlusCard {
         }
         showCustom()
 
-        // ---- Hi-Fi: the JSL Audio Engine C++ core (true-peak limiter, equal-loudness, crossfeed)
+        // ---- Hi-Fi: the JSLW Audio Engine C++ core (true-peak limiter, equal-loudness, crossfeed)
         val hifi = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         body.addView(hifi)
         fun toggleRow(title: String, on: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit): Pair<View, SwitchCompat> {
@@ -301,8 +301,8 @@ object AudioPlusCard {
         hfHead.addView(hfSw)
         hifi.addView(hfHead)
         val coreOk = com.jslw.genz.audio.HiFi.coreAvailable
-        hifi.addView(note(if (coreOk) "Studio-grade processing from the JSL Audio Engine core (C++20), applied after everything above."
-            else "The JSL Audio Engine core isn't available on this device, so Hi-Fi is off."))
+        hifi.addView(note(if (coreOk) "Studio-grade processing from the JSLW Audio Engine core (C++20), applied after everything above."
+            else "The JSLW Audio Engine core isn't available on this device, so Hi-Fi is off."))
         val hfBody = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
         hifi.addView(hfBody)
         val (loudRow, _) = toggleRow("Loudness compensation", Prefs.hfLoudness, coreOk) { v -> Prefs.hfLoudness = v }

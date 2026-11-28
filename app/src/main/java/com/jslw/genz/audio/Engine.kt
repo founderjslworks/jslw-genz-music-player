@@ -38,7 +38,7 @@ interface Engine {
             else -> MediaPlayerEngine(ctx, sessionId)
         }
 
-        /** Creates and prepares an engine; JSL Audio+ falls back to the normal player for files it can't decode. */
+        /** Creates and prepares an engine; JSLW Audio+ falls back to the normal player for files it can't decode. */
         fun open(ctx: Context, song: Song, sessionId: Int): Engine? {
             var e: Engine = create(ctx, song, sessionId)
             var ok = try { e.prepare(ctx, song) } catch (_: Throwable) { false }

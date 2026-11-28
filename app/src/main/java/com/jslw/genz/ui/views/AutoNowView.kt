@@ -9,7 +9,7 @@ import android.widget.TextView
 import com.jslw.genz.audio.AutoSound
 
 /**
- * A small live line: "✦ Auto · Happy · 104 BPM · Medium Hall · Stage Light · EQ treble +2.0" – what JSL Audio+ Auto
+ * A small live line: "✦ Auto · Happy · 104 BPM · Medium Hall · Stage Light · EQ treble +2.0" – what JSLW Audio+ Auto
  * has chosen for the song playing now. Refreshes every second while on screen; hidden when nothing is on Auto.
  */
 class AutoNowView(ctx: Context, private val color: Int, private val tint: Int, private val center: Boolean = true) : TextView(ctx) {

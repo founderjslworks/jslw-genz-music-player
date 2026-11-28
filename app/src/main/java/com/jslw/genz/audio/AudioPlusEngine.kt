@@ -16,8 +16,8 @@ import com.jslw.genz.model.Song
 import java.nio.ByteOrder
 
 /**
- * JSL Audio+ playback: Android's own decoders (MediaExtractor + MediaCodec: MP3, AAC, FLAC, OGG, Opus, WAV…)
- * → JSL Audio Engine → 32-bit float AudioTrack on GEN-Z's audio session (so the 1.8 equalizer still applies).
+ * JSLW Audio+ playback: Android's own decoders (MediaExtractor + MediaCodec: MP3, AAC, FLAC, OGG, Opus, WAV…)
+ * → JSLW Audio Engine → 32-bit float AudioTrack on GEN-Z's audio session (so the 1.8 equalizer still applies).
  * Android 5.0+. If a file can't be decoded this way the service falls back to the normal player.
  */
 @TargetApi(21)

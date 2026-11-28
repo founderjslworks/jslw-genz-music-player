@@ -9,7 +9,7 @@ import kotlin.math.log10
 import kotlin.math.ln
 
 /**
- * The "Auto" brain of JSL Audio+ for Room, Modes and Equalizer.
+ * The "Auto" brain of JSLW Audio+ for Room, Modes and Equalizer.
  *
  * While a song plays, Audio+ listens to it in short sections (~6 s) all the way through – tonal balance (sub, low-mid,
  * mid, presence, air), dynamics (crest factor), loudness, stereo width and tempo – and decides:

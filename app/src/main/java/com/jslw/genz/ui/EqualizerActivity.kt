@@ -55,7 +55,7 @@ class EqualizerActivity : BaseActivity() {
             append("Effects work on the music GEN-Z plays, including DSD and AIFF.")
             if (Prefs.bitPerfect) append("\nBit-perfect USB output is on: Android bypasses all effects in that mode.")
         }
-        // JSL Audio+ (JSL Audio Engine) on top of the Sound screen
+        // JSLW Audio+ (JSLW Audio Engine) on top of the Sound screen
         (enable.parent.parent as? LinearLayout)?.addView(AudioPlusCard.create(this, svc) { on -> audioPlusMode(on) }, 0)
 
         enable.isChecked = Prefs.eqEnabled
@@ -153,7 +153,7 @@ class EqualizerActivity : BaseActivity() {
     }
 
     /**
-     * With JSL Audio+ on, the 1.8 effects it replaces are hidden so nothing is offered twice:
+     * With JSLW Audio+ on, the 1.8 effects it replaces are hidden so nothing is offered twice:
      * bass boost, 3D surround, loudness and reverb (Audio+ has its own bass, Stage modes and rooms).
      * The equalizer (graph + presets) stays – Audio+ applies it inside the engine.
      */
@@ -259,7 +259,7 @@ class EqualizerActivity : BaseActivity() {
     private fun buildPresets() {
         presets = fx.presets()
         presetGroup.removeAllViews()
-        // Auto: the curve follows the song as it plays (needs JSL Audio+, which hears the music)
+        // Auto: the curve follows the song as it plays (needs JSLW Audio+, which hears the music)
         Chip(this).apply {
             text = "Auto"
             isCheckable = true
@@ -287,7 +287,7 @@ class EqualizerActivity : BaseActivity() {
         if (!com.jslw.genz.audio.AudioPlus.active) {
             selectPresetChip(Prefs.eqPreset)
             MaterialAlertDialogBuilder(this).setTitle("Auto equalizer")
-                .setMessage("Auto listens to each song while it plays and shapes the equalizer to it, all the way through. It works inside JSL Audio+ – turn Audio+ on above to use it.")
+                .setMessage("Auto listens to each song while it plays and shapes the equalizer to it, all the way through. It works inside JSLW Audio+ – turn Audio+ on above to use it.")
                 .setPositiveButton("OK", null).show()
             return
         }

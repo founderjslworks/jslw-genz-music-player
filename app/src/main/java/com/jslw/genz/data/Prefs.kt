@@ -164,7 +164,7 @@ object Prefs {
         get() = s("se_room_type", "auto")
         set(v) = put { putString("se_room_type", v) }
 
-    // ---- JSL Audio+ (JSL Audio Engine) ----
+    // ---- JSLW Audio+ (JSLW Audio Engine) ----
     var apOn: Boolean
         get() = b("ap_on", false)
         set(v) = put { putBoolean("ap_on", v) }
@@ -194,7 +194,7 @@ object Prefs {
     var apTags: String
         get() = s("ap_tags", "{}")
         set(v) = put { putString("ap_tags", v) }
-    /** JSL Audio Engine C++ core: true-peak limiter (−1 dBTP) as the final Audio+ stage (feature flag). */
+    /** JSLW Audio Engine C++ core: true-peak limiter (−1 dBTP) as the final Audio+ stage (feature flag). */
     var hfTruePeak: Boolean
         get() = b("hf_true_peak", true)
         set(v) = put { putBoolean("hf_true_peak", v) }

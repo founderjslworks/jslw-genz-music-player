@@ -18,8 +18,8 @@ import kotlin.math.pow
 import kotlin.math.sin
 
 /**
- * Small explanatory graphics for JSL Audio+, drawn in the theme's colours so the user can SEE what an option does:
- * a preset's real frequency curve (computed by the JSL Audio Engine), a room's echo decay, and the three stage modes.
+ * Small explanatory graphics for JSLW Audio+, drawn in the theme's colours so the user can SEE what an option does:
+ * a preset's real frequency curve (computed by the JSLW Audio Engine), a room's echo decay, and the three stage modes.
  */
 class FxArt(private val kind: Kind, private val color: Int, private val faint: Int) : Drawable() {
 

@@ -24,11 +24,11 @@ with no internet permission at all.
 
 ## What's new in 1.9.18
 
-- **"Auto now" – live**: what JSL Audio+ Auto has chosen for the song playing, updated every second – e.g. *✦ Auto · Happy · 107 BPM · Medium Hall · Stage Light · Voice Medium · EQ bass −1.5, treble +2.0*
+- **"Auto now" – live**: what JSLW Audio+ Auto has chosen for the song playing, updated every second – e.g. *✦ Auto · Happy · 107 BPM · Medium Hall · Stage Light · Voice Medium · EQ bass −1.5, treble +2.0*
   - on the player under the artist, in portrait and landscape
   - at the top of the Sound / Equalizer page
   - shown only while Audio+ is on and something is set to Auto (preset, room, modes or equalizer)
-- **Hi-Fi – JSL Audio Engine C++20 core** inside JSL Audio+ (Android 5.0+):
+- **Hi-Fi – JSLW Audio Engine C++20 core** inside JSLW Audio+ (Android 5.0+):
   - **True-peak protection** (on by default): a 4× oversampled limiter holds the peaks *between* samples at −1 dBTP as the final stage, so loud songs never distort on Bluetooth or DACs – and leaves the music bit-identical whenever it stays below. Adds 1.8 ms of look-ahead; the timeline and seeking account for it
   - **Hi-Fi switch** on the Sound screen with **Loudness compensation** (ISO 226 equal-loudness, set from your volume and the song's loudness – restores bass and treble at low volume) and **Crossfeed** (headphones only – a natural, less tiring stereo). Both glide in and out without a click; Compare still plays the original
 
@@ -45,16 +45,16 @@ with no internet permission at all.
 
 ## What's new in 1.9.16
 
-- **Fixed: the equalizer now works with JSL Audio+** – every band change and EQ preset is applied inside Audio+ (before, changes only reached the phone's own equalizer). EQ presets are back on the Sound screen with Audio+ on
+- **Fixed: the equalizer now works with JSLW Audio+** – every band change and EQ preset is applied inside Audio+ (before, changes only reached the phone's own equalizer). EQ presets are back on the Sound screen with Audio+ on
 - **No more pumping on bass-heavy songs through speakers**: gentler limiter (3 ms look-ahead, 150 ms release), volume matching that backs off while the limiter works, and a **Headphones / Speaker / Car** choice per device – speakers and cars get gentler bass
 - **Auto** preset: Audio+ listens to the first 15 seconds of each song – tempo (BPM), tonal balance and loudness – picks the mood, corrects the tone (bass-heavy songs get less bass) and remembers it, so next time the song starts tagged
 - **Modes** – one tap each (Off → Medium → Strong): **Sound Stage** (music around and in front of you), **Sound Separation** (voice lifted out of the band), **Instrument Separation** (bass centred, instruments spread out)
 - A **graphic on every option**: each preset shows its real sound curve, each room shows how long its echo lasts, each mode shows what it does
-- JSL Audio Engine 0.3.0
+- JSLW Audio Engine 0.3.0
 
 ## What's new in 1.9.15
 
-- **JSL Audio+ is now presets-first**: tap a sound preset and enjoy. Room and intensity moved under *Customize*; the 10-band equalizer stays as the fine-tune
+- **JSLW Audio+ is now presets-first**: tap a sound preset and enjoy. Room and intensity moved under *Customize*; the 10-band equalizer stays as the fine-tune
 - No more doubled options: with Audio+ on, the effects it replaces (EQ presets, bass boost, 3D surround, loudness, reverb) are hidden – Audio+ rooms replace the old reverb
 - **Clearer, fuller sound on Bluetooth earphones and neckbands**: Audio+ songs now play on their own audio session, so the phone-side effects no longer process the music a second time (that stacking pulled the volume down and left only bass or only voice). Your EQ curve is applied inside Audio+ instead
 - **Volume matched to the original**: Audio+ is never quieter than the song without it
@@ -66,7 +66,7 @@ with no internet permission at all.
 
 ## What's new in 1.9.14
 
-- **JSL Audio+** (Sound screen, beta, Android 5.0+): GEN-Z's new advanced audio, powered by the JSL Audio Engine. GEN-Z decodes the song itself and processes it before it leaves the phone, so the difference is clearly audible on headphones, Bluetooth, speakers and soundbars
+- **JSLW Audio+** (Sound screen, beta, Android 5.0+): GEN-Z's new advanced audio, powered by the JSLW Audio Engine. GEN-Z decodes the song itself and processes it before it leaves the phone, so the difference is clearly audible on headphones, Bluetooth, speakers and soundbars
 - 10 **moods**: Balanced, Happy, Energetic, Party, Chill, Romantic, Focus, Devotional, Soothing and **Melody** (brings the singer and lead instrument forward)
 - 10 physical **rooms**: Small Room, Medium Room, Large Room, Medium Hall, Large Hall, Party Hall, Concert Hall, Plate, Temple and Cathedral, each modelled from its size and walls (Sabine reverberation time)
 - Intensity slider (0–150 %) and **Hold to hear the original** to compare instantly

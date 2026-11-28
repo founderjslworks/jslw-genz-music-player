@@ -13,7 +13,7 @@ import com.jslw.genz.data.Prefs
 import kotlin.math.log10
 
 /**
- * Hi-Fi settings for the JSL Audio Engine C++ core inside JSL Audio+ (Android 5.0+):
+ * Hi-Fi settings for the JSLW Audio Engine C++ core inside JSLW Audio+ (Android 5.0+):
  *  - True-peak protection (feature flag, on by default): the core's 4× oversampled limiter at −1 dBTP is the final
  *    stage – bit-identical while the music stays under the ceiling. Adds [latencyMs] of look-ahead.
  *  - Hi-Fi section switch with Loudness compensation (ISO 226 equal-loudness, from the listening level) and
