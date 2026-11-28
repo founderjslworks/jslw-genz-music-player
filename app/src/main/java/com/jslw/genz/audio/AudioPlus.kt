@@ -309,6 +309,18 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
     private var a: JslwAudioBuffer? = null
     private var b: JslwAudioBuffer? = null
 
+    /**
+     * K-weighting (ITU-R BS.1770): high-pass 38 Hz + high shelf +4 dB above ~1.7 kHz. Level matching compares the
+     * song before and after Audio+ the way the ear does – so added bass no longer turns voices and detail down.
+     */
+    private class KWeight(rate: Int) {
+        private val hs = com.jslworks.soundengine.dsp.BiquadFilter(2).apply { configure(BiquadType.HighShelf, rate.toDouble(), 1681.974450955533, 0.7071752369554196, 3.999843853973347) }
+        private val hp = com.jslworks.soundengine.dsp.BiquadFilter(2).apply { configure(BiquadType.HighPass, rate.toDouble(), 38.13547087602444, 0.5003270373238773, 0.0) }
+        fun weigh(ch: Int, x: Double) = hp.processSample(ch, hs.processSample(ch, x))
+    }
+    private val kIn = KWeight(rate)
+    private val kOut = KWeight(rate)
+
     private var pIn = 0.0
     private var pOut = 0.0
     private var makeup = 1f
@@ -392,7 +404,9 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
         for (i in 0 until frames) {
             val l = data[2 * i]; val r = data[2 * i + 1]
             xl[i] = l; xr[i] = r
-            sIn += (l * l + r * r).toDouble()
+            // loudness as the ear hears it (K-weighted, ITU-R BS.1770), not raw energy dominated by bass
+            val kl = kIn.weigh(0, l.toDouble()); val kr = kIn.weigh(1, r.toDouble())
+            sIn += kl * kl + kr * kr
         }
 
         if (needTag) {
@@ -419,7 +433,10 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
             if (mk != 1f) for (i in 0 until frames) { xl[i] *= mk; xr[i] *= mk }
             c.process(x)
             var sOut = 0.0
-            for (i in 0 until frames) sOut += (xl[i] * xl[i] + xr[i] * xr[i]).toDouble()
+            for (i in 0 until frames) {
+                val kl = kOut.weigh(0, xl[i].toDouble()); val kr = kOut.weigh(1, xr[i].toDouble())
+                sOut += kl * kl + kr * kr
+            }
             val blockIn = sIn / frames; val blockOut = sOut / frames
             if (blockIn > 1e-7) {
                 pIn += (blockIn - pIn) * avg
@@ -427,7 +444,7 @@ class AudioPlusProcessor(private val rate: Int, private val withUserEq: Boolean 
                 if (limiterGrDb(c) < -1.5) {
                     makeup = (makeup * 0.98f).coerceAtLeast(1f)          // yield to the limiter: no pumping
                 } else if (pOut > 1e-9) {
-                    val want = (makeup * sqrt(pIn / pOut)).toFloat().coerceIn(0.7f, MAX_MAKEUP)
+                    val want = (makeup * sqrt(pIn / pOut)).toFloat().coerceIn(0.89f, MAX_MAKEUP)   // never noticeably quieter
                     makeup += (want - makeup) * 0.03f
                 }
             }

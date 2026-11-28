@@ -99,6 +99,7 @@ object AutoSound {
         var wet = mood.roomWet.takeIf { it > 0 } ?: 0.15
         wet *= when { dense -> 0.7; sparse -> 1.25; else -> 1.0 }
         if (fast) wet *= 0.8
+        wet *= 0.8   // Auto keeps the room a touch drier than the preset: clearer, closer sound
         if (onSpeaker) wet *= 0.8
 
         // ---- modes
@@ -118,6 +119,8 @@ object AutoSound {
             if ((kind == AudioPlus.KIND_SPEAKER || kind == AudioPlus.KIND_CAR || kind == AudioPlus.KIND_SOUNDBAR || onSpeaker) && bandFreqs[i] < 150) v = v.coerceAtMost(2.0)
             // SoundFit already shaped the low end for these earphones: Auto EQ doesn't add more bass on top
             if (soundFitOn && bandFreqs[i] < 250) v = v.coerceAtMost(0.5)
+            // clarity first: Auto never dulls voices and detail (presence and air are only lifted, or cut ≤ 1 dB)
+            if (bandFreqs[i] >= 2000) v = v.coerceAtLeast(-1.0)
             v.toFloat()
         }
         if (eq.isNotEmpty()) {
